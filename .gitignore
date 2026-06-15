@@ -1,0 +1,19 @@
+# Dependencias (baixadas com npm install)
+node_modules/
+
+# Pasta de build (gerada pelo npm run build)
+build/
+
+# Variaveis de ambiente secretas - NUNCA suba isso!
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Logs
+npm-debug.log*
+
+# Sistema operacional
+.DS_Store
+Thumbs.db

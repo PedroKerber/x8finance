@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p \"C:\\\\Users\\\\Pedro Kerber\\\\.claude\\\\projects\\\\C--Users-Pedro-Kerber-Desktop-x8finance\\\\memory\")",
+      "Bash(npm start *)",
+      "Bash(npx react-scripts *)",
+      "Bash(node -e ' *)",
+      "mcp__visualize__read_me",
+      "mcp__visualize__show_widget",
+      "Bash(npm run *)",
+      "Bash(grep \"\\\\.js$\\\\|no-unused\\\\|react-hooks\")",
+      "Bash(Get-Content \"C:\\\\Users\\\\Pedro Kerber\\\\Desktop\\\\x8finance\\\\src\\\\pages\\\\SelectEmpresa.js\")",
+      "Bash(Select-Object -First 5)",
+      "Bash(node -e \"const fs=require\\('fs'\\);console.log\\(fs.readFileSync\\('src/pages/SelectEmpresa.js','utf8'\\).split\\('\\\\n'\\).slice\\(0,6\\).join\\('\\\\n'\\)\\)\")",
+      "Bash(git init *)",
+      "Bash(git config *)",
+      "Bash(git add *)"
+    ]
+  }
+}
