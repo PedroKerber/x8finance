@@ -1,6 +1,7 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { T } from './theme'
 import { initData } from './data'
+import { supabase, getLancamentos, saveLancamento, deleteLancamento, getMetas, saveMeta, deleteMeta, signIn, signOut } from './supabase'
 
 import Sidebar from './components/Sidebar'
 import TopBar from './components/TopBar'
@@ -25,52 +26,104 @@ export default function App() {
   const [empresa, setEmpresa] = useState(null)
   const [page, setPage] = useState('dashboard')
   const [appData, setAppData] = useState(() => initData())
+  const [loading, setLoading] = useState(true)
+
+  // Verifica sessão ao carregar
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session?.user) {
+        setUsuario({ id: data.session.user.id, email: data.session.user.email, nome: data.session.user.email.split('@')[0] })
+      }
+      setLoading(false)
+    })
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setUsuario({ id: session.user.id, email: session.user.email, nome: session.user.email.split('@')[0] })
+      } else {
+        setUsuario(null)
+        setEmpresa(null)
+      }
+    })
+    return () => listener.subscription.unsubscribe()
+  }, [])
+
+  // Carrega dados da empresa selecionada do banco
+  useEffect(() => {
+    if (!usuario || !empresa) return
+    const userId = usuario.id
+    const empId = empresa.id
+    Promise.all([
+      getLancamentos(userId, empId),
+      getMetas(userId, empId),
+    ]).then(([lancamentos, metas]) => {
+      setAppData(prev => ({ ...prev, [empId]: { ...prev[empId], lancamentos, metas } }))
+    }).catch(console.error)
+  }, [usuario, empresa])
 
   const empData = empresa ? (appData[empresa.id] || { lancamentos: [], metas: [] }) : { lancamentos: [], metas: [] }
 
-  const handleSave = useCallback((item, isEdit, tipo) => {
-    setAppData(prev => {
-      const empId = item.empId || empresa?.id
-      if (tipo === 'meta') {
+  const handleLogin = useCallback(async (email, senha) => {
+    const user = await signIn(email, senha)
+    setUsuario({ id: user.id, email: user.email, nome: user.email.split('@')[0] })
+  }, [])
+
+  const handleLogout = useCallback(async () => {
+    await signOut()
+    setUsuario(null)
+    setEmpresa(null)
+    setPage('dashboard')
+  }, [])
+
+  const handleSave = useCallback(async (item, isEdit, tipo) => {
+    const empId = item.empId || empresa?.id
+    if (tipo === 'meta') {
+      const metaItem = { ...item, empId }
+      await saveMeta(metaItem, usuario.id)
+      setAppData(prev => {
         const metas = prev[empId]?.metas || []
         const updated = isEdit ? metas.map(m => m.id === item.id ? item : m) : [...metas, item]
         return { ...prev, [empId]: { ...prev[empId], metas: updated } }
-      }
-      const lancs = prev[empId]?.lancamentos || []
-      const updated = isEdit
-        ? lancs.map(l => l.id === item.id ? item : l)
-        : [...lancs, item]
-      return { ...prev, [empId]: { ...prev[empId], lancamentos: updated } }
-    })
-  }, [empresa])
+      })
+    } else {
+      await saveLancamento(item, usuario.id)
+      setAppData(prev => {
+        const lancs = prev[empId]?.lancamentos || []
+        const updated = isEdit ? lancs.map(l => l.id === item.id ? item : l) : [...lancs, item]
+        return { ...prev, [empId]: { ...prev[empId], lancamentos: updated } }
+      })
+    }
+  }, [empresa, usuario])
 
-  const handleDelete = useCallback((id, tipo) => {
+  const handleDelete = useCallback(async (id, tipo) => {
     if (!empresa) return
-    setAppData(prev => {
-      const empId = empresa.id
-      if (tipo === 'meta') {
-        return { ...prev, [empId]: { ...prev[empId], metas: (prev[empId]?.metas || []).filter(m => m.id !== id) } }
-      }
-      return {
-        ...prev,
-        [empId]: {
-          ...prev[empId],
-          lancamentos: (prev[empId]?.lancamentos || []).filter(l => l.id !== id)
-        }
-      }
-    })
+    const empId = empresa.id
+    if (tipo === 'meta') {
+      await deleteMeta(id)
+      setAppData(prev => ({ ...prev, [empId]: { ...prev[empId], metas: (prev[empId]?.metas || []).filter(m => m.id !== id) } }))
+    } else {
+      await deleteLancamento(id)
+      setAppData(prev => ({ ...prev, [empId]: { ...prev[empId], lancamentos: (prev[empId]?.lancamentos || []).filter(l => l.id !== id) } }))
+    }
   }, [empresa])
 
   const handleFecharMes = useCallback(() => {
     if (!empresa) return
-    setAppData(prev => ({
-      ...prev,
-      [empresa.id]: { ...prev[empresa.id], mesFechado: true }
-    }))
+    setAppData(prev => ({ ...prev, [empresa.id]: { ...prev[empresa.id], mesFechado: true } }))
   }, [empresa])
 
+  if (loading) {
+    return (
+      <div style={{ minHeight: '100vh', background: T.sidebar, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ color: '#fff', fontFamily: "'Segoe UI', sans-serif", textAlign: 'center' }}>
+          <div style={{ fontSize: 32, fontWeight: 900, marginBottom: 12 }}><span style={{ color: T.primary }}>X8</span> Finance</div>
+          <div style={{ color: T.sidebarText, fontSize: 14 }}>Carregando...</div>
+        </div>
+      </div>
+    )
+  }
+
   if (!usuario) {
-    return <Login onLogin={u => setUsuario(u)} />
+    return <Login onLogin={handleLogin} />
   }
 
   if (!empresa) {
@@ -104,19 +157,17 @@ export default function App() {
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: T.bg, fontFamily: "'Segoe UI', sans-serif" }}>
       <Sidebar page={page} setPage={setPage} />
-
       <div style={{ marginLeft: 240, flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100vh', minWidth: 0 }}>
         <TopBar
           empresa={empresa}
           setEmpresa={emp => { setEmpresa(emp); setPage('dashboard') }}
           usuario={usuario}
+          onLogout={handleLogout}
         />
-
         <main style={{ flex: 1, marginTop: 60, padding: '28px 28px 40px', overflowX: 'hidden' }}>
           {renderPage()}
         </main>
       </div>
-
       <button
         onClick={() => setPage('receitas')}
         title="Nova transação"

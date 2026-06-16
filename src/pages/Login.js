@@ -3,15 +3,23 @@ import { T } from '../theme'
 import { Btn, Input } from '../components/ui'
 
 export default function Login({ onLogin }) {
-  const [email, setEmail] = useState('admin@x8.com')
-  const [senha, setSenha] = useState('x8@2024')
+  const [email, setEmail] = useState('')
+  const [senha, setSenha] = useState('')
   const [show, setShow] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [erro, setErro] = useState('')
 
-  const go = () => {
+  const go = async () => {
     if (!email.trim() || !senha.trim()) return
     setLoading(true)
-    setTimeout(() => { setLoading(false); onLogin({ nome: 'Pedro', email }) }, 1200)
+    setErro('')
+    try {
+      await onLogin(email.trim(), senha)
+    } catch (e) {
+      setErro('E-mail ou senha incorretos.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -54,22 +62,21 @@ export default function Login({ onLogin }) {
             <div style={{ position: 'relative' }}>
               <input type={show ? 'text' : 'password'} value={senha} onChange={e => setSenha(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && go()}
-                style={{ width: '100%', background: T.white, border: `1.5px solid ${T.border}`, borderRadius: 8, padding: '9px 40px 9px 12px', color: T.text, fontSize: 14, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }} />
+                style={{ width: '100%', background: T.white, border: `1.5px solid ${erro ? T.red : T.border}`, borderRadius: 8, padding: '9px 40px 9px 12px', color: T.text, fontSize: 14, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }} />
               <button onClick={() => setShow(s => !s)} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: T.muted }}>{show ? '🙈' : '👁️'}</button>
             </div>
+            {erro && <div style={{ color: T.red, fontSize: 12, marginTop: 6, fontWeight: 600 }}>{erro}</div>}
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 22, fontSize: 13 }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: 6, color: T.sub, cursor: 'pointer' }}>
               <input type="checkbox" defaultChecked style={{ accentColor: T.primary }} /> Manter conectado
             </label>
-            <span style={{ color: T.primary, cursor: 'pointer', fontWeight: 600 }}>Esqueci a senha</span>
           </div>
 
           <Btn full onClick={go} disabled={loading} style={{ padding: '13px', fontSize: 15, borderRadius: 10, marginBottom: 10 }}>
-            {loading ? 'Verificando...' : 'Entrar'}
+            {loading ? 'Entrando...' : 'Entrar'}
           </Btn>
-          <Btn full variant="outline" style={{ padding: '12px', fontSize: 14, borderRadius: 10 }}>Criar conta grátis</Btn>
 
           <div style={{ textAlign: 'center', marginTop: 24, color: T.muted, fontSize: 12 }}>
             Ao entrar, você concorda com os <span style={{ color: T.primary }}>Termos de Uso</span>
