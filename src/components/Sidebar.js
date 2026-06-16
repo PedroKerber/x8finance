@@ -51,7 +51,7 @@ export default function Sidebar({ page, setPage, open, onClose, usuario, perfilF
   const sidebarStyle = {
     width: 240, background: T.sidebar, height: '100vh',
     display: 'flex', flexDirection: 'column', position: 'fixed', left: 0, top: 0, zIndex: 300,
-    transition: 'transform .25s',
+    transition: 'transform .25s', overflow: 'hidden',
   }
 
   return (
@@ -64,7 +64,7 @@ export default function Sidebar({ page, setPage, open, onClose, usuario, perfilF
 
       <aside style={{ ...sidebarStyle, ...(open === false ? { transform: 'translateX(-100%)' } : {}) }}>
         {/* Logo */}
-        <div style={{ padding: '24px 18px 16px', borderBottom: `1px solid ${T.sidebarActive}` }}>
+        <div style={{ padding: '24px 18px 16px', borderBottom: `1px solid ${T.sidebarActive}`, flexShrink: 0 }}>
           <div style={{ fontWeight: 900, fontSize: 22, letterSpacing: -0.5, color: '#fff' }}>
             <span style={{ color: T.primary }}>X8</span>
             <span style={{ fontWeight: 300, opacity: 0.8 }}> FINANCE</span>
@@ -72,7 +72,7 @@ export default function Sidebar({ page, setPage, open, onClose, usuario, perfilF
         </div>
 
         {/* Nav */}
-        <nav style={{ flex: 1, overflowY: 'auto', minHeight: 0, padding: '10px 10px 0', scrollbarWidth: 'none' }}>
+        <nav className="sidebar-nav" style={{ flex: 1, overflowY: 'auto', minHeight: 0, padding: '10px 10px 8px', scrollbarWidth: 'thin' }}>
           {NAV.map(item => <Item key={item.id} item={item} />)}
         </nav>
 
