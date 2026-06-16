@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react'
 import { T } from './theme'
 import { initData } from './data'
-import { supabase, getLancamentos, saveLancamento, deleteLancamento, getMetas, saveMeta, deleteMeta, signIn, signOut } from './supabase'
+import { supabase, getLancamentos, saveLancamento, deleteLancamento, saveLancamentos, getMetas, saveMeta, deleteMeta, signIn, signOut } from './supabase'
 
 import Sidebar from './components/Sidebar'
 import TopBar from './components/TopBar'
@@ -17,6 +17,7 @@ import ContasPagar from './pages/ContasPagar'
 import ContasReceber from './pages/ContasReceber'
 import MesFechado from './pages/MesFechado'
 import Metas from './pages/Metas'
+import Importar from './pages/Importar'
 import Placeholder from './pages/Placeholder'
 
 const PLACEHOLDER_PAGES = ['relatorios', 'empresas', 'categorias', 'centro_custo', 'fornecedores', 'clientes', 'configuracoes', 'scanner']
@@ -94,6 +95,15 @@ export default function App() {
     }
   }, [empresa, usuario])
 
+  const handleImport = useCallback(async (items) => {
+    const empId = empresa.id
+    await saveLancamentos(items, usuario.id)
+    setAppData(prev => ({
+      ...prev,
+      [empId]: { ...prev[empId], lancamentos: [...(prev[empId]?.lancamentos || []), ...items] }
+    }))
+  }, [empresa, usuario])
+
   const handleDelete = useCallback(async (id, tipo) => {
     if (!empresa) return
     const empId = empresa.id
@@ -150,6 +160,7 @@ export default function App() {
       case 'contas_receber': return <ContasReceber {...sharedProps} />
       case 'mes_fechado': return <MesFechado {...sharedProps} onFechar={handleFecharMes} />
       case 'metas': return <Metas {...sharedProps} />
+      case 'importar': return <Importar empresa={empresa} onImport={handleImport} />
       default: return <Placeholder page={page} />
     }
   }

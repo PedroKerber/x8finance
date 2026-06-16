@@ -16,6 +16,7 @@ const NAV = [
   { id: 'fornecedores', label: 'Fornecedores', icon: '🤝' },
   { id: 'clientes', label: 'Clientes', icon: '👥' },
   { id: 'metas', label: 'Metas', icon: '🎯' },
+  { id: 'importar', label: 'Importar Planilha', icon: '📥' },
   { id: 'configuracoes', label: 'Configurações', icon: '⚙' },
 ]
 

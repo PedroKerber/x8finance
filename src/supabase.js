@@ -40,6 +40,19 @@ export const deleteLancamento = async (id) => {
   if (error) throw error
 }
 
+export const saveLancamentos = async (items, userId) => {
+  const rows = items.map(item => ({
+    id: item.id, empresa_id: item.empId, tipo: item.tipo,
+    cat: item.cat, cat_nome: item.catNome, descricao: item.desc,
+    valor: item.valor, data: item.data, vencimento: item.vencimento || null,
+    status: item.status, forma: item.forma, conta: item.conta,
+    cliente: item.cliente, fornecedor: item.fornecedor,
+    centro_custo: item.centroCusto, obs: item.obs, user_id: userId,
+  }))
+  const { error } = await supabase.from('lancamentos').upsert(rows)
+  if (error) throw error
+}
+
 export const getMetas = async (userId, empresaId) => {
   const { data, error } = await supabase
     .from('metas')
