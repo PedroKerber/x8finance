@@ -197,7 +197,7 @@ export default function App() {
           {renderPage()}
         </main>
       </div>
-      {page !== 'configuracoes' && <button
+      {!['configuracoes', 'usuarios'].includes(page) && <button
         onClick={() => setPage('receitas')}
         title="Nova transação"
         style={{
