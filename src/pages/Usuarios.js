@@ -3,7 +3,7 @@ import { T } from '../theme'
 import { Card, Btn } from '../components/ui'
 import { EMPRESAS } from '../data'
 
-const MODULOS = ['Dashboard', 'Transações', 'Receitas', 'Despesas', 'Fluxo de Caixa', 'Contas a Pagar', 'Contas a Receber', 'Relatórios', 'Mês Fechado', 'Empresas', 'Categorias', 'Centro de Custos', 'Metas Financeiras', 'Usuários', 'Configurações', 'Logs do Sistema']
+const MODULOS = ['Dashboard', 'Transações', 'Receitas', 'Despesas', 'Fluxo de Caixa', 'Contas a Pagar', 'Contas a Receber', 'Relatórios', 'Fechamento Mensal', 'Empresas', 'Categorias', 'Centro de Custos', 'Metas Financeiras', 'Usuários', 'Configurações', 'Logs do Sistema']
 const ACOES = ['Visualizar', 'Criar', 'Editar', 'Excluir', 'Exportar']
 const CARGOS = ['CEO / Administrador Master', 'Proprietário', 'Diretor', 'Gerente Financeiro', 'Contador', 'Analista Financeiro', 'Assistente Administrativo', 'Outro']
 

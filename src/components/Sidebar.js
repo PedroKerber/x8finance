@@ -90,7 +90,7 @@ const NAV_GROUPS = [
   ]},
   { label: 'Análises', items: [
     { id: 'relatorios', label: 'Relatórios', icon: 'relatorios' },
-    { id: 'mes_fechado', label: 'Mês Fechado', icon: 'mes_fechado' },
+    { id: 'mes_fechado', label: 'Fechamento Mensal', icon: 'mes_fechado' },
   ]},
   { label: 'Gestão', items: [
     { id: 'empresas', label: 'Empresas', icon: 'empresas' },

@@ -3,7 +3,7 @@ import * as XLSX from 'xlsx'
 import { ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 import { T, fmt, fmtS, fmtPct } from '../theme'
 import { genFluxoCaixaData } from '../data'
-import { Card, Btn, Badge, Toast } from '../components/ui'
+import { Card, Btn, Toast } from '../components/ui'
 
 const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
 const COLORS_R = ['#16a34a','#2563eb','#7c3aed','#ea580c','#9ca3af','#0891b2']
@@ -40,7 +40,7 @@ td{padding:7px 10px;border-bottom:1px solid #f3f4f6}
 <div class="hdr"><div class="logo"><span>X8</span> Finance</div>
 <div class="co"><h2>${empresa?.nome||''}</h2><p>CNPJ: ${empresa?.cnpj||''}</p><p>Fechamento de ${mesLabel}</p></div></div>
 <div class="body">
-<div class="st">Indicadores do Mês</div>
+<div class="st">Indicadores do Período</div>
 <div class="g3">
 <div class="kpi"><div class="kl">Receita Total</div><div class="kv g">${fmtL(tRec)}</div></div>
 <div class="kpi"><div class="kl">Despesas Totais</div><div class="kv r">${fmtL(tDesp)}</div></div>
@@ -271,9 +271,9 @@ export default function MesFechado({ empresa, data, onFechar, onReabrir, usuario
 
   const handleFechar = () => {
     onFechar?.()
-    addHistorico('fechamento', 'Mês fechado')
+    addHistorico('fechamento', 'Período fechado')
     setModal(null)
-    setToast({ msg: 'Mês fechado com sucesso!', type: 'success' })
+    setToast({ msg: 'Período fechado com sucesso!', type: 'success' })
   }
 
   const handleReabrir = () => {
@@ -282,33 +282,60 @@ export default function MesFechado({ empresa, data, onFechar, onReabrir, usuario
     addHistorico('reabertura', motivo)
     setMotivo('')
     setModal(null)
-    setToast({ msg: 'Mês reaberto com sucesso!', type: 'success' })
+    setToast({ msg: 'Período reaberto com sucesso!', type: 'success' })
   }
 
   const exportExcel = () => {
     try {
       const wb = XLSX.utils.book_new()
-      const rows = filteredLancs.map(l => ({
-        Tipo: l.tipo, Descrição: l.desc, Valor: l.valor, Data: l.data,
-        Categoria: l.catNome, Status: l.status, Vencimento: l.vencimento || '',
-        'Cliente/Fornecedor': l.cliente || l.fornecedor || '',
-        'Centro de Custo': l.centroCusto || '', Conta: l.conta || '',
-      }))
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), 'Lançamentos')
       XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
-        ['Indicador','Valor'],
-        ['Empresa', empresa?.nome || ''], ['Mês', mesLabel],
+        ['FECHAMENTO MENSAL — X8 Finance'],
+        [''],
+        ['Empresa', empresa?.nome || ''], ['CNPJ', empresa?.cnpj || ''],
+        ['Competência', mesLabel], ['Status', fechado ? 'Fechamento Concluído' : 'Em Andamento'],
+        ['Gerado em', new Date().toLocaleDateString('pt-BR')],
+        [''],
+        ['RESULTADO DO PERÍODO'],
+        ['Indicador', 'Valor'],
         ['Receita Total', tRec], ['Despesas Totais', tDesp],
         ['Lucro Líquido', lucro], ['Margem Líquida (%)', +margem.toFixed(2)],
         ['Saldo Inicial', saldoInicial], ['Saldo Final', saldoFinal],
       ]), 'Resumo')
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(
+        filteredLancs.filter(l => l.tipo === 'receita').map(l => ({
+          Descrição: l.desc, Valor: l.valor, Data: l.data, Categoria: l.catNome,
+          Status: l.status, Vencimento: l.vencimento || '', Cliente: l.cliente || '',
+          'Centro de Custo': l.centroCusto || '', Conta: l.conta || '',
+        }))
+      ), 'Receitas')
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(
+        filteredLancs.filter(l => l.tipo === 'despesa').map(l => ({
+          Descrição: l.desc, Valor: l.valor, Data: l.data, Categoria: l.catNome,
+          Status: l.status, Vencimento: l.vencimento || '', Fornecedor: l.fornecedor || '',
+          'Centro de Custo': l.centroCusto || '', Conta: l.conta || '',
+        }))
+      ), 'Despesas')
       XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
-        ['Categoria','Tipo','Valor','Participação'],
-        ...catRecData.map(c => [c.n, 'Receita', c.v, c.pct + '%']),
-        ...catDespData.map(c => [c.n, 'Despesa', c.v, c.pct + '%']),
-      ]), 'Por Categoria')
-      XLSX.writeFile(wb, `fechamento_${empresa?.id || 'emp'}_${mesAno}.xlsx`)
-      setToast({ msg: 'Excel exportado!', type: 'success' })
+        ['Categoria', 'Tipo', 'Valor Total', 'Participação (%)', 'Qtd Lançamentos'],
+        ...catRecData.map(c => [c.n, 'Receita', c.v, c.pct, filteredLancs.filter(l => l.tipo === 'receita' && l.catNome === c.n).length]),
+        ...catDespData.map(c => [c.n, 'Despesa', c.v, c.pct, filteredLancs.filter(l => l.tipo === 'despesa' && l.catNome === c.n).length]),
+      ]), 'Categorias')
+      const varR = tRecAnt > 0 ? ((tRec - tRecAnt) / tRecAnt * 100).toFixed(1) + '%' : '—'
+      const varD = tDespAnt > 0 ? ((tDesp - tDespAnt) / tDespAnt * 100).toFixed(1) + '%' : '—'
+      const varLu = lucroAnt !== 0 ? ((lucro - lucroAnt) / Math.abs(lucroAnt) * 100).toFixed(1) + '%' : '—'
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
+        ['Indicador', 'Período Atual', 'Período Anterior', 'Variação'],
+        ['Receita Total', tRec, tRecAnt, varR],
+        ['Despesas Totais', tDesp, tDespAnt, varD],
+        ['Lucro Líquido', lucro, lucroAnt, varLu],
+        ['Margem Líquida (%)', +margem.toFixed(2), +margemAnt.toFixed(2), '—'],
+        ['Saldo Inicial', saldoInicial, saldoInicial, '—'],
+        ['Saldo Final', saldoFinal, saldoFinalAnt, '—'],
+        ['Saúde Financeira', saude + '/100', '', ''],
+      ]), 'Indicadores')
+      XLSX.writeFile(wb, `fechamento_mensal_${empresa?.id || 'emp'}_${mesAno}.xlsx`)
+      addHistorico('exportacao_excel', `Excel exportado — ${mesLabel}`)
+      setToast({ msg: 'Excel exportado com sucesso!', type: 'success' })
     } catch { setToast({ msg: 'Erro ao exportar Excel.', type: 'error' }) }
   }
 
@@ -318,37 +345,39 @@ export default function MesFechado({ empresa, data, onFechar, onReabrir, usuario
       const blob = new Blob([html], { type: 'text/html;charset=utf-8' })
       const url = URL.createObjectURL(blob)
       const w = window.open(url, '_blank')
-      if (w) { setTimeout(() => { w.print(); URL.revokeObjectURL(url) }, 800) }
+      if (w) { setTimeout(() => { w.print(); URL.revokeObjectURL(url) }, 800); addHistorico('exportacao_pdf', `PDF exportado — ${mesLabel}`) }
       else { setToast({ msg: 'Permita popups para exportar PDF.', type: 'error' }); URL.revokeObjectURL(url) }
     } catch { setToast({ msg: 'Erro ao gerar PDF.', type: 'error' }) }
   }
 
   const shareWA = () => {
-    const txt = `*Relatório Mês Fechado — ${empresa?.nome}*\n📅 *${mesLabel}*\n\n📈 Receita: ${fmtS(tRec)}\n📉 Despesas: ${fmtS(tDesp)}\n💰 Lucro: ${fmtS(lucro)}\n📊 Margem: ${pct(margem)}\n🏦 Saldo Final: ${fmtS(saldoFinal)}\n\n_Gerado pelo X8 Finance_`
+    const txt = `*Fechamento Mensal — ${empresa?.nome}*\n📅 *${mesLabel}*\n\n📈 Receita: ${fmtS(tRec)}\n📉 Despesas: ${fmtS(tDesp)}\n💰 Lucro: ${fmtS(lucro)}\n📊 Margem: ${pct(margem)}\n🏦 Saldo Final: ${fmtS(saldoFinal)}\n\n_Gerado pelo X8 Finance_`
     window.open(`https://wa.me/?text=${encodeURIComponent(txt)}`, '_blank')
+    addHistorico('compartilhamento_wa', 'Compartilhado via WhatsApp')
   }
 
   const shareEmail = () => {
-    const subject = `Relatório Mês Fechado — ${empresa?.nome} — ${mesLabel}`
-    const body = `Relatório Financeiro — ${empresa?.nome}\n\nMês: ${mesLabel}\nReceita Total: ${fmtS(tRec)}\nDespesas Totais: ${fmtS(tDesp)}\nLucro Líquido: ${fmtS(lucro)}\nMargem Líquida: ${pct(margem)}\nSaldo Inicial: ${fmtS(saldoInicial)}\nSaldo Final: ${fmtS(saldoFinal)}\n\nGerado pelo X8 Finance`
+    const subject = `Fechamento Mensal — ${empresa?.nome} — ${mesLabel}`
+    const body = `Fechamento Mensal — ${empresa?.nome}\n\nCompetência: ${mesLabel}\nReceita Total: ${fmtS(tRec)}\nDespesas Totais: ${fmtS(tDesp)}\nLucro Líquido: ${fmtS(lucro)}\nMargem Líquida: ${pct(margem)}\nSaldo Inicial: ${fmtS(saldoInicial)}\nSaldo Final: ${fmtS(saldoFinal)}\n\nGerado pelo X8 Finance`
     window.open(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`)
+    addHistorico('compartilhamento_email', 'Compartilhado via e-mail')
   }
 
   const renderHistoricoList = () => historico.length === 0
     ? <EmptyState label="Nenhum evento de auditoria registrado." />
     : historico.map((h, i) => (
         <div key={i} style={{ display: 'flex', gap: 12, padding: '12px 0', borderBottom: `1px solid ${T.borderLight}`, alignItems: 'flex-start' }}>
-          <div style={{ width: 32, height: 32, borderRadius: '50%', background: h.tipo === 'fechamento' ? T.primaryLight : 'rgba(234,88,12,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, flexShrink: 0 }}>
-            {h.tipo === 'fechamento' ? '🔒' : '🔓'}
+          <div style={{ width: 32, height: 32, borderRadius: '50%', background: h.tipo === 'fechamento' ? T.primaryLight : h.tipo === 'reabertura' ? 'rgba(234,88,12,0.12)' : T.blueL, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, flexShrink: 0 }}>
+            {h.tipo === 'fechamento' ? '🔒' : h.tipo === 'reabertura' ? '🔓' : h.tipo === 'exportacao_pdf' ? '📄' : h.tipo === 'exportacao_excel' ? '📊' : h.tipo === 'compartilhamento_wa' ? '💬' : h.tipo === 'compartilhamento_email' ? '✉' : '📝'}
           </div>
           <div style={{ flex: 1 }}>
             <div style={{ fontWeight: 600, fontSize: 13 }}>
-              {h.tipo === 'fechamento' ? 'Mês fechado' : 'Mês reaberto'} — {h.mes}
+              {h.tipo === 'fechamento' ? 'Período fechado' : h.tipo === 'reabertura' ? 'Período reaberto' : h.tipo === 'exportacao_pdf' ? 'PDF exportado' : h.tipo === 'exportacao_excel' ? 'Excel exportado' : h.tipo === 'compartilhamento_wa' ? 'Compartilhado via WhatsApp' : h.tipo === 'compartilhamento_email' ? 'Compartilhado via e-mail' : h.tipo} — {h.mes}
             </div>
             <div style={{ fontSize: 12, color: T.sub, marginTop: 2 }}>
               Por: <strong>{h.usuario}</strong> · {new Date(h.data).toLocaleDateString('pt-BR')} às {new Date(h.data).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
             </div>
-            {h.motivo && h.motivo !== 'Mês fechado' && (
+            {h.motivo && h.motivo !== 'Período fechado' && (
               <div style={{ fontSize: 12, color: T.muted, marginTop: 4, background: T.bg, borderRadius: 6, padding: '4px 8px', display: 'inline-block' }}>"{h.motivo}"</div>
             )}
           </div>
@@ -361,7 +390,7 @@ export default function MesFechado({ empresa, data, onFechar, onReabrir, usuario
 
       {/* ── MODAL: Fechar mês ── */}
       {modal === 'fechar' && (
-        <Modal onClose={() => setModal(null)} title="Confirmar Fechamento do Mês">
+        <Modal onClose={() => setModal(null)} title="Confirmar Fechamento do Período">
           <div style={{ background: T.primaryLight, borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
             <div style={{ fontWeight: 700, fontSize: 14, color: T.primary, marginBottom: 10 }}>Resumo de {mesLabel}</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
@@ -380,7 +409,7 @@ export default function MesFechado({ empresa, data, onFechar, onReabrir, usuario
 
       {/* ── MODAL: Reabrir mês ── */}
       {modal === 'reabrir' && (
-        <Modal onClose={() => setModal(null)} title="Reabrir Mês">
+        <Modal onClose={() => setModal(null)} title="Reabrir Período">
           <div style={{ background: 'rgba(234,88,12,0.08)', border: '1px solid #ea580c', borderRadius: 10, padding: '12px 16px', marginBottom: 16 }}>
             <div style={{ fontWeight: 600, fontSize: 13, color: '#ea580c' }}>⚠ Atenção</div>
             <p style={{ fontSize: 13, color: T.sub, marginTop: 4 }}>Reabrir o mês permite edição dos lançamentos. Isso será registrado no histórico de auditoria.</p>
@@ -501,7 +530,7 @@ export default function MesFechado({ empresa, data, onFechar, onReabrir, usuario
       {modal === 'auditoria' && (
         <Modal onClose={() => setModal(null)} title="Auditoria do Fechamento" width={680}>
           <div style={{ marginBottom: 16, padding: '12px 16px', background: T.bg, borderRadius: 8, display: 'flex', gap: 24, flexWrap: 'wrap' }}>
-            {[['Empresa', empresa?.nome], ['Mês', mesLabel], ['Status', fechado ? 'Fechado' : 'Aberto'], ['Lançamentos', filteredLancs.length]].map(([l, v]) => (
+            {[['Empresa', empresa?.nome], ['Competência', mesLabel], ['Status', fechado ? 'Fechamento Concluído' : historico.some(h => h.tipo === 'reabertura') ? 'Reaberto' : 'Em Andamento'], ['Lançamentos', filteredLancs.length]].map(([l, v]) => (
               <div key={l}><div style={{ fontSize: 11, color: T.muted }}>{l}</div><div style={{ fontWeight: 600, fontSize: 13 }}>{v}</div></div>
             ))}
           </div>
@@ -513,10 +542,17 @@ export default function MesFechado({ empresa, data, onFechar, onReabrir, usuario
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 18, flexWrap: 'wrap', gap: 12 }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-            <h1 style={{ fontWeight: 800, fontSize: 26, margin: 0 }}>Mês Fechado</h1>
-            {fechado && <Badge label="Fechado" color={T.green} bg={T.primaryLight} />}
+            <h1 style={{ fontWeight: 800, fontSize: 26, margin: 0 }}>Fechamento Mensal</h1>
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', gap: 5,
+              padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 700,
+              background: fechado ? T.primaryLight : (historico.some(h => h.tipo === 'reabertura') ? 'rgba(220,38,38,0.10)' : 'rgba(202,138,4,0.10)'),
+              color: fechado ? T.green : (historico.some(h => h.tipo === 'reabertura') ? T.red : '#ca8a04'),
+            }}>
+              {fechado ? '🟢 Fechamento Concluído' : historico.some(h => h.tipo === 'reabertura') ? '🔴 Reaberto' : '🟡 Em Andamento'}
+            </span>
           </div>
-          <div style={{ color: T.sub, fontSize: 14 }}>Relatório completo e exportações — {empresa?.nome}</div>
+          <div style={{ color: T.sub, fontSize: 14 }}>Consolidação financeira, auditoria e relatórios do período.</div>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           <button onClick={() => navMes(-1)} style={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: 8, padding: '8px 12px', cursor: 'pointer', color: T.sub, fontFamily: 'inherit', fontSize: 14 }}>‹</button>
@@ -531,8 +567,8 @@ export default function MesFechado({ empresa, data, onFechar, onReabrir, usuario
           <button onClick={shareWA} style={{ background: '#25D366', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 12px', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600 }}>WhatsApp</button>
           <button onClick={shareEmail} style={{ background: T.blue, color: '#fff', border: 'none', borderRadius: 8, padding: '8px 12px', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600 }}>E-mail</button>
           {!fechado
-            ? <Btn onClick={() => setModal('fechar')}>Fechar mês</Btn>
-            : <Btn variant="ghost" onClick={() => setModal('reabrir')}>Reabrir mês</Btn>
+            ? <Btn onClick={() => setModal('fechar')}>Fechar período</Btn>
+            : <Btn variant="ghost" onClick={() => setModal('reabrir')}>Reabrir período</Btn>
           }
         </div>
       </div>
@@ -775,9 +811,9 @@ export default function MesFechado({ empresa, data, onFechar, onReabrir, usuario
         </Card>
 
         <Card style={{ padding: 18 }}>
-          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 12 }}>Ações do mês</div>
+          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 12 }}>Ações do período</div>
           {[
-            { label: fechado ? 'Reabrir mês' : 'Fechar mês', icon: fechado ? '🔓' : '🔒', action: () => setModal(fechado ? 'reabrir' : 'fechar'), cor: fechado ? '#ea580c' : T.primary, bg: fechado ? 'rgba(234,88,12,0.10)' : T.primaryLight },
+            { label: fechado ? 'Reabrir período' : 'Fechar período', icon: fechado ? '🔓' : '🔒', action: () => setModal(fechado ? 'reabrir' : 'fechar'), cor: fechado ? '#ea580c' : T.primary, bg: fechado ? 'rgba(234,88,12,0.10)' : T.primaryLight },
             { label: 'Abrir relatório PDF', icon: '📄', action: exportPDF, cor: T.blue, bg: T.blueL },
             { label: 'Exportar Excel', icon: '📊', action: exportExcel, cor: T.green, bg: T.primaryLight },
             { label: 'Compartilhar WhatsApp', icon: '💬', action: shareWA, cor: '#25D366', bg: 'rgba(37,211,102,0.10)' },

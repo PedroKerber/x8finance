@@ -17,7 +17,7 @@ const MOCK = [
   { id:'n12', titulo:'Nota fiscal importada', descricao:'NF-e 000.123 da empresa ABC Fornecedores foi importada com sucesso.', tipo:'sistema', icone:'upload', cor:'#2563eb', lida:true, data:'2026-06-13T14:30', empresa:'ki1', acao:{ label:'Ver importação', page:'importar' } },
   { id:'n13', titulo:'Alteração de senha', descricao:'Sua senha foi alterada em 13/06/2026 às 10:20. Se não foi você, contate o suporte.', tipo:'sistema', icone:'key', cor:'#ea580c', lida:true, data:'2026-06-13T10:20', empresa:'kz', acao:null },
   { id:'n14', titulo:'Login em novo dispositivo', descricao:'Acesso detectado em Windows/Chrome em São Paulo, SP em 12/06 às 08:15.', tipo:'sistema', icone:'shield', cor:'#dc2626', lida:true, data:'2026-06-12T08:15', empresa:'kz', acao:null },
-  { id:'n15', titulo:'Mês fechado', descricao:'O mês de Maio/2026 foi fechado para a empresa Kazole Imobiliária.', tipo:'financeiro', icone:'lock', cor:'#7c3aed', lida:true, data:'2026-06-01T17:00', empresa:'kz', acao:{ label:'Ver fechamento', page:'mes_fechado' } },
+  { id:'n15', titulo:'Fechamento Mensal', descricao:'O fechamento de Maio/2026 foi concluído para a empresa Kazole Imobiliária.', tipo:'financeiro', icone:'lock', cor:'#7c3aed', lida:true, data:'2026-06-01T17:00', empresa:'kz', acao:{ label:'Ver fechamento', page:'mes_fechado' } },
 ]
 
 function load() {
