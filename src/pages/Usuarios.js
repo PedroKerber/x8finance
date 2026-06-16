@@ -37,7 +37,7 @@ const initials = (nome) => (nome || 'U').split(' ').filter(Boolean).slice(0, 2).
 const CORES_AV = ['#16a34a', '#2563eb', '#7c3aed', '#ea580c', '#dc2626', '#0891b2', '#ca8a04']
 const avatarCor = (nome) => CORES_AV[(nome || 'U').charCodeAt(0) % CORES_AV.length]
 
-const EMPTY = { nome: '', email: '', telefone: '', empresaId: 'kz', cargo: 'Analista Financeiro', perfil: 'gerente', status: 'ativo', mustChangePassword: false, foto: '' }
+const EMPTY = { nome: '', email: '', telefone: '', empresaIds: ['kz'], cargo: 'Analista Financeiro', perfil: 'gerente', status: 'ativo', mustChangePassword: false, foto: '' }
 
 const Overlay = ({ children, onClose }) => (
   <div onClick={e => { if (e.target === e.currentTarget) onClose() }}
@@ -64,10 +64,10 @@ export default function Usuarios({ usuario }) {
   const fotoRef = useRef(null)
 
   const [usuarios, setUsuarios] = useState([
-    { id: '1', nome: usuario?.nome || 'Pedro Kerber', email: usuario?.email || 'pedrork22@icloud.com', telefone: '(61) 99999-9999', empresaId: 'kz', cargo: 'CEO / Administrador Master', perfil: 'master', status: 'ativo', foto: '', ultimoAcesso: 'Hoje, 14:37', criadoEm: '10/06/2026' },
-    { id: '2', nome: 'Ana Beatriz Santos', email: 'ana@kazole.com.br', telefone: '(61) 98888-7777', empresaId: 'kz', cargo: 'Gerente Financeiro', perfil: 'gerente', status: 'ativo', foto: '', ultimoAcesso: 'Hoje, 11:20', criadoEm: '12/06/2026' },
-    { id: '3', nome: 'Carlos Eduardo Lima', email: 'carlos@axionz.com.br', telefone: '(11) 97777-6666', empresaId: 'ax', cargo: 'Contador', perfil: 'contador', status: 'ativo', foto: '', ultimoAcesso: 'Ontem, 16:45', criadoEm: '11/06/2026' },
-    { id: '4', nome: 'Mariana Oliveira', email: 'mariana@kzl.com.br', telefone: '(61) 96666-5555', empresaId: 'kzl', cargo: 'Analista Financeiro', perfil: 'admin', status: 'inativo', foto: '', ultimoAcesso: '14/06/2026', criadoEm: '10/06/2026' },
+    { id: '1', nome: usuario?.nome || 'Pedro Kerber', email: usuario?.email || 'pedrork22@icloud.com', telefone: '(61) 99999-9999', empresaIds: ['kz', 'kzl', 'ax'], cargo: 'CEO / Administrador Master', perfil: 'master', status: 'ativo', foto: '', ultimoAcesso: 'Hoje, 14:37', criadoEm: '10/06/2026' },
+    { id: '2', nome: 'Ana Beatriz Santos', email: 'ana@kazole.com.br', telefone: '(61) 98888-7777', empresaIds: ['kz'], cargo: 'Gerente Financeiro', perfil: 'gerente', status: 'ativo', foto: '', ultimoAcesso: 'Hoje, 11:20', criadoEm: '12/06/2026' },
+    { id: '3', nome: 'Carlos Eduardo Lima', email: 'carlos@axionz.com.br', telefone: '(11) 97777-6666', empresaIds: ['ax'], cargo: 'Contador', perfil: 'contador', status: 'ativo', foto: '', ultimoAcesso: 'Ontem, 16:45', criadoEm: '11/06/2026' },
+    { id: '4', nome: 'Mariana Oliveira', email: 'mariana@kzl.com.br', telefone: '(61) 96666-5555', empresaIds: ['kzl', 'ki1'], cargo: 'Analista Financeiro', perfil: 'admin', status: 'inativo', foto: '', ultimoAcesso: '14/06/2026', criadoEm: '10/06/2026' },
   ])
 
   const [search, setSearch] = useState('')
@@ -122,6 +122,8 @@ export default function Usuarios({ usuario }) {
     if (!form.nome.trim()) e.nome = 'Nome é obrigatório'
     if (!form.email.trim()) e.email = 'E-mail é obrigatório'
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'E-mail inválido'
+    if (form.perfil !== 'master' && (!form.empresaIds || form.empresaIds.length === 0))
+      e.empresaIds = 'Selecione ao menos uma empresa'
     setErros(e)
     return Object.keys(e).length === 0
   }
@@ -135,17 +137,17 @@ export default function Usuarios({ usuario }) {
       setModalTipo(null)
     } else {
       const newId = Date.now().toString()
-      const empresa = EMPRESAS.find(e => e.id === form.empresaId)
       setUsuarios(prev => [...prev, { ...form, id: newId, ultimoAcesso: '—', criadoEm: new Date().toLocaleDateString('pt-BR') }])
       localStorage.setItem(`x8_perms_${newId}`, JSON.stringify(formPerms))
       const senhaGerada = tempSenha || ''
+      const empresasNome = form.empresaIds.map(id => EMPRESAS.find(e => e.id === id)?.nome).filter(Boolean).join(', ')
       emailjs.send(
         EMAILJS_SERVICE_ID,
         EMAILJS_TEMPLATE_ID,
         {
           to_name:  form.nome,
           to_email: form.email,
-          empresa:  empresa?.nome || '',
+          empresa:  empresasNome || '',
           cargo:    form.cargo,
           senha:    senhaGerada || '(definida pelo administrador)',
           link:     'https://x8finance.com.br',
@@ -189,13 +191,14 @@ export default function Usuarios({ usuario }) {
 
   const filtered = usuarios.filter(u => {
     if (search && !u.nome.toLowerCase().includes(search.toLowerCase()) && !u.email.toLowerCase().includes(search.toLowerCase())) return false
-    if (filtroEmp !== 'Todas' && u.empresaId !== filtroEmp) return false
+    if (filtroEmp !== 'Todas' && !(u.empresaIds || []).includes(filtroEmp)) return false
     if (filtroPerfil !== 'Todos' && u.perfil !== filtroPerfil) return false
     if (filtroStatus !== 'Todos' && u.status !== filtroStatus) return false
     return true
   })
 
   const empNome = (id) => EMPRESAS.find(e => e.id === id)?.nome || id
+  const empNomes = (ids) => (ids || []).map(id => empNome(id)).filter(Boolean)
   const masters = usuarios.filter(u => u.perfil === 'master').length
   const admins = usuarios.filter(u => u.perfil === 'admin').length
   const ativos = usuarios.filter(u => u.status === 'ativo').length
@@ -310,7 +313,13 @@ export default function Usuarios({ usuario }) {
                       </div>
                     </div>
                   </td>
-                  <td style={{ padding: '12px 16px', color: T.sub, fontSize: 12 }}>{empNome(u.empresaId)}</td>
+                  <td style={{ padding: '12px 16px', color: T.sub, fontSize: 12 }}>
+                    {u.empresaIds?.length > 0
+                      ? u.empresaIds.length === 1
+                        ? empNome(u.empresaIds[0])
+                        : `${empNome(u.empresaIds[0])} +${u.empresaIds.length - 1}`
+                      : '—'}
+                  </td>
                   <td style={{ padding: '12px 16px', color: T.sub, fontSize: 12, maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.cargo}</td>
                   <td style={{ padding: '12px 16px' }}><PerfilBadge perfil={u.perfil} /></td>
                   <td style={{ padding: '12px 16px' }}><StatusBadge status={u.status} /></td>
@@ -468,12 +477,71 @@ export default function Usuarios({ usuario }) {
                     </div>
                   </div>
 
-                  {/* Row 3: Empresa */}
+                  {/* Row 3: Empresas vinculadas — multi-checkbox */}
                   <div style={{ marginBottom: 20 }}>
-                    <label style={labelStyle}>Empresa Vinculada</label>
-                    <select value={form.empresaId} onChange={e => setForm(f => ({ ...f, empresaId: e.target.value }))} style={{ ...selStyle, fontSize: 14 }}>
-                      {EMPRESAS.map(e => <option key={e.id} value={e.id}>{e.nome}</option>)}
-                    </select>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                      <label style={{ ...labelStyle, marginBottom: 0 }}>
+                        Empresas Vinculadas{form.perfil !== 'master' ? ' *' : ''}
+                      </label>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button type="button"
+                          onClick={() => setForm(f => ({ ...f, empresaIds: EMPRESAS.map(e => e.id) }))}
+                          style={{ background: T.primaryLight, color: T.primary, border: `1px solid ${T.primary}44`, borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                          Selecionar todas
+                        </button>
+                        <button type="button"
+                          onClick={() => setForm(f => ({ ...f, empresaIds: [] }))}
+                          style={{ background: T.bg, color: T.sub, border: `1px solid ${T.border}`, borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                          Desmarcar todas
+                        </button>
+                      </div>
+                    </div>
+                    <div style={{ border: `1.5px solid ${erros.empresaIds ? '#dc2626' : T.border}`, borderRadius: 10, overflow: 'hidden' }}>
+                      {EMPRESAS.map((emp, i) => {
+                        const checked = (form.empresaIds || []).includes(emp.id)
+                        return (
+                          <div key={emp.id}
+                            onClick={() => setForm(f => ({
+                              ...f,
+                              empresaIds: checked
+                                ? f.empresaIds.filter(id => id !== emp.id)
+                                : [...(f.empresaIds || []), emp.id]
+                            }))}
+                            style={{
+                              display: 'flex', alignItems: 'center', gap: 12,
+                              padding: '10px 14px', cursor: 'pointer',
+                              background: checked ? `${emp.cor}10` : T.white,
+                              borderBottom: i < EMPRESAS.length - 1 ? `1px solid ${T.borderLight}` : 'none',
+                              transition: 'background .1s',
+                              userSelect: 'none',
+                            }}>
+                            <div style={{
+                              width: 18, height: 18, borderRadius: 4, flexShrink: 0,
+                              border: `2px solid ${checked ? emp.cor : T.border}`,
+                              background: checked ? emp.cor : T.white,
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              transition: 'all .12s',
+                            }}>
+                              {checked && <span style={{ color: '#fff', fontSize: 10, fontWeight: 900, lineHeight: 1 }}>✓</span>}
+                            </div>
+                            <div style={{ width: 30, height: 30, borderRadius: 7, background: `${emp.cor}18`, border: `1px solid ${emp.cor}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, color: emp.cor, fontSize: 11, flexShrink: 0 }}>
+                              {emp.initials}
+                            </div>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontWeight: 600, fontSize: 13, color: checked ? emp.cor : T.text }}>{emp.nome}</div>
+                              <div style={{ fontSize: 11, color: T.muted }}>{emp.setor}</div>
+                            </div>
+                            {checked && <span style={{ color: emp.cor, fontSize: 11, fontWeight: 700, flexShrink: 0 }}>Vinculada</span>}
+                          </div>
+                        )
+                      })}
+                    </div>
+                    {erros.empresaIds && <div style={{ color: '#dc2626', fontSize: 11, marginTop: 4 }}>{erros.empresaIds}</div>}
+                    {(form.empresaIds || []).length > 0 && (
+                      <div style={{ fontSize: 11, color: T.sub, marginTop: 5 }}>
+                        {form.empresaIds.length} empresa{form.empresaIds.length !== 1 ? 's' : ''} selecionada{form.empresaIds.length !== 1 ? 's' : ''}
+                      </div>
+                    )}
                   </div>
 
                   {/* Perfil */}
@@ -638,7 +706,7 @@ export default function Usuarios({ usuario }) {
                 { icon: '✉', label: 'E-mail', val: viewUser.email },
                 { icon: '📱', label: 'Telefone', val: viewUser.telefone || '—' },
                 { icon: '💼', label: 'Cargo', val: viewUser.cargo },
-                { icon: '🏢', label: 'Empresa', val: empNome(viewUser.empresaId) },
+                { icon: '🏢', label: 'Empresa(s)', val: empNomes(viewUser.empresaIds).join(', ') || '—' },
                 { icon: '🕐', label: 'Último acesso', val: viewUser.ultimoAcesso },
                 { icon: '📅', label: 'Data de cadastro', val: viewUser.criadoEm },
               ].map(({ icon, label, val }) => (
