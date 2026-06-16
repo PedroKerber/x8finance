@@ -43,10 +43,14 @@ export const StatusBadge = ({ status }) => {
     'Recebida': { color: T.green, bg: T.greenL },
     'Recebido': { color: T.green, bg: T.greenL },
     'Pago': { color: T.green, bg: T.greenL },
+    'Paga': { color: T.green, bg: T.greenL },
     'A receber': { color: T.blue, bg: T.blueL },
+    'A Pagar': { color: T.yellow, bg: T.yellowL },
     'Pendente': { color: T.yellow, bg: T.yellowL },
     'Atrasada': { color: T.red, bg: T.redL },
     'Atrasado': { color: T.red, bg: T.redL },
+    'Cancelada': { color: T.muted, bg: T.borderLight },
+    'Cancelado': { color: T.muted, bg: T.borderLight },
   }
   const s = map[status] || { color: T.muted, bg: T.borderLight }
   return <Badge label={status} color={s.color} bg={s.bg} />

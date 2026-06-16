@@ -63,7 +63,7 @@ function newForm() {
     desc: '', cat: '', catNome: '', centroCusto: '', projeto: '',
     contaBancaria: CONTAS[0]?.nome || '',
     formaPagamento: 'PIX',
-    status: 'Pendente',
+    status: 'A Pagar',
     vencimento: TODAY, data: TODAY,
     tipo: 'fixa', valorMasked: '',
     fornecedor: '', fornecedorCnpj: '', fornecedorTel: '', fornecedorEmail: '',
@@ -110,9 +110,9 @@ export default function Despesas({ empresa, data, onSave, onDelete }) {
   }, [lancs, search, fStatus, fCat])
 
   const tTotal = lancs.reduce((s, l) => s + l.valor, 0)
-  const tPago  = lancs.filter(l => l.status === 'Pago').reduce((s, l) => s + l.valor, 0)
-  const tPend  = lancs.filter(l => l.status === 'Pendente').reduce((s, l) => s + l.valor, 0)
-  const tAtr   = lancs.filter(l => l.status === 'Atrasado').reduce((s, l) => s + l.valor, 0)
+  const tPago  = lancs.filter(l => l.status === 'Paga').reduce((s, l) => s + l.valor, 0)
+  const tPend  = lancs.filter(l => l.status === 'A Pagar').reduce((s, l) => s + l.valor, 0)
+  const tAtr   = lancs.filter(l => l.status === 'Atrasada').reduce((s, l) => s + l.valor, 0)
 
   const catData = useMemo(() => {
     const map = {}
@@ -126,7 +126,7 @@ export default function Despesas({ empresa, data, onSave, onDelete }) {
     const days = ['01', '05', '10', '12', '15', '18', '20', '22', '25', '30']
     return days.map(d => {
       const dt = `${ano}-${mes}-${d}`
-      const v = lancs.filter(l => l.data <= dt && l.status === 'Pago').reduce((s, l) => s + l.valor, 0)
+      const v = lancs.filter(l => l.data <= dt && l.status === 'Paga').reduce((s, l) => s + l.valor, 0)
       return { dia: `${d}/${mes}`, v }
     })
   }, [lancs, comp.mesAno])
@@ -201,7 +201,7 @@ export default function Despesas({ empresa, data, onSave, onDelete }) {
   const duplicarItem = (item) => {
     const masked = (item.valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
     setEditItem(null)
-    setForm({ ...newForm(), ...item, valorMasked: masked, status: 'Pendente', vencimento: TODAY, data: TODAY })
+    setForm({ ...newForm(), ...item, valorMasked: masked, status: 'A Pagar', vencimento: TODAY, data: TODAY })
     setErrors({})
     setShowForm(true)
   }
@@ -217,7 +217,7 @@ export default function Despesas({ empresa, data, onSave, onDelete }) {
     if (!pagModal) return
     onSave({
       ...pagModal,
-      status: 'Pago',
+      status: 'Paga',
       dataPagamento: pagForm.dataPagamento,
       valorPago: parseR(pagForm.valorPago),
       contaBancaria: pagForm.contaBancaria,
@@ -288,7 +288,7 @@ export default function Despesas({ empresa, data, onSave, onDelete }) {
 
   // Colunas da tabela
   const columns = [
-    { key: 'vencimento', label: 'Vencimento', render: (v, row) => <span style={{ fontSize: 13, color: row.status === 'Atrasado' ? T.red : 'var(--text)' }}>{fd(v || row.data)}</span> },
+    { key: 'vencimento', label: 'Vencimento', render: (v, row) => <span style={{ fontSize: 13, color: row.status === 'Atrasada' ? T.red : 'var(--text)' }}>{fd(v || row.data)}</span> },
     { key: 'desc', label: 'Descrição', render: v => <span style={{ fontWeight: 600, fontSize: 13 }}>{v}</span> },
     { key: 'fornecedor', label: 'Fornecedor', render: v => <span style={{ fontSize: 13, color: 'var(--text-sub)' }}>{v || '—'}</span> },
     { key: 'catNome', label: 'Categoria', render: (v, row) => { const ci = CATS_DESPESA.findIndex(c => c.id === row.cat); const cor = COLORS[ci >= 0 ? ci % COLORS.length : 0]; return <Badge label={v} color={cor} /> } },
@@ -298,7 +298,7 @@ export default function Despesas({ empresa, data, onSave, onDelete }) {
     {
       key: 'id', label: 'Ações', render: (_, row) => (
         <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-          {row.status !== 'Pago' && (
+          {row.status !== 'Paga' && row.status !== 'Cancelada' && (
             <button onClick={e => { e.stopPropagation(); abrirPagar(row) }}
               style={{ background: 'none', border: `1px solid ${T.green}`, color: T.green, borderRadius: 6, padding: '3px 8px', cursor: 'pointer', fontSize: 11, fontWeight: 600, fontFamily: 'inherit' }}>
               Pagar
@@ -346,6 +346,19 @@ export default function Despesas({ empresa, data, onSave, onDelete }) {
         </div>
       </div>
 
+      {/* Quick filter chips */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
+        {[['', 'Todas'], ['A Pagar', 'A Pagar'], ['Paga', 'Pagas'], ['Atrasada', 'Atrasadas'], ['Cancelada', 'Canceladas']].map(([v, l]) => (
+          <button key={v} onClick={() => setFStatus(v)} style={{
+            padding: '6px 16px', borderRadius: 20, fontSize: 13, fontWeight: fStatus === v ? 600 : 400,
+            cursor: 'pointer', fontFamily: 'inherit', transition: 'all .15s',
+            background: fStatus === v ? T.primary : 'var(--card)',
+            color: fStatus === v ? '#fff' : 'var(--text-sub)',
+            border: fStatus === v ? 'none' : `1.5px solid var(--border)`,
+          }}>{l}</button>
+        ))}
+      </div>
+
       <FilterBar>
         <select value={fCat} onChange={e => setFCat(e.target.value)} style={{ background: 'var(--card)', border: `1px solid var(--border)`, borderRadius: 8, padding: '7px 14px', fontSize: 13, color: 'var(--text-sub)', outline: 'none', fontFamily: 'inherit' }}>
           <option value="">🏷 Todas as categorias</option>
@@ -353,15 +366,15 @@ export default function Despesas({ empresa, data, onSave, onDelete }) {
         </select>
         <select value={fStatus} onChange={e => setFStatus(e.target.value)} style={{ background: 'var(--card)', border: `1px solid var(--border)`, borderRadius: 8, padding: '7px 14px', fontSize: 13, color: 'var(--text-sub)', outline: 'none', fontFamily: 'inherit' }}>
           <option value="">📌 Todos os status</option>
-          {['Pago', 'Pendente', 'Atrasado'].map(s => <option key={s} value={s}>{s}</option>)}
+          {['A Pagar', 'Paga', 'Atrasada', 'Cancelada'].map(s => <option key={s} value={s}>{s}</option>)}
         </select>
       </FilterBar>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 22 }}>
         <KpiCard icon="↓" iconBg={T.redL}    label="Despesas totais" value={fmt(tTotal)} />
-        <KpiCard icon="✓" iconBg={T.greenL}  label="Pagas"           value={fmt(tPago)} />
-        <KpiCard icon="⏳" iconBg={T.yellowL} label="Pendentes"       value={fmt(tPend)} />
-        <KpiCard icon="⚠" iconBg={T.orangeL} label="Atrasadas"       value={fmt(tAtr)} />
+        <KpiCard icon="✓" iconBg={T.greenL}  label="Pagas"     value={fmt(tPago)} />
+        <KpiCard icon="⏳" iconBg={T.yellowL} label="A Pagar"   value={fmt(tPend)} />
+        <KpiCard icon="⚠" iconBg={T.orangeL} label="Atrasadas" value={fmt(tAtr)} />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 22 }}>
@@ -537,12 +550,12 @@ export default function Despesas({ empresa, data, onSave, onDelete }) {
                   <div style={{ marginTop: 12 }}>
                     <SLabel>Status *</SLabel>
                     <div style={{ display: 'flex', gap: 6 }}>
-                      {['Pendente', 'Pago', 'Atrasado'].map(s => (
+                      {[['A Pagar', T.yellow], ['Paga', T.green], ['Atrasada', T.red], ['Cancelada', T.muted]].map(([s, col]) => (
                         <button key={s} onClick={() => sf('status', s)} style={{
                           flex: 1, padding: '8px 4px', borderRadius: 8, fontSize: 12, fontWeight: 600,
                           fontFamily: 'inherit', cursor: 'pointer', transition: 'all .15s',
                           border: form.status === s ? 'none' : `1.5px solid var(--border)`,
-                          background: form.status === s ? (s === 'Pago' ? T.green : s === 'Atrasado' ? T.red : T.yellow) : 'var(--bg)',
+                          background: form.status === s ? col : 'var(--bg)',
                           color: form.status === s ? '#fff' : 'var(--text-sub)',
                         }}>{s}</button>
                       ))}

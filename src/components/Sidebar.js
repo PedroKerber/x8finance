@@ -28,10 +28,10 @@ function Ico({ name, size = 18 }) {
     inner = <><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></>
   else if (name === 'fluxo')
     inner = <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
-  else if (name === 'contas_pagar')
-    inner = <><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></>
-  else if (name === 'contas_receber')
-    inner = <><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></>
+  else if (name === 'fornecedores')
+    inner = <><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2"/><path d="M19 8l2 2-4 4"/></>
+  else if (name === 'clientes')
+    inner = <><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></>
   else if (name === 'relatorios')
     inner = <><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></>
   else if (name === 'mes_fechado')
@@ -85,8 +85,6 @@ const NAV_GROUPS = [
     { id: 'receitas', label: 'Receitas', icon: 'receitas' },
     { id: 'despesas', label: 'Despesas', icon: 'despesas' },
     { id: 'fluxo', label: 'Fluxo de Caixa', icon: 'fluxo' },
-    { id: 'contas_pagar', label: 'Contas a Pagar', icon: 'contas_pagar' },
-    { id: 'contas_receber', label: 'Contas a Receber', icon: 'contas_receber' },
   ]},
   { label: 'Análises', items: [
     { id: 'relatorios', label: 'Relatórios', icon: 'relatorios' },
@@ -97,6 +95,8 @@ const NAV_GROUPS = [
     { id: 'categorias', label: 'Categorias', icon: 'categorias' },
     { id: 'centro_custo', label: 'Centro de Custo', icon: 'centro_custo' },
     { id: 'metas', label: 'Metas Financeiras', icon: 'metas' },
+    { id: 'fornecedores', label: 'Fornecedores', icon: 'fornecedores' },
+    { id: 'clientes', label: 'Clientes', icon: 'clientes' },
   ]},
   { label: 'Sistema', items: [
     { id: 'usuarios', label: 'Usuários', icon: 'usuarios' },

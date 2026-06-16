@@ -360,6 +360,19 @@ export default function Receitas({ empresa, data, onSave, onDelete }) {
         </div>
       </div>
 
+      {/* Quick filter chips */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
+        {[['', 'Todas'], ['A receber', 'A Receber'], ['Recebida', 'Recebidas'], ['Atrasada', 'Atrasadas'], ['Cancelada', 'Canceladas']].map(([v, l]) => (
+          <button key={v} onClick={() => setFStatus(v)} style={{
+            padding: '6px 16px', borderRadius: 20, fontSize: 13, fontWeight: fStatus === v ? 600 : 400,
+            cursor: 'pointer', fontFamily: 'inherit', transition: 'all .15s',
+            background: fStatus === v ? T.primary : 'var(--card)',
+            color: fStatus === v ? '#fff' : 'var(--text-sub)',
+            border: fStatus === v ? 'none' : `1.5px solid var(--border)`,
+          }}>{l}</button>
+        ))}
+      </div>
+
       <FilterBar>
         <select value={fCat} onChange={e => setFCat(e.target.value)} style={{ background: 'var(--card)', border: `1px solid var(--border)`, borderRadius: 8, padding: '7px 14px', fontSize: 13, color: 'var(--text-sub)', outline: 'none', fontFamily: 'inherit' }}>
           <option value="">🏷 Todas as categorias</option>

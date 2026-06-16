@@ -15,7 +15,7 @@ export default function Dashboard({ empresa, data, setPage, onNova }) {
 
   const tRec = useMemo(() => filteredLancs.filter(l => l.tipo === 'receita' && l.status === 'Recebida').reduce((s, l) => s + l.valor, 0), [filteredLancs])
   const tRecPrev = useMemo(() => filteredLancs.filter(l => l.tipo === 'receita').reduce((s, l) => s + l.valor, 0), [filteredLancs])
-  const tDesp = useMemo(() => filteredLancs.filter(l => l.tipo === 'despesa' && l.status === 'Pago').reduce((s, l) => s + l.valor, 0), [filteredLancs])
+  const tDesp = useMemo(() => filteredLancs.filter(l => l.tipo === 'despesa' && l.status === 'Paga').reduce((s, l) => s + l.valor, 0), [filteredLancs])
   const lucro = tRec - tDesp
   const margem = tRec > 0 ? (lucro / tRec) * 100 : 0
   const saldoCaixa = tRec - tDesp
@@ -32,9 +32,10 @@ export default function Dashboard({ empresa, data, setPage, onNova }) {
     return Object.entries(map).map(([n, v]) => ({ n, v, pct: Math.round(v / total * 100) })).sort((a, b) => b.v - a.v).slice(0, 6)
   }, [filteredLancs])
 
-  const contasReceber = filteredLancs.filter(l => l.tipo === 'receita' && l.status === 'A receber').reduce((s, l) => s + l.valor, 0)
-  const contasReceberAtr = filteredLancs.filter(l => l.tipo === 'receita' && l.status === 'Atrasada').reduce((s, l) => s + l.valor, 0)
-  const contasPagar = filteredLancs.filter(l => l.tipo === 'despesa' && l.status === 'Pendente').reduce((s, l) => s + l.valor, 0)
+  const receitasAReceber = filteredLancs.filter(l => l.tipo === 'receita' && l.status === 'A receber').reduce((s, l) => s + l.valor, 0)
+  const receitasAtrasadas = filteredLancs.filter(l => l.tipo === 'receita' && l.status === 'Atrasada').reduce((s, l) => s + l.valor, 0)
+  const despesasAPagar = filteredLancs.filter(l => l.tipo === 'despesa' && l.status === 'A Pagar').reduce((s, l) => s + l.valor, 0)
+  const despesasAtrasadas = filteredLancs.filter(l => l.tipo === 'despesa' && l.status === 'Atrasada').reduce((s, l) => s + l.valor, 0)
 
   const recentes = [...filteredLancs].sort((a, b) => b.data.localeCompare(a.data)).slice(0, 6)
   const compLabel = getCompLabel(comp)
@@ -149,16 +150,16 @@ export default function Dashboard({ empresa, data, setPage, onNova }) {
 
       {/* Row 3 - Contas */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 16 }}>
-        {/* Contas a Receber */}
+        {/* Receitas */}
         <Card style={{ padding: 18 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-            <div style={{ fontWeight: 700, fontSize: 14 }}>Contas a receber</div>
-            <button onClick={() => setPage('contas_receber')} style={{ background: 'none', border: 'none', color: T.primary, cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit' }}>Ver todas</button>
+            <div style={{ fontWeight: 700, fontSize: 14 }}>Receitas</div>
+            <button onClick={() => setPage('receitas')} style={{ background: 'none', border: 'none', color: T.primary, cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit' }}>Ver todas</button>
           </div>
           {[
-            { label: 'Recebíveis do mês', value: tRecPrev, sub: `Recebido: ${fmt(tRec)}`, pct: tRecPrev > 0 ? Math.round(tRec / tRecPrev * 100) : 0, cor: T.green },
-            { label: 'A receber', value: contasReceber, sub: 'Vencem nos próximos 30 dias', pct: 78, cor: T.blue },
-            { label: 'Atrasadas', value: contasReceberAtr, sub: 'Maior atraso: 15 dias', cor: T.orange },
+            { label: 'Recebidas', value: tRec, sub: `Previsto: ${fmt(tRecPrev)}`, pct: tRecPrev > 0 ? Math.round(tRec / tRecPrev * 100) : 0, cor: T.green },
+            { label: 'A receber', value: receitasAReceber, sub: 'Vencem nos próximos 30 dias', pct: receitasAReceber > 0 && tRecPrev > 0 ? Math.round(receitasAReceber / tRecPrev * 100) : 0, cor: T.blue },
+            { label: 'Atrasadas', value: receitasAtrasadas, sub: receitasAtrasadas > 0 ? 'Verificar vencimentos' : 'Nenhuma em atraso', cor: T.orange },
           ].map(item => (
             <div key={item.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
               <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
@@ -171,30 +172,30 @@ export default function Dashboard({ empresa, data, setPage, onNova }) {
                   <div style={{ fontSize: 11, color: T.muted }}>{item.sub}</div>
                 </div>
               </div>
-              {item.pct && (
+              {item.pct > 0 && (
                 <div style={{ width: 36, height: 36, position: 'relative' }}>
                   <svg width="36" height="36" viewBox="0 0 36 36">
                     <circle cx="18" cy="18" r="14" fill="none" stroke={T.borderLight} strokeWidth="3" />
                     <circle cx="18" cy="18" r="14" fill="none" stroke={item.cor} strokeWidth="3"
-                      strokeDasharray={`${item.pct * 0.88} 88`} strokeLinecap="round" transform="rotate(-90 18 18)" />
+                      strokeDasharray={`${Math.min(item.pct, 100) * 0.88} 88`} strokeLinecap="round" transform="rotate(-90 18 18)" />
                   </svg>
-                  <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: item.cor }}>{item.pct}%</span>
+                  <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: item.cor }}>{Math.min(item.pct, 100)}%</span>
                 </div>
               )}
             </div>
           ))}
         </Card>
 
-        {/* Contas a Pagar */}
+        {/* Despesas */}
         <Card style={{ padding: 18 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-            <div style={{ fontWeight: 700, fontSize: 14 }}>Contas a pagar</div>
-            <button onClick={() => setPage('contas_pagar')} style={{ background: 'none', border: 'none', color: T.primary, cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit' }}>Ver todas</button>
+            <div style={{ fontWeight: 700, fontSize: 14 }}>Despesas</div>
+            <button onClick={() => setPage('despesas')} style={{ background: 'none', border: 'none', color: T.primary, cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit' }}>Ver todas</button>
           </div>
           {[
-            { label: 'Pagas no mês', value: tDesp, sub: `Total de pagamentos: ${filteredLancs.filter(l => l.tipo === 'despesa' && l.status === 'Pago').length}`, pct: 100, cor: T.green },
-            { label: 'A pagar', value: contasPagar, sub: 'Vencem nos próximos 30 dias', pct: 67, cor: T.yellow },
-            { label: 'Atrasadas', value: 0, sub: 'Nenhuma em atraso', cor: T.orange },
+            { label: 'Pagas', value: tDesp, sub: `Total: ${filteredLancs.filter(l => l.tipo === 'despesa' && l.status === 'Paga').length} despesas`, pct: 100, cor: T.green },
+            { label: 'A pagar', value: despesasAPagar, sub: 'Vencem nos próximos 30 dias', pct: despesasAPagar > 0 && tDesp + despesasAPagar > 0 ? Math.round(despesasAPagar / (tDesp + despesasAPagar) * 100) : 0, cor: T.yellow },
+            { label: 'Atrasadas', value: despesasAtrasadas, sub: despesasAtrasadas > 0 ? 'Verificar vencimentos' : 'Nenhuma em atraso', cor: T.orange },
           ].map(item => (
             <div key={item.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
               <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
@@ -207,14 +208,14 @@ export default function Dashboard({ empresa, data, setPage, onNova }) {
                   <div style={{ fontSize: 11, color: T.muted }}>{item.sub}</div>
                 </div>
               </div>
-              {item.pct !== undefined && (
+              {item.pct > 0 && (
                 <div style={{ width: 36, height: 36, position: 'relative' }}>
                   <svg width="36" height="36" viewBox="0 0 36 36">
                     <circle cx="18" cy="18" r="14" fill="none" stroke={T.borderLight} strokeWidth="3" />
                     <circle cx="18" cy="18" r="14" fill="none" stroke={item.cor} strokeWidth="3"
-                      strokeDasharray={`${item.pct * 0.88} 88`} strokeLinecap="round" transform="rotate(-90 18 18)" />
+                      strokeDasharray={`${Math.min(item.pct, 100) * 0.88} 88`} strokeLinecap="round" transform="rotate(-90 18 18)" />
                   </svg>
-                  <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: item.cor }}>{item.pct}%</span>
+                  <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: item.cor }}>{Math.min(item.pct, 100)}%</span>
                 </div>
               )}
             </div>

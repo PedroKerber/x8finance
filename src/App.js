@@ -13,8 +13,6 @@ import Receitas from './pages/Receitas'
 import Despesas from './pages/Despesas'
 import Transacoes from './pages/Transacoes'
 import FluxoCaixa from './pages/FluxoCaixa'
-import ContasPagar from './pages/ContasPagar'
-import ContasReceber from './pages/ContasReceber'
 import MesFechado from './pages/MesFechado'
 import Metas from './pages/Metas'
 import Importar from './pages/Importar'
@@ -27,7 +25,7 @@ import Configuracoes from './pages/Configuracoes'
 import Notificacoes from './pages/Notificacoes'
 import Placeholder from './pages/Placeholder'
 
-const PLACEHOLDER_PAGES = ['fornecedores', 'clientes', 'scanner']
+const PLACEHOLDER_PAGES = ['fornecedores', 'clientes', 'scanner', 'contas_pagar', 'contas_receber']
 
 export default function App() {
   const [usuario, setUsuario] = useState(null)
@@ -188,8 +186,6 @@ export default function App() {
       case 'despesas': return <Despesas {...sharedProps} />
       case 'transacoes': return <Transacoes {...sharedProps} onNovaDespesa={() => setPage('despesas')} onNovaReceita={() => setPage('receitas')} />
       case 'fluxo': return <FluxoCaixa {...sharedProps} />
-      case 'contas_pagar': return <ContasPagar {...sharedProps} />
-      case 'contas_receber': return <ContasReceber {...sharedProps} />
       case 'mes_fechado': return <MesFechado {...sharedProps} onFechar={handleFecharMes} onReabrir={handleReabrirMes} usuario={usuario} />
       case 'metas': return <Metas {...sharedProps} />
       case 'importar': return <Importar empresa={empresa} onImport={handleImport} />
