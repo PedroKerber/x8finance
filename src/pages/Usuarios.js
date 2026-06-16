@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import emailjs from '@emailjs/browser'
 import { T } from '../theme'
 import { Card, Btn } from '../components/ui'
@@ -63,9 +63,19 @@ const StatusBadge = ({ status }) => {
 export default function Usuarios({ usuario }) {
   const fotoRef = useRef(null)
 
-  const [usuarios, setUsuarios] = useState([
-    { id: '1', nome: usuario?.nome || 'Pedro Kerber', email: usuario?.email || 'pedrork22@icloud.com', telefone: '', empresaIds: EMPRESAS.map(e => e.id), cargo: 'CEO / Administrador Master', perfil: 'master', status: 'ativo', foto: '', ultimoAcesso: 'Hoje', criadoEm: '16/06/2026' },
-  ])
+  const [usuarios, setUsuarios] = useState(() => {
+    try {
+      const saved = localStorage.getItem('x8_usuarios')
+      if (saved) return JSON.parse(saved)
+    } catch {}
+    return [
+      { id: '1', nome: usuario?.nome || 'Pedro Kerber', email: usuario?.email || 'pedrork22@icloud.com', telefone: '', empresaIds: EMPRESAS.map(e => e.id), cargo: 'CEO / Administrador Master', perfil: 'master', status: 'ativo', foto: '', ultimoAcesso: 'Hoje', criadoEm: '16/06/2026' },
+    ]
+  })
+
+  useEffect(() => {
+    localStorage.setItem('x8_usuarios', JSON.stringify(usuarios))
+  }, [usuarios])
 
   const [search, setSearch] = useState('')
   const [filtroEmp, setFiltroEmp] = useState('Todas')
