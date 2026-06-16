@@ -135,6 +135,11 @@ export default function App() {
     setAppData(prev => ({ ...prev, [empresa.id]: { ...prev[empresa.id], mesFechado: true } }))
   }, [empresa])
 
+  const handleReabrirMes = useCallback(() => {
+    if (!empresa) return
+    setAppData(prev => ({ ...prev, [empresa.id]: { ...prev[empresa.id], mesFechado: false } }))
+  }, [empresa])
+
   if (loading) {
     return (
       <div style={{ minHeight: '100vh', background: T.sidebar, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -172,7 +177,7 @@ export default function App() {
       case 'fluxo': return <FluxoCaixa {...sharedProps} />
       case 'contas_pagar': return <ContasPagar {...sharedProps} />
       case 'contas_receber': return <ContasReceber {...sharedProps} />
-      case 'mes_fechado': return <MesFechado {...sharedProps} onFechar={handleFecharMes} />
+      case 'mes_fechado': return <MesFechado {...sharedProps} onFechar={handleFecharMes} onReabrir={handleReabrirMes} usuario={usuario} />
       case 'metas': return <Metas {...sharedProps} />
       case 'importar': return <Importar empresa={empresa} onImport={handleImport} />
       case 'relatorios': return <Relatorios {...sharedProps} />
