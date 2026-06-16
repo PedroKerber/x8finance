@@ -273,18 +273,18 @@ export default function Usuarios({ usuario }) {
       {/* KPIs */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 22 }}>
         {[
-          { icon: '👥', bg: T.blueL, label: 'Total de Usuários', value: usuarios.length, sub: `${ativos} ativo${ativos !== 1 ? 's' : ''}` },
-          { icon: '👑', bg: '#7c3aed18', label: 'Master', value: masters, sub: `${Math.round(masters / Math.max(usuarios.length, 1) * 100)}% do total` },
-          { icon: '🛡', bg: T.blueL, label: 'Administradores', value: admins, sub: `${Math.round(admins / Math.max(usuarios.length, 1) * 100)}% do total` },
-          { icon: '👤', bg: T.orangeL, label: 'Outros Perfis', value: outros, sub: `${Math.round(outros / Math.max(usuarios.length, 1) * 100)}% do total` },
+          { svg: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>, cor: '#2563eb', bg: T.blueL, label: 'Total de Usuários', value: usuarios.length, sub: `${ativos} ativo${ativos !== 1 ? 's' : ''}` },
+          { svg: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>, cor: '#7c3aed', bg: '#7c3aed14', label: 'Master', value: masters, sub: `${Math.round(masters / Math.max(usuarios.length, 1) * 100)}% do total` },
+          { svg: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>, cor: '#2563eb', bg: T.blueL, label: 'Administradores', value: admins, sub: `${Math.round(admins / Math.max(usuarios.length, 1) * 100)}% do total` },
+          { svg: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>, cor: '#ea580c', bg: T.orangeL, label: 'Outros Perfis', value: outros, sub: `${Math.round(outros / Math.max(usuarios.length, 1) * 100)}% do total` },
         ].map(k => (
-          <Card key={k.label} style={{ padding: '16px 18px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{ background: k.bg, borderRadius: 10, width: 42, height: 42, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>{k.icon}</div>
+          <Card key={k.label} style={{ padding: '18px 20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              <div style={{ background: k.bg, borderRadius: 12, width: 46, height: 46, display: 'flex', alignItems: 'center', justifyContent: 'center', color: k.cor, flexShrink: 0 }}>{k.svg}</div>
               <div>
-                <div style={{ color: T.sub, fontSize: 11 }}>{k.label}</div>
-                <div style={{ fontWeight: 800, fontSize: 24 }}>{k.value}</div>
-                <div style={{ color: T.muted, fontSize: 11 }}>{k.sub}</div>
+                <div style={{ color: T.muted, fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: .3 }}>{k.label}</div>
+                <div style={{ fontWeight: 800, fontSize: 26, lineHeight: 1.1, marginTop: 2 }}>{k.value}</div>
+                <div style={{ color: T.muted, fontSize: 11, marginTop: 2 }}>{k.sub}</div>
               </div>
             </div>
           </Card>
@@ -312,92 +312,99 @@ export default function Usuarios({ usuario }) {
         </div>
       </Card>
 
-      {/* Tabela */}
-      <Card style={{ padding: 0, overflow: 'hidden', marginBottom: 24 }}>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-            <thead>
-              <tr style={{ background: T.bg }}>
-                {['Usuário', 'Empresa', 'Cargo', 'Perfil', 'Status', 'Último acesso', 'Ações'].map(h => (
-                  <th key={h} style={{ padding: '12px 16px', textAlign: 'left', color: T.sub, fontWeight: 600, borderBottom: `1px solid ${T.border}`, whiteSpace: 'nowrap' }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.length === 0 ? (
-                <tr><td colSpan={7} style={{ padding: '40px 16px', textAlign: 'center', color: T.muted }}>Nenhum usuário encontrado.</td></tr>
-              ) : filtered.map(u => (
-                <tr key={u.id} style={{ borderBottom: `1px solid ${T.borderLight}` }}
-                  onMouseEnter={e => e.currentTarget.style.background = T.bg}
-                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                  <td style={{ padding: '12px 16px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      {u.foto ? (
-                        <img src={u.foto} alt="" style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
-                      ) : (
-                        <div style={{ width: 36, height: 36, borderRadius: '50%', background: avatarCor(u.nome), display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 12, flexShrink: 0 }}>
-                          {initials(u.nome)}
-                        </div>
-                      )}
-                      <div>
-                        <div style={{ fontWeight: 600 }}>{u.nome}</div>
-                        <div style={{ color: T.muted, fontSize: 11 }}>{u.email}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td style={{ padding: '12px 16px', color: T.sub, fontSize: 12 }}>
-                    {u.empresaIds?.length > 0
-                      ? u.empresaIds.length === 1
-                        ? empNome(u.empresaIds[0])
-                        : `${empNome(u.empresaIds[0])} +${u.empresaIds.length - 1}`
-                      : '—'}
-                  </td>
-                  <td style={{ padding: '12px 16px', color: T.sub, fontSize: 12, maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.cargo}</td>
-                  <td style={{ padding: '12px 16px' }}><PerfilBadge perfil={u.perfil} /></td>
-                  <td style={{ padding: '12px 16px' }}><StatusBadge status={u.status} /></td>
-                  <td style={{ padding: '12px 16px', color: T.muted, fontSize: 12 }}>{u.ultimoAcesso}</td>
-                  <td style={{ padding: '12px 16px' }}>
-                    <div style={{ display: 'flex', gap: 4, position: 'relative' }}>
-                      <button onClick={() => { setViewUser(u); setModalTipo('view') }} title="Visualizar perfil"
-                        style={{ background: 'none', border: `1px solid ${T.border}`, borderRadius: 6, padding: '5px 8px', cursor: 'pointer', fontSize: 13, color: T.sub }}>👁</button>
-                      <button onClick={() => openEdit(u)} title="Editar"
-                        style={{ background: 'none', border: `1px solid ${T.border}`, borderRadius: 6, padding: '5px 8px', cursor: 'pointer', fontSize: 13, color: T.sub }}>✏️</button>
-                      <button onClick={() => { setSenhaUser(u); setTempSenha(''); setModalTipo('senha') }} title="Gerar senha temporária"
-                        style={{ background: 'none', border: `1px solid ${T.border}`, borderRadius: 6, padding: '5px 8px', cursor: 'pointer', fontSize: 13, color: T.sub }}>🔑</button>
-                      <div style={{ position: 'relative' }}>
-                        <button onClick={() => setActionMenu(actionMenu === u.id ? null : u.id)} title="Mais ações"
-                          style={{ background: 'none', border: `1px solid ${T.border}`, borderRadius: 6, padding: '5px 8px', cursor: 'pointer', fontSize: 13, color: T.sub }}>⋯</button>
-                        {actionMenu === u.id && (
-                          <>
-                            <div onClick={() => setActionMenu(null)} style={{ position: 'fixed', inset: 0, zIndex: 299 }} />
-                            <div style={{ position: 'absolute', right: 0, top: '100%', marginTop: 4, background: T.white, border: `1px solid ${T.border}`, borderRadius: 10, boxShadow: T.shadowMd, zIndex: 300, minWidth: 190, overflow: 'hidden' }}>
-                              <button onClick={() => handleInvite(u)} disabled={inviteLoading === u.id}
-                                style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: T.primary, textAlign: 'left', fontFamily: 'inherit' }}>
-                                {inviteLoading === u.id ? '⏳ Enviando...' : '✉️ Enviar convite de acesso'}
-                              </button>
-                              <div style={{ height: 1, background: T.border, margin: '0 14px' }} />
-                              <button onClick={() => { handleBlock(u.id) }}
-                                style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: u.status === 'bloqueado' ? T.green : '#d97706', textAlign: 'left', fontFamily: 'inherit' }}>
-                                {u.status === 'bloqueado' ? '🔓 Desbloquear' : '🚫 Bloquear usuário'}
-                              </button>
-                              {u.id !== '1' && (
-                                <button onClick={() => { setConfirmDeleteId(u.id); setActionMenu(null); setModalTipo('delete') }}
-                                  style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: '#dc2626', textAlign: 'left', fontFamily: 'inherit' }}>
-                                  🗑 Excluir usuário
-                                </button>
-                              )}
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {/* Lista de usuários */}
+      <Card style={{ padding: 0, marginBottom: 24 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.4fr 108px 100px 200px', background: T.bg, borderBottom: `1px solid ${T.border}`, borderRadius: '11px 11px 0 0' }}>
+          {[['Usuário', 20], ['Empresa / Cargo', 16], ['Perfil', 16], ['Status', 16], ['Ações', 16]].map(([h, pl]) => (
+            <div key={h} style={{ padding: `11px ${pl}px`, fontSize: 11, fontWeight: 700, color: T.muted, textTransform: 'uppercase', letterSpacing: .5 }}>{h}</div>
+          ))}
         </div>
-        <div style={{ padding: '12px 16px', color: T.muted, fontSize: 12, borderTop: `1px solid ${T.borderLight}` }}>
+
+        {filtered.length === 0 ? (
+          <div style={{ padding: '48px 16px', textAlign: 'center', color: T.muted, fontSize: 14 }}>Nenhum usuário encontrado.</div>
+        ) : filtered.map((u, idx) => (
+          <div key={u.id}
+            style={{ display: 'grid', gridTemplateColumns: '2fr 1.4fr 108px 100px 200px', alignItems: 'center', borderBottom: idx < filtered.length - 1 ? `1px solid ${T.borderLight}` : 'none', transition: 'background .12s' }}
+            onMouseEnter={e => e.currentTarget.style.background = T.bg}
+            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+
+            <div style={{ padding: '14px 16px 14px 20px', display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ position: 'relative', flexShrink: 0 }}>
+                {u.foto ? (
+                  <img src={u.foto} alt="" style={{ width: 42, height: 42, borderRadius: '50%', objectFit: 'cover' }} />
+                ) : (
+                  <div style={{ width: 42, height: 42, borderRadius: '50%', background: avatarCor(u.nome), display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 14 }}>{initials(u.nome)}</div>
+                )}
+                <span style={{ position: 'absolute', bottom: 1, right: 1, width: 11, height: 11, borderRadius: '50%', background: u.status === 'ativo' ? T.green : u.status === 'bloqueado' ? '#dc2626' : '#9ca3af', border: '2px solid white' }} />
+              </div>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 14 }}>{u.nome}</div>
+                <div style={{ color: T.muted, fontSize: 12, marginTop: 1 }}>{u.email}</div>
+              </div>
+            </div>
+
+            <div style={{ padding: '14px 16px' }}>
+              <div style={{ fontSize: 13, fontWeight: 500, color: T.text }}>
+                {u.empresaIds?.length > 0 ? (u.empresaIds.length === 1 ? empNome(u.empresaIds[0]) : `${empNome(u.empresaIds[0])} +${u.empresaIds.length - 1}`) : '—'}
+              </div>
+              <div style={{ color: T.muted, fontSize: 11, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{u.cargo}</div>
+            </div>
+
+            <div style={{ padding: '14px 16px' }}><PerfilBadge perfil={u.perfil} /></div>
+            <div style={{ padding: '14px 16px' }}><StatusBadge status={u.status} /></div>
+
+            <div style={{ padding: '14px 16px', display: 'flex', gap: 6, alignItems: 'center' }}>
+              <button onClick={() => handleInvite(u)} disabled={inviteLoading === u.id}
+                title="Enviar convite de acesso ao sistema"
+                style={{ display: 'flex', alignItems: 'center', gap: 5, background: T.primaryLight, color: T.primary, border: `1px solid ${T.primary}44`, borderRadius: 7, padding: '5px 10px', cursor: inviteLoading === u.id ? 'default' : 'pointer', fontSize: 12, fontWeight: 700, fontFamily: 'inherit', opacity: inviteLoading === u.id ? .6 : 1, whiteSpace: 'nowrap', flexShrink: 0 }}>
+                {inviteLoading === u.id ? 'Enviando...' : (
+                  <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>Convidar</>
+                )}
+              </button>
+
+              <button onClick={() => openEdit(u)} title="Editar usuário"
+                style={{ background: 'none', border: `1px solid ${T.border}`, borderRadius: 7, width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: T.sub, flexShrink: 0 }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              </button>
+
+              <button onClick={() => { setViewUser(u); setModalTipo('view') }} title="Ver perfil"
+                style={{ background: 'none', border: `1px solid ${T.border}`, borderRadius: 7, width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: T.sub, flexShrink: 0 }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+
+              <div style={{ position: 'relative', flexShrink: 0 }}>
+                <button onClick={() => setActionMenu(actionMenu === u.id ? null : u.id)} title="Mais ações"
+                  style={{ background: 'none', border: `1px solid ${T.border}`, borderRadius: 7, width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: T.sub }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+                </button>
+                {actionMenu === u.id && (
+                  <>
+                    <div onClick={() => setActionMenu(null)} style={{ position: 'fixed', inset: 0, zIndex: 299 }} />
+                    <div style={{ position: 'absolute', right: 0, top: '100%', marginTop: 4, background: T.white, border: `1px solid ${T.border}`, borderRadius: 10, boxShadow: T.shadowMd, zIndex: 300, minWidth: 190, overflow: 'hidden' }}>
+                      <button onClick={() => { setSenhaUser(u); setTempSenha(''); setModalTipo('senha'); setActionMenu(null) }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: T.text, textAlign: 'left', fontFamily: 'inherit' }}>
+                        🔑 Gerar senha temporária
+                      </button>
+                      <div style={{ height: 1, background: T.border, margin: '0 14px' }} />
+                      <button onClick={() => { handleBlock(u.id) }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: u.status === 'bloqueado' ? T.green : '#d97706', textAlign: 'left', fontFamily: 'inherit' }}>
+                        {u.status === 'bloqueado' ? '🔓 Desbloquear' : '🚫 Bloquear usuário'}
+                      </button>
+                      {u.id !== '1' && (
+                        <button onClick={() => { setConfirmDeleteId(u.id); setActionMenu(null); setModalTipo('delete') }}
+                          style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: '#dc2626', textAlign: 'left', fontFamily: 'inherit' }}>
+                          🗑 Excluir usuário
+                        </button>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
+
+        <div style={{ padding: '10px 20px', color: T.muted, fontSize: 12, borderTop: `1px solid ${T.borderLight}` }}>
           Mostrando {filtered.length} de {usuarios.length} usuário{usuarios.length !== 1 ? 's' : ''}
         </div>
       </Card>
