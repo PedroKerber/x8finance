@@ -172,7 +172,7 @@ export default function App() {
       case 'categorias': return <Categorias {...sharedProps} />
       case 'centro_custo': return <CentroCusto {...sharedProps} />
       case 'usuarios': return <Usuarios usuario={usuario} />
-      case 'configuracoes': return <Configuracoes usuario={usuario} onLogout={handleLogout} />
+      case 'configuracoes': return <Configuracoes usuario={usuario} onLogout={handleLogout} empresa={empresa} />
       default: return <Placeholder page={page} />
     }
   }
