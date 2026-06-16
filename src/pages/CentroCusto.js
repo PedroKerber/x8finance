@@ -20,7 +20,7 @@ const PIE_COLORS = [T.orange, T.blue, T.red, T.green, T.purple, T.cyan, T.yellow
 const EMPTY = { nome: '', desc: '', responsavel: '', email: '', empresaId: 'kz', ativo: true }
 
 export default function CentroCusto({ empresa, data }) {
-  const lancamentos = data.lancamentos || []
+  const lancamentos = useMemo(() => data.lancamentos || [], [data.lancamentos])
   const [centros, setCentros] = useState(CENTROS_INICIAIS)
   const [tab, setTab] = useState('Todos')
   const [search, setSearch] = useState('')

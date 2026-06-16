@@ -9,7 +9,7 @@ const ICONS_RECEITA = { venda_imoveis: '🏠', locacao: '🔑', alugueis: '🔑'
 const EMPTY_CAT = { nome: '', tipo: 'despesa', descricao: '', cor: '#2563eb' }
 
 export default function Categorias({ data }) {
-  const lancamentos = data.lancamentos || []
+  const lancamentos = useMemo(() => data.lancamentos || [], [data.lancamentos])
   const [tab, setTab] = useState('Todas')
   const [search, setSearch] = useState('')
   const [modal, setModal] = useState(false)

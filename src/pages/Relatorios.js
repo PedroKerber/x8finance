@@ -39,7 +39,7 @@ const RELATORIOS = [
 ]
 
 export default function Relatorios({ empresa, data, setPage }) {
-  const lancamentos = data.lancamentos || []
+  const lancamentos = useMemo(() => data.lancamentos || [], [data.lancamentos])
   const [periodo, setPeriodo] = useState('Este Mês')
   const [catFiltro, setCatFiltro] = useState('Todas')
   const [tipo, setTipo] = useState('Todos os tipos')
@@ -73,9 +73,6 @@ export default function Relatorios({ empresa, data, setPage }) {
   }, [lancamentos])
 
   const PIE_COLORS = [T.blue, T.purple, T.orange, T.red, T.green, T.cyan]
-
-  const sel = { background: T.primaryLight, color: T.primary, borderColor: T.primary }
-  const unsel = { background: 'transparent', color: T.sub, borderColor: T.border }
 
   return (
     <div style={{ fontFamily: "'Segoe UI', sans-serif", color: T.text }}>
