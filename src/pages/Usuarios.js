@@ -99,7 +99,7 @@ export default function Usuarios({ usuario }) {
   const openAdd = () => {
     setForm(EMPTY); setFormPerms(defaultPerms('gerente'))
     setActiveTab('dados'); setErros({}); setEditId(null)
-    setModalTipo('form')
+    setTempSenha(''); setModalTipo('form')
   }
 
   const openEdit = (u) => {
@@ -508,6 +508,44 @@ export default function Usuarios({ usuario }) {
                       ))}
                     </div>
                   </div>
+
+                  {/* Senha temporária — apenas na criação */}
+                  {!editId && (
+                    <div style={{ marginBottom: 20 }}>
+                      <label style={labelStyle}>Senha Temporária</label>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <div style={{ flex: 1, position: 'relative' }}>
+                          <input
+                            value={tempSenha}
+                            onChange={e => setTempSenha(e.target.value)}
+                            placeholder="Digite ou gere uma senha..."
+                            style={{ ...selStyle, fontSize: 14, fontFamily: tempSenha ? 'monospace' : 'inherit', letterSpacing: tempSenha ? 1 : 0, paddingRight: 36 }}
+                          />
+                          {tempSenha && (
+                            <button onClick={() => navigator.clipboard?.writeText(tempSenha).then(() => showToast('Senha copiada!'))}
+                              title="Copiar senha"
+                              style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: T.primary, fontSize: 14 }}>
+                              📋
+                            </button>
+                          )}
+                        </div>
+                        <button onClick={gerarSenha}
+                          style={{ background: T.primaryLight, color: T.primary, border: `1px solid ${T.primary}44`, borderRadius: 8, padding: '0 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                          ⚡ Gerar
+                        </button>
+                      </div>
+                      {tempSenha && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6, fontSize: 11, color: T.green }}>
+                          <span>✓</span> Senha definida — será enviada por e-mail ao usuário
+                        </div>
+                      )}
+                      {!tempSenha && (
+                        <div style={{ fontSize: 11, color: T.muted, marginTop: 5 }}>
+                          Se não definida, o e-mail informará "(definida pelo administrador)"
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {/* Opções extras */}
                   <div style={{ borderTop: `1px solid ${T.border}`, paddingTop: 16 }}>
