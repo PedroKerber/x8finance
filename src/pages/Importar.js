@@ -262,7 +262,7 @@ export default function Importar({ empresa, onImport }) {
                   {rows.map((r, i) => {
                     const ok = r._errors.length === 0
                     return (
-                      <tr key={i} style={{ borderBottom: `1px solid ${T.borderLight}`, background: ok ? 'transparent' : T.redL + '40' }}>
+                      <tr key={i} style={{ borderBottom: `1px solid ${T.borderLight}`, background: ok ? 'transparent' : 'rgba(220,38,38,0.12)' }}>
                         <td style={{ padding: '9px 14px' }}>
                           <span style={{ fontSize: 16 }}>{ok ? '✅' : '❌'}</span>
                         </td>

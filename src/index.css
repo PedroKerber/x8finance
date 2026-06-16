@@ -1,3 +1,62 @@
+/* ── CSS Custom Properties: Light mode ── */
+:root {
+  --bg: #f0f4f1;
+  --card: #ffffff;
+  --text: #111827;
+  --text-sub: #6b7280;
+  --text-muted: #9ca3af;
+  --border: #e5e7eb;
+  --border-light: #f3f4f6;
+  --shadow: 0 1px 3px rgba(0,0,0,0.08);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+  --shadow-lg: 0 10px 25px rgba(0,0,0,0.1);
+  --primary-light: #dcfce7;
+  --green-light: #dcfce7;
+  --red-light: #fee2e2;
+  --blue-light: #dbeafe;
+  --orange-light: #ffedd5;
+  --purple-light: #ede9fe;
+  --yellow-light: #fef9c3;
+  --cyan-light: #cffafe;
+  --sidebar-bg: #07140F;
+  --input-bg: #ffffff;
+  --table-head: #f9fafb;
+  --select-bg: #ffffff;
+}
+
+/* ── CSS Custom Properties: Dark mode ── */
+body.dark {
+  --bg: #0f172a;
+  --card: #1e293b;
+  --text: #f1f5f9;
+  --text-sub: #94a3b8;
+  --text-muted: #64748b;
+  --border: rgba(255,255,255,0.09);
+  --border-light: rgba(255,255,255,0.05);
+  --shadow: 0 1px 4px rgba(0,0,0,0.4);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.45);
+  --shadow-lg: 0 10px 28px rgba(0,0,0,0.55);
+  --primary-light: rgba(22,163,74,0.18);
+  --green-light: rgba(22,163,74,0.18);
+  --red-light: rgba(220,38,38,0.18);
+  --blue-light: rgba(37,99,235,0.18);
+  --orange-light: rgba(234,88,12,0.18);
+  --purple-light: rgba(124,58,237,0.18);
+  --yellow-light: rgba(202,138,4,0.18);
+  --cyan-light: rgba(8,145,178,0.18);
+  --sidebar-bg: #050e07;
+  --input-bg: #1e293b;
+  --table-head: #1a2537;
+  --select-bg: #1e293b;
+}
+
+/* ── Smooth color transition only while toggling ── */
+.theme-transitioning,
+.theme-transitioning * {
+  transition: background-color .25s ease, color .25s ease, border-color .25s ease,
+              box-shadow .25s ease !important;
+}
+
 *, *::before, *::after { box-sizing: border-box; }
 
 body {
@@ -5,8 +64,18 @@ body {
   font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: #f0f4f1;
-  color: #111827;
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* Dark mode: inputs, selects, textareas */
+body.dark input,
+body.dark select,
+body.dark textarea {
+  background: var(--input-bg);
+  color: var(--text);
+  border-color: var(--border);
+  color-scheme: dark;
 }
 
 ::-webkit-scrollbar { width: 6px; height: 6px; }

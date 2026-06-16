@@ -1,36 +1,43 @@
 export const T = {
+  // Sidebar (own palette in Sidebar.js, these used only in loading screen / legacy)
   sidebar: '#0d2318',
   sidebarHover: '#1a3529',
   sidebarActive: '#1e4030',
   sidebarText: '#7db894',
   sidebarTextActive: '#ffffff',
+
+  // Brand / status colors — fixed hex, not affected by theme
   primary: '#16a34a',
   primaryDark: '#15803d',
-  primaryLight: '#dcfce7',
-  bg: '#f0f4f1',
-  white: '#ffffff',
-  border: '#e5e7eb',
-  borderLight: '#f3f4f6',
-  text: '#111827',
-  sub: '#6b7280',
-  muted: '#9ca3af',
   green: '#16a34a',
-  greenL: '#dcfce7',
   red: '#dc2626',
-  redL: '#fee2e2',
   blue: '#2563eb',
-  blueL: '#dbeafe',
   orange: '#ea580c',
-  orangeL: '#ffedd5',
   purple: '#7c3aed',
-  purpleL: '#ede9fe',
   yellow: '#ca8a04',
-  yellowL: '#fef9c3',
   cyan: '#0891b2',
-  cyanL: '#cffafe',
-  shadow: '0 1px 3px rgba(0,0,0,0.08)',
-  shadowMd: '0 4px 12px rgba(0,0,0,0.08)',
-  shadowLg: '0 10px 25px rgba(0,0,0,0.1)',
+
+  // Theme-sensitive: backgrounds, text, borders, shadows, light tints
+  bg: 'var(--bg)',
+  white: 'var(--card)',
+  border: 'var(--border)',
+  borderLight: 'var(--border-light)',
+  text: 'var(--text)',
+  sub: 'var(--text-sub)',
+  muted: 'var(--text-muted)',
+  shadow: 'var(--shadow)',
+  shadowMd: 'var(--shadow-md)',
+  shadowLg: 'var(--shadow-lg)',
+
+  // Light tint variants (used as badge/pill backgrounds)
+  primaryLight: 'var(--primary-light)',
+  greenL: 'var(--green-light)',
+  redL: 'var(--red-light)',
+  blueL: 'var(--blue-light)',
+  orangeL: 'var(--orange-light)',
+  purpleL: 'var(--purple-light)',
+  yellowL: 'var(--yellow-light)',
+  cyanL: 'var(--cyan-light)',
 }
 
 export const fmt = v => (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })

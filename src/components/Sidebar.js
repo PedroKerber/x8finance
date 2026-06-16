@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { T } from '../theme'
+import { useTheme } from '../context/ThemeContext'
 
 // Sidebar palette (independent from T theme)
 const S = {
-  bg: '#07140F',
+  bg: 'var(--sidebar-bg)',
   active: 'rgba(22,163,74,0.14)',
   hover: 'rgba(255,255,255,0.06)',
   txt: 'rgba(255,255,255,0.48)',
@@ -59,6 +60,10 @@ function Ico({ name, size = 18 }) {
     inner = <><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.778 7.778 5.5 5.5 0 017.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></>
   else if (name === 'logout')
     inner = <><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></>
+  else if (name === 'sun')
+    inner = <><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></>
+  else if (name === 'moon')
+    inner = <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
   else
     inner = <circle cx="12" cy="12" r="4"/>
 
@@ -102,6 +107,7 @@ const NAV_GROUPS = [
 
 export default function Sidebar({ page, setPage, collapsed, onToggle, usuario, perfilFoto, onLogout, empresa }) {
   const [userMenu, setUserMenu] = useState(false)
+  const { dark, toggleTheme } = useTheme()
 
   const savedPerfil = JSON.parse(localStorage.getItem('x8_perfil') || '{}')
   const nomeDisplay = savedPerfil.nome || usuario?.nome || 'Usuário'
@@ -232,6 +238,7 @@ export default function Sidebar({ page, setPage, collapsed, onToggle, usuario, p
                 { icon: 'user', label: 'Meu Perfil', action: () => { setPage('configuracoes'); setUserMenu(false) } },
                 { icon: 'key', label: 'Alterar Senha', action: () => { setPage('configuracoes'); setUserMenu(false) } },
                 { icon: 'configuracoes', label: 'Configurações', action: () => { setPage('configuracoes'); setUserMenu(false) } },
+                { icon: dark ? 'sun' : 'moon', label: dark ? 'Modo Claro' : 'Modo Escuro', action: () => { toggleTheme(); setUserMenu(false) } },
               ].map(({ icon, label, action }) => (
                 <button key={label} onClick={action}
                   style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '10px 14px', background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, color: T.text, textAlign: 'left' }}
