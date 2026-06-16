@@ -18,9 +18,14 @@ import ContasReceber from './pages/ContasReceber'
 import MesFechado from './pages/MesFechado'
 import Metas from './pages/Metas'
 import Importar from './pages/Importar'
+import Relatorios from './pages/Relatorios'
+import Empresas from './pages/Empresas'
+import Categorias from './pages/Categorias'
+import CentroCusto from './pages/CentroCusto'
+import Usuarios from './pages/Usuarios'
 import Placeholder from './pages/Placeholder'
 
-const PLACEHOLDER_PAGES = ['relatorios', 'empresas', 'categorias', 'centro_custo', 'fornecedores', 'clientes', 'configuracoes', 'scanner']
+const PLACEHOLDER_PAGES = ['fornecedores', 'clientes', 'configuracoes', 'scanner']
 
 export default function App() {
   const [usuario, setUsuario] = useState(null)
@@ -161,6 +166,11 @@ export default function App() {
       case 'mes_fechado': return <MesFechado {...sharedProps} onFechar={handleFecharMes} />
       case 'metas': return <Metas {...sharedProps} />
       case 'importar': return <Importar empresa={empresa} onImport={handleImport} />
+      case 'relatorios': return <Relatorios {...sharedProps} />
+      case 'empresas': return <Empresas setPage={setPage} />
+      case 'categorias': return <Categorias {...sharedProps} />
+      case 'centro_custo': return <CentroCusto {...sharedProps} />
+      case 'usuarios': return <Usuarios usuario={usuario} />
       default: return <Placeholder page={page} />
     }
   }

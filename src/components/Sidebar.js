@@ -17,6 +17,7 @@ const NAV = [
   { id: 'clientes', label: 'Clientes', icon: '👥' },
   { id: 'metas', label: 'Metas', icon: '🎯' },
   { id: 'importar', label: 'Importar Planilha', icon: '📥' },
+  { id: 'usuarios', label: 'Usuários', icon: '👥' },
   { id: 'configuracoes', label: 'Configurações', icon: '⚙' },
 ]
 
