@@ -215,7 +215,7 @@ export default function MesFechado({ empresa, data, onFechar, onReabrir, usuario
   const tDesp = useMemo(() => filteredLancs.filter(l => l.tipo === 'despesa').reduce((s, l) => s + l.valor, 0), [filteredLancs])
   const lucro = tRec - tDesp
   const margem = tRec > 0 ? (lucro / tRec) * 100 : 0
-  const saldoInicial = 320000
+  const saldoInicial = 0
   const saldoFinal = saldoInicial + tRec - tDesp
 
   const tRecAnt  = useMemo(() => lancsAnt.filter(l => l.tipo === 'receita').reduce((s, l) => s + l.valor, 0), [lancsAnt])
