@@ -103,6 +103,7 @@ export default function Usuarios({ usuario }) {
   const [toast, setToast] = useState('')
   const [toastOk, setToastOk] = useState(true)
   const [actionMenu, setActionMenu] = useState(null)
+  const [inviteLoading, setInviteLoading] = useState(null)
 
   const showToast = (msg, ok = true) => {
     setToast(msg); setToastOk(ok)
@@ -186,6 +187,24 @@ export default function Usuarios({ usuario }) {
     setActionMenu(null)
     const u = usuarios.find(x => x.id === id)
     showToast(u?.status === 'bloqueado' ? 'Usuário desbloqueado.' : 'Usuário bloqueado.')
+  }
+
+  const handleInvite = async (u) => {
+    setInviteLoading(u.id); setActionMenu(null)
+    try {
+      const res = await fetch('/api/invite-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: u.email, nome: u.nome }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Erro desconhecido')
+      showToast(`Convite enviado para ${u.email}!`)
+    } catch (e) {
+      showToast(`Erro ao enviar convite: ${e.message}`, false)
+    } finally {
+      setInviteLoading(null)
+    }
   }
 
   const gerarSenha = () => {
@@ -352,6 +371,11 @@ export default function Usuarios({ usuario }) {
                           <>
                             <div onClick={() => setActionMenu(null)} style={{ position: 'fixed', inset: 0, zIndex: 299 }} />
                             <div style={{ position: 'absolute', right: 0, top: '100%', marginTop: 4, background: T.white, border: `1px solid ${T.border}`, borderRadius: 10, boxShadow: T.shadowMd, zIndex: 300, minWidth: 190, overflow: 'hidden' }}>
+                              <button onClick={() => handleInvite(u)} disabled={inviteLoading === u.id}
+                                style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: T.primary, textAlign: 'left', fontFamily: 'inherit' }}>
+                                {inviteLoading === u.id ? '⏳ Enviando...' : '✉️ Enviar convite de acesso'}
+                              </button>
+                              <div style={{ height: 1, background: T.border, margin: '0 14px' }} />
                               <button onClick={() => { handleBlock(u.id) }}
                                 style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: u.status === 'bloqueado' ? T.green : '#d97706', textAlign: 'left', fontFamily: 'inherit' }}>
                                 {u.status === 'bloqueado' ? '🔓 Desbloquear' : '🚫 Bloquear usuário'}
