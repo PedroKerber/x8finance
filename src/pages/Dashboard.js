@@ -90,7 +90,7 @@ export default function Dashboard({ empresa, data, setPage, onNova }) {
               titulo: 'SALDO FINAL', cor: '#7c3aed',
               linhas: [
                 { label: 'Resultado Operacional', value: resultOper, color: resultOper >= 0 ? T.green : T.red },
-                { label: '(-) Retiradas dos Sócios', value: tRetirada, color: '#7c3aed' },
+                { label: '(-) Retiradas dos Sócios', value: tRetirada, color: '#7c3aed', onClick: () => setPage('retirada_socios') },
                 { label: '= Saldo Final Disponível', value: saldoFinal, color: saldoFinal >= 0 ? T.green : T.red, bold: true },
               ]
             },
@@ -98,7 +98,9 @@ export default function Dashboard({ empresa, data, setPage, onNova }) {
             <div key={bloco.titulo} style={{ background: T.bg, borderRadius: 10, padding: 14 }}>
               <div style={{ fontSize: 10, fontWeight: 800, color: bloco.cor, letterSpacing: '0.08em', marginBottom: 12, textTransform: 'uppercase' }}>{bloco.titulo}</div>
               {bloco.linhas.map((r, i) => (
-                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: r.bold ? 10 : 6, marginTop: r.bold ? 2 : 0, borderTop: r.bold ? `1px solid ${T.border}` : 'none' }}>
+                <div key={i} onClick={r.onClick} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: r.bold ? 10 : 6, marginTop: r.bold ? 2 : 0, borderTop: r.bold ? `1px solid ${T.border}` : 'none', cursor: r.onClick ? 'pointer' : 'default', borderRadius: r.onClick ? 6 : 0 }}
+                  onMouseEnter={e => { if (r.onClick) e.currentTarget.style.background = 'rgba(124,58,237,0.06)' }}
+                  onMouseLeave={e => { if (r.onClick) e.currentTarget.style.background = 'transparent' }}>
                   <span style={{ fontSize: 11, color: r.bold ? T.text : T.sub, fontWeight: r.bold ? 700 : 400 }}>{r.label}</span>
                   <span style={{ fontSize: r.bold ? 14 : 12, fontWeight: r.bold ? 800 : 500, color: r.color }}>{fmtS(r.value)}</span>
                 </div>

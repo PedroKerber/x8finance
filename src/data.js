@@ -9,8 +9,8 @@ export const EMPRESAS = [
 ]
 
 export const CATS_RECEITA = [
-  { id: 'comissao_socios', nome: 'Comissão dos Sócios', cor: '#7c3aed' },
   { id: 'venda_imoveis', nome: 'Venda de Imóveis', cor: '#16a34a' },
+  { id: 'comissao_recebida', nome: 'Comissão Recebida', cor: '#16a34a' },
   { id: 'locacao', nome: 'Locação', cor: '#2563eb' },
   { id: 'alugueis', nome: 'Aluguéis', cor: '#2563eb' },
   { id: 'comissoes', nome: 'Comissões', cor: '#0891b2' },
@@ -19,8 +19,13 @@ export const CATS_RECEITA = [
   { id: 'outras_receitas', nome: 'Outras Receitas', cor: '#9ca3af' },
 ]
 
+// variavel: true → Despesas Variáveis (ligadas a vendas)
+// variavel: false/undefined → Despesas Fixas (estruturais)
 export const CATS_DESPESA = [
-  { id: 'comissao_corretor', nome: 'Comissão de Corretores', cor: '#dc2626' },
+  { id: 'comissao_corretor', nome: 'Comissão de Corretores', cor: '#dc2626', variavel: true },
+  { id: 'comissao_captador', nome: 'Comissão de Captadores', cor: '#ea580c', variavel: true },
+  { id: 'comissao_parceria', nome: 'Comissão de Parceria', cor: '#f97316', variavel: true },
+  { id: 'bonus_venda', nome: 'Bônus de Venda', cor: '#dc2626', variavel: true },
   { id: 'marketing', nome: 'Marketing', cor: '#2563eb' },
   { id: 'comercial', nome: 'Comercial', cor: '#ea580c' },
   { id: 'administrativo', nome: 'Administrativo', cor: '#7c3aed' },
@@ -31,6 +36,20 @@ export const CATS_DESPESA = [
   { id: 'aluguel_escritorio', nome: 'Aluguel Escritório', cor: '#9ca3af' },
   { id: 'impostos', nome: 'Impostos', cor: '#6b7280' },
 ]
+
+export const CATS_RETIRADA = [
+  { id: 'prolabore_pedro',      nome: 'Pró-labore — Pedro Kerber',              cor: '#7c3aed', socio: 'pedro', tipoRet: 'prolabore' },
+  { id: 'prolabore_leo',        nome: 'Pró-labore — Léo Ricardo',               cor: '#2563eb', socio: 'leo',   tipoRet: 'prolabore' },
+  { id: 'distribuicao_pedro',   nome: 'Distribuição de Lucros — Pedro Kerber',  cor: '#7c3aed', socio: 'pedro', tipoRet: 'distribuicao' },
+  { id: 'distribuicao_leo',     nome: 'Distribuição de Lucros — Léo Ricardo',   cor: '#2563eb', socio: 'leo',   tipoRet: 'distribuicao' },
+  { id: 'adiantamento_pedro',   nome: 'Adiantamento de Lucros — Pedro Kerber',  cor: '#7c3aed', socio: 'pedro', tipoRet: 'adiantamento' },
+  { id: 'adiantamento_leo',     nome: 'Adiantamento de Lucros — Léo Ricardo',   cor: '#2563eb', socio: 'leo',   tipoRet: 'adiantamento' },
+  { id: 'extraordinaria_pedro', nome: 'Retirada Extraordinária — Pedro Kerber', cor: '#7c3aed', socio: 'pedro', tipoRet: 'extraordinaria' },
+  { id: 'extraordinaria_leo',   nome: 'Retirada Extraordinária — Léo Ricardo',  cor: '#2563eb', socio: 'leo',   tipoRet: 'extraordinaria' },
+  { id: 'retirada_socios',      nome: 'Retirada dos Sócios',                    cor: '#9ca3af', socio: null,    tipoRet: null },
+]
+
+export const CATS_VARIAVEL_IDS = new Set(CATS_DESPESA.filter(c => c.variavel).map(c => c.id))
 
 export const CONTAS = [
   { id: 'itau_cc', nome: 'Conta Corrente Itaú', tipo: 'Conta Corrente', banco: 'Itaú', saldo: 0 },

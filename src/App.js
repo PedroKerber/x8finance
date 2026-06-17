@@ -17,6 +17,7 @@ import FluxoCaixa from './pages/FluxoCaixa'
 import MesFechado from './pages/MesFechado'
 import Metas from './pages/Metas'
 import Importar from './pages/Importar'
+import RetiradaSocios from './pages/RetiradaSocios'
 import Relatorios from './pages/Relatorios'
 import Empresas from './pages/Empresas'
 import Categorias from './pages/Categorias'
@@ -277,6 +278,7 @@ export default function App() {
       case 'mes_fechado': return <MesFechado {...sharedProps} onFechar={handleFecharMes} onReabrir={handleReabrirMes} usuario={usuario} />
       case 'metas': return <Metas {...sharedProps} />
       case 'importar': return <Importar empresa={empresa} onImport={handleImport} />
+      case 'retirada_socios': return <RetiradaSocios {...sharedProps} />
       case 'relatorios': return <Relatorios {...sharedProps} />
       case 'empresas': return <Empresas setPage={setPage} empresas={empresas} onSaveEmpresa={handleSaveEmpresa} />
       case 'categorias': return <Categorias {...sharedProps} onSaveCat={handleSaveCat} onDeleteCat={handleDeleteCat} />

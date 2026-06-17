@@ -26,6 +26,8 @@ function Ico({ name, size = 18 }) {
     inner = <><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></>
   else if (name === 'fluxo')
     inner = <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+  else if (name === 'retirada_socios')
+    inner = <><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></>
   else if (name === 'fornecedores')
     inner = <><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2"/><path d="M19 8l2 2-4 4"/></>
   else if (name === 'clientes')
@@ -84,6 +86,7 @@ const NAV_GROUPS = [
     { id: 'transacoes', label: 'Transações', icon: 'transacoes' },
     { id: 'receitas', label: 'Receitas', icon: 'receitas' },
     { id: 'despesas', label: 'Despesas', icon: 'despesas' },
+    { id: 'retirada_socios', label: 'Retirada dos Sócios', icon: 'retirada_socios' },
     { id: 'fluxo', label: 'Fluxo de Caixa', icon: 'fluxo' },
   ]},
   { label: 'Análises', items: [
