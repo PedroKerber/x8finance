@@ -45,6 +45,10 @@ export function defaultFilter() {
   }
 }
 
+export function loadSavedFilter(key) {
+  try { const s = localStorage.getItem(key); return s ? JSON.parse(s) : null } catch { return null }
+}
+
 export function filterLancamentos(lancs, f) {
   return lancs.filter(l => {
     const d = l.data || ''
@@ -90,7 +94,7 @@ function FSel({ value, onChange, children }) {
   )
 }
 
-export default function AdvancedFilters({ tipo = 'all', cats, filter, onApply, extraActions }) {
+export default function AdvancedFilters({ tipo = 'all', cats, filter, onApply, extraActions, storageKey }) {
   const [ei, setEi]         = useState(filter.inicio)
   const [ef, setEf]         = useState(filter.fim)
   const [ecat, setEcat]     = useState(filter.cat)
@@ -104,6 +108,7 @@ export default function AdvancedFilters({ tipo = 'all', cats, filter, onApply, e
   const [eprojeto, setEproj]= useState(filter.projeto)
   const [preset, setPreset] = useState(filter.preset || 'Este mês')
   const [showAdv, setShowAdv] = useState(false)
+  const [saved, setSaved] = useState(false)
 
   useEffect(() => {
     setEi(filter.inicio); setEf(filter.fim)
@@ -121,6 +126,13 @@ export default function AdvancedFilters({ tipo = 'all', cats, filter, onApply, e
     if (!r) return
     setEi(r.inicio); setEf(r.fim)
     onApply({ ...filter, inicio: r.inicio, fim: r.fim, preset: label })
+  }
+
+  const saveFavorite = () => {
+    if (!storageKey) return
+    localStorage.setItem(storageKey, JSON.stringify(filter))
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2000)
   }
 
   const apply = () => onApply({
@@ -157,7 +169,7 @@ export default function AdvancedFilters({ tipo = 'all', cats, filter, onApply, e
       <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 12, padding: 18 }}>
 
         {/* Linha principal */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.2fr auto auto', gap: 12, alignItems: 'end', marginBottom: 14 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.2fr auto auto auto', gap: 12, alignItems: 'end', marginBottom: 14 }}>
           <div>
             <FLabel>📅 Data Inicial</FLabel>
             <input type="date" value={ei} onChange={e => { setEi(e.target.value); setPreset('Personalizado') }} style={iSty} />
@@ -179,6 +191,11 @@ export default function AdvancedFilters({ tipo = 'all', cats, filter, onApply, e
           <button onClick={clear} style={{ background: 'none', border: '1px solid var(--border)', color: 'var(--text-sub)', borderRadius: 8, padding: '9px 14px', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
             🧹 Limpar
           </button>
+          {storageKey && (
+            <button onClick={saveFavorite} style={{ background: saved ? T.green : 'none', color: saved ? '#fff' : 'var(--text-sub)', border: `1px solid ${saved ? T.green : 'var(--border)'}`, borderRadius: 8, padding: '9px 14px', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit', whiteSpace: 'nowrap', transition: 'all .2s' }}>
+              {saved ? '✓ Salvo!' : '💾 Favorito'}
+            </button>
+          )}
         </div>
 
         {/* Presets rápidos */}

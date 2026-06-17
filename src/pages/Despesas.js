@@ -4,7 +4,8 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, 
 import { T, fmt, fmtS, fd, uid } from '../theme'
 import { CATS_DESPESA, CONTAS } from '../data'
 import { Card, Btn, Badge, StatusBadge, KpiCard, Toast, Confirm, SearchInput, Table, EmptyState } from '../components/ui'
-import AdvancedFilters, { defaultFilter, filterLancamentos } from '../components/AdvancedFilters'
+import AdvancedFilters, { defaultFilter, filterLancamentos, loadSavedFilter } from '../components/AdvancedFilters'
+import * as XLSX from 'xlsx'
 
 const COLORS = ['#2563eb', '#dc2626', '#7c3aed', '#16a34a', '#ea580c', '#0891b2', '#ca8a04', '#9ca3af']
 const FORMAS_PAG = ['PIX', 'Boleto', 'Transferência', 'Dinheiro', 'Cartão Débito', 'Cartão Crédito', 'Cheque']
@@ -74,7 +75,7 @@ function newForm() {
 
 export default function Despesas({ empresa, data, onSave, onDelete, onSaveBatch }) {
   // List state
-  const [filter, setFilter] = useState(defaultFilter)
+  const [filter, setFilter] = useState(() => loadSavedFilter('x8_filter_despesas') || defaultFilter())
   const [search, setSearch] = useState('')
   const [confirm, setConfirm] = useState(null)
   const [toast, setToast] = useState(null)
@@ -300,6 +301,22 @@ export default function Despesas({ empresa, data, onSave, onDelete, onSaveBatch 
     spf('valorPago', maskR(e.target.value.replace(/\D/g, '')))
   }
 
+  const exportExcel = () => {
+    const wb = XLSX.utils.book_new()
+    const ws = XLSX.utils.json_to_sheet(filtered.map(l => ({
+      'Vencimento': l.vencimento || l.data || '',
+      'Descrição': l.desc || '',
+      'Fornecedor': l.fornecedor || '',
+      'Categoria': l.catNome || '',
+      'Centro de Custo': l.centroCusto || '',
+      'Forma de Pagamento': l.formaPagamento || '',
+      'Valor (R$)': l.valor || 0,
+      'Status': l.status || '',
+    })))
+    XLSX.utils.book_append_sheet(wb, ws, 'Despesas')
+    XLSX.writeFile(wb, `despesas_${empresa.nome}_${filter.inicio}_${filter.fim}.xlsx`)
+  }
+
   // Colunas da tabela
   const columns = [
     { key: 'vencimento', label: 'Vencimento', render: (v, row) => <span style={{ fontSize: 13, color: row.status === 'Atrasada' ? T.red : 'var(--text)' }}>{fd(v || row.data)}</span> },
@@ -354,12 +371,12 @@ export default function Despesas({ empresa, data, onSave, onDelete, onSaveBatch 
           </div>
         </div>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          <Btn variant="ghost" icon="↑">Exportar</Btn>
+          <Btn variant="ghost" icon="↑" onClick={exportExcel}>Exportar</Btn>
           <Btn variant="danger" icon="+" onClick={openNew}>Nova despesa</Btn>
         </div>
       </div>
 
-      <AdvancedFilters tipo="despesa" cats={CATS_DESPESA} filter={filter} onApply={setFilter} />
+      <AdvancedFilters tipo="despesa" cats={CATS_DESPESA} filter={filter} onApply={setFilter} storageKey="x8_filter_despesas" />
 
       <div className="g-4">
         <KpiCard icon="↓" iconBg={T.redL}    label="Despesas totais" value={fmt(tTotal)} />

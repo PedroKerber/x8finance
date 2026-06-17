@@ -122,8 +122,16 @@ export const Modal = ({ title, onClose, children, footer, width = 520 }) => (
 
 export const Toast = ({ msg, type, onDone }) => {
   useEffect(() => { const t = setTimeout(onDone, 2800); return () => clearTimeout(t) }, [onDone])
+  const isMob = window.innerWidth < 768
   return (
-    <div style={{ position: 'fixed', top: 20, right: 20, background: type === 'error' ? T.red : T.primary, color: '#fff', borderRadius: 10, padding: '12px 20px', fontWeight: 600, fontSize: 14, zIndex: 9999, boxShadow: T.shadowMd }}>
+    <div style={{
+      position: 'fixed', zIndex: 9999, boxShadow: T.shadowMd,
+      background: type === 'error' ? T.red : T.primary, color: '#fff',
+      borderRadius: 10, padding: '12px 20px', fontWeight: 600, fontSize: 14,
+      ...(isMob
+        ? { bottom: 82, left: 16, right: 16, textAlign: 'center' }
+        : { top: 20, right: 20 })
+    }}>
       {type === 'error' ? '❌  ' : '✅  '}{msg}
     </div>
   )

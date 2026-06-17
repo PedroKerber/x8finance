@@ -4,7 +4,8 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, 
 import { T, fmt, fmtS, fd, uid } from '../theme'
 import { CATS_RECEITA, CONTAS } from '../data'
 import { Card, Btn, Badge, StatusBadge, KpiCard, Toast, Confirm, SearchInput, Table, EmptyState } from '../components/ui'
-import AdvancedFilters, { defaultFilter, filterLancamentos } from '../components/AdvancedFilters'
+import AdvancedFilters, { defaultFilter, filterLancamentos, loadSavedFilter } from '../components/AdvancedFilters'
+import * as XLSX from 'xlsx'
 
 const COLORS = ['#16a34a', '#2563eb', '#7c3aed', '#ea580c', '#0891b2', '#9ca3af']
 const FORMAS_REC  = ['PIX', 'Boleto', 'Transferência', 'Dinheiro', 'Cartão Débito', 'Cartão Crédito', 'Cheque']
@@ -87,7 +88,7 @@ function newForm() {
 
 export default function Receitas({ empresa, data, onSave, onDelete, onSaveBatch }) {
   // List state
-  const [filter, setFilter] = useState(defaultFilter)
+  const [filter, setFilter] = useState(() => loadSavedFilter('x8_filter_receitas') || defaultFilter())
   const [search, setSearch] = useState('')
   const [confirm, setConfirm] = useState(null)
   const [toast, setToast] = useState(null)
@@ -314,6 +315,22 @@ export default function Receitas({ empresa, data, onSave, onDelete, onSaveBatch 
     srf('valorRecebido', maskR(e.target.value.replace(/\D/g, '')))
   }
 
+  const exportExcel = () => {
+    const wb = XLSX.utils.book_new()
+    const ws = XLSX.utils.json_to_sheet(filtered.map(l => ({
+      'Vencimento': l.vencimento || l.data || '',
+      'Descrição': l.desc || '',
+      'Cliente': l.cliente || '',
+      'Categoria': l.catNome || '',
+      'Centro de Custo': l.centroCusto || '',
+      'Forma de Recebimento': l.formaRecebimento || '',
+      'Valor (R$)': l.valor || 0,
+      'Status': l.status || '',
+    })))
+    XLSX.utils.book_append_sheet(wb, ws, 'Receitas')
+    XLSX.writeFile(wb, `receitas_${empresa.nome}_${filter.inicio}_${filter.fim}.xlsx`)
+  }
+
   // Table columns
   const columns = [
     { key: 'vencimento', label: 'Vencimento', render: (v, row) => <span style={{ fontSize: 13, color: row.status === 'Atrasada' ? T.red : 'var(--text)' }}>{fd(v || row.data)}</span> },
@@ -368,12 +385,12 @@ export default function Receitas({ empresa, data, onSave, onDelete, onSaveBatch 
           </div>
         </div>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          <Btn variant="ghost" icon="↑">Exportar</Btn>
+          <Btn variant="ghost" icon="↑" onClick={exportExcel}>Exportar</Btn>
           <Btn icon="+" onClick={openNew}>Nova receita</Btn>
         </div>
       </div>
 
-      <AdvancedFilters tipo="receita" cats={CATS_RECEITA} filter={filter} onApply={setFilter} />
+      <AdvancedFilters tipo="receita" cats={CATS_RECEITA} filter={filter} onApply={setFilter} storageKey="x8_filter_receitas" />
 
       <div className="g-4">
         <KpiCard icon="$"  iconBg={T.greenL}  label="Total de receitas"    value={fmt(tTotal)} />
