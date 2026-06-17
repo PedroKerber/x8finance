@@ -3,8 +3,8 @@ import RecorrenciaPanel from '../components/RecorrenciaPanel'
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 import { T, fmt, fmtS, fd, uid } from '../theme'
 import { CATS_RECEITA, CONTAS } from '../data'
-import { Card, Btn, Badge, StatusBadge, KpiCard, Toast, Confirm, SearchInput, FilterBar, Table, EmptyState } from '../components/ui'
-import CompetenciaSelector, { COMPETENCIA_DEFAULT, filterByCompetencia } from '../components/CompetenciaSelector'
+import { Card, Btn, Badge, StatusBadge, KpiCard, Toast, Confirm, SearchInput, Table, EmptyState } from '../components/ui'
+import AdvancedFilters, { defaultFilter, filterLancamentos } from '../components/AdvancedFilters'
 
 const COLORS = ['#16a34a', '#2563eb', '#7c3aed', '#ea580c', '#0891b2', '#9ca3af']
 const FORMAS_REC  = ['PIX', 'Boleto', 'Transferência', 'Dinheiro', 'Cartão Débito', 'Cartão Crédito', 'Cheque']
@@ -87,10 +87,8 @@ function newForm() {
 
 export default function Receitas({ empresa, data, onSave, onDelete, onSaveBatch }) {
   // List state
-  const [comp, setComp] = useState(COMPETENCIA_DEFAULT)
+  const [filter, setFilter] = useState(defaultFilter)
   const [search, setSearch] = useState('')
-  const [fStatus, setFStatus] = useState('')
-  const [fCat, setFCat] = useState('')
   const [confirm, setConfirm] = useState(null)
   const [toast, setToast] = useState(null)
 
@@ -114,16 +112,14 @@ export default function Receitas({ empresa, data, onSave, onDelete, onSaveBatch 
   const [clienteForm, setClienteForm]         = useState({ nome: '', cpfCnpj: '', tel: '', email: '' })
 
   // Derived data
-  const allLancs = (data.lancamentos || []).filter(l => l.tipo === 'receita')
-  const lancs    = useMemo(() => filterByCompetencia(allLancs, comp), [allLancs, comp])
+  const allLancs = useMemo(() => (data.lancamentos || []).filter(l => l.tipo === 'receita'), [data.lancamentos])
+  const lancs    = useMemo(() => filterLancamentos(allLancs, filter), [allLancs, filter])
 
   const filtered = useMemo(() => {
     let l = [...lancs].sort((a, b) => (b.vencimento || b.data || '').localeCompare(a.vencimento || a.data || ''))
     if (search) l = l.filter(x => [x.desc, x.catNome, x.cliente].filter(Boolean).some(v => v.toLowerCase().includes(search.toLowerCase())))
-    if (fStatus) l = l.filter(x => x.status === fStatus)
-    if (fCat)    l = l.filter(x => x.cat === fCat)
     return l
-  }, [lancs, search, fStatus, fCat])
+  }, [lancs, search])
 
   const tTotal = lancs.reduce((s, l) => s + l.valor, 0)
   const tRec   = lancs.filter(l => l.status === 'Recebida').reduce((s, l) => s + l.valor, 0)
@@ -138,14 +134,14 @@ export default function Receitas({ empresa, data, onSave, onDelete, onSaveBatch 
   }, [lancs])
 
   const evolData = useMemo(() => {
-    const [ano, mes] = (comp.mesAno || TODAY.slice(0, 7)).split('-')
+    const [ano, mes] = (filter.inicio || TODAY).slice(0, 7).split('-')
     const days = ['01', '05', '10', '12', '15', '18', '20', '22', '25', '30']
     return days.map(d => {
       const dt = `${ano}-${mes}-${d}`
       const v = lancs.filter(l => l.data <= dt && l.status === 'Recebida').reduce((s, l) => s + l.valor, 0)
       return { dia: `${d}/${mes}`, v }
     })
-  }, [lancs, comp.mesAno])
+  }, [lancs, filter.inicio])
 
   // Form helpers
   const sf  = (k, v) => setForm(f => ({ ...f, [k]: v }))
@@ -371,36 +367,13 @@ export default function Receitas({ empresa, data, onSave, onDelete, onSaveBatch 
             <div style={{ color: 'var(--text-sub)', fontSize: 14 }}>Acompanhe todas as receitas da empresa selecionada.</div>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          <CompetenciaSelector {...comp} onChange={setComp} />
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <Btn variant="ghost" icon="↑">Exportar</Btn>
           <Btn icon="+" onClick={openNew}>Nova receita</Btn>
         </div>
       </div>
 
-      {/* Quick filter chips */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
-        {[['', 'Todas'], ['A receber', 'A Receber'], ['Recebida', 'Recebidas'], ['Atrasada', 'Atrasadas'], ['Cancelada', 'Canceladas']].map(([v, l]) => (
-          <button key={v} onClick={() => setFStatus(v)} style={{
-            padding: '6px 16px', borderRadius: 20, fontSize: 13, fontWeight: fStatus === v ? 600 : 400,
-            cursor: 'pointer', fontFamily: 'inherit', transition: 'all .15s',
-            background: fStatus === v ? T.primary : 'var(--card)',
-            color: fStatus === v ? '#fff' : 'var(--text-sub)',
-            border: fStatus === v ? 'none' : `1.5px solid var(--border)`,
-          }}>{l}</button>
-        ))}
-      </div>
-
-      <FilterBar>
-        <select value={fCat} onChange={e => setFCat(e.target.value)} style={{ background: 'var(--card)', border: `1px solid var(--border)`, borderRadius: 8, padding: '7px 14px', fontSize: 13, color: 'var(--text-sub)', outline: 'none', fontFamily: 'inherit' }}>
-          <option value="">🏷 Todas as categorias</option>
-          {CATS_RECEITA.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
-        </select>
-        <select value={fStatus} onChange={e => setFStatus(e.target.value)} style={{ background: 'var(--card)', border: `1px solid var(--border)`, borderRadius: 8, padding: '7px 14px', fontSize: 13, color: 'var(--text-sub)', outline: 'none', fontFamily: 'inherit' }}>
-          <option value="">📌 Todos os status</option>
-          {['Recebida', 'A receber', 'Atrasada', 'Cancelada'].map(s => <option key={s} value={s}>{s}</option>)}
-        </select>
-      </FilterBar>
+      <AdvancedFilters tipo="receita" cats={CATS_RECEITA} filter={filter} onApply={setFilter} />
 
       <div className="g-4">
         <KpiCard icon="$"  iconBg={T.greenL}  label="Total de receitas"    value={fmt(tTotal)} />
