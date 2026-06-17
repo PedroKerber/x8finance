@@ -103,14 +103,19 @@ export const Select = ({ label, value, onChange, options, placeholder, style = {
   </div>
 )
 
-export const Modal = ({ title, onClose, children, width = 520 }) => (
+export const Modal = ({ title, onClose, children, footer, width = 520 }) => (
   <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-    <Card style={{ width: '100%', maxWidth: width, maxHeight: '90vh', overflowY: 'auto' }}>
-      <div style={{ padding: '18px 20px', borderBottom: `1px solid ${T.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <Card style={{ width: '100%', maxWidth: width, maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ padding: '18px 20px', borderBottom: `1px solid ${T.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
         <span style={{ fontWeight: 700, fontSize: 16 }}>{title}</span>
         <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: T.sub }}>✕</button>
       </div>
-      <div style={{ padding: 20 }}>{children}</div>
+      <div style={{ padding: 20, overflowY: 'auto', flex: 1 }}>{children}</div>
+      {footer && (
+        <div style={{ padding: '14px 20px', borderTop: `1px solid ${T.border}`, display: 'flex', justifyContent: 'flex-end', gap: 10, flexShrink: 0 }}>
+          {footer}
+        </div>
+      )}
     </Card>
   </div>
 )
