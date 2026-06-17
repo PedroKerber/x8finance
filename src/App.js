@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react'
 import { useMobile } from './context/MobileContext'
-import { T } from './theme'
+import { T, uid } from './theme'
 import { initData, EMPRESAS } from './data'
 import { supabase, getLancamentos, saveLancamento, deleteLancamento, saveLancamentos, getMetas, saveMeta, deleteMeta, signIn, signOut, deleteAllLancamentos, deleteAllMetas } from './supabase'
 
@@ -34,6 +34,7 @@ export default function App() {
   const [empresa, setEmpresa] = useState(null)
   const [page, setPage] = useState('dashboard')
   const [appData, setAppData] = useState(() => initData())
+  const [empresas, setEmpresas] = useState(EMPRESAS)
   const [loading, setLoading] = useState(true)
   const [perfilFoto, setPerfilFoto] = useState(() => localStorage.getItem('x8_foto') || '')
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('x8_sidebar') === '1')
@@ -58,6 +59,15 @@ export default function App() {
     })
     return () => listener.subscription.unsubscribe()
   }, [])
+
+  // Carrega empresas customizadas do localStorage
+  useEffect(() => {
+    if (!usuario) return
+    try {
+      const custom = JSON.parse(localStorage.getItem(`x8_empresas_${usuario.id}`) || '[]')
+      if (custom.length > 0) setEmpresas([...EMPRESAS, ...custom])
+    } catch {}
+  }, [usuario])
 
   // Carrega dados da empresa selecionada do banco
   useEffect(() => {
@@ -151,6 +161,25 @@ export default function App() {
     setAppData(prev => ({ ...prev, [empresa.id]: { ...prev[empresa.id], mesFechado: false } }))
   }, [empresa])
 
+  const handleSaveEmpresa = useCallback((form) => {
+    const words = form.nome.trim().split(/\s+/).filter(Boolean)
+    const initials = words.slice(0, 2).map(w => w[0].toUpperCase()).join('') || 'EM'
+    const newEmp = {
+      id: uid(),
+      nome: form.nome.trim(),
+      initials,
+      cnpj: form.cnpj.trim(),
+      cor: form.cor || '#16a34a',
+      setor: form.setor.trim(),
+    }
+    try {
+      const saved = JSON.parse(localStorage.getItem(`x8_empresas_${usuario.id}`) || '[]')
+      localStorage.setItem(`x8_empresas_${usuario.id}`, JSON.stringify([...saved, newEmp]))
+    } catch {}
+    setEmpresas(prev => [...prev, newEmp])
+    setAppData(prev => ({ ...prev, [newEmp.id]: { lancamentos: [], metas: [], mesFechado: false } }))
+  }, [usuario])
+
   const handleReset = useCallback(async () => {
     if (usuario) {
       await deleteAllLancamentos(usuario.id)
@@ -184,7 +213,8 @@ export default function App() {
         onSelect={emp => { setEmpresa(emp); setPage('dashboard') }}
         data={appData}
         onLogout={handleLogout}
-        onNovaEmpresa={() => { setEmpresa(EMPRESAS[0]); setPage('empresas') }}
+        empresas={empresas}
+        onSaveEmpresa={handleSaveEmpresa}
       />
     )
   }
@@ -203,7 +233,7 @@ export default function App() {
       case 'metas': return <Metas {...sharedProps} />
       case 'importar': return <Importar empresa={empresa} onImport={handleImport} />
       case 'relatorios': return <Relatorios {...sharedProps} />
-      case 'empresas': return <Empresas setPage={setPage} />
+      case 'empresas': return <Empresas setPage={setPage} empresas={empresas} onSaveEmpresa={handleSaveEmpresa} />
       case 'categorias': return <Categorias {...sharedProps} />
       case 'centro_custo': return <CentroCusto {...sharedProps} />
       case 'usuarios': return <Usuarios usuario={usuario} />

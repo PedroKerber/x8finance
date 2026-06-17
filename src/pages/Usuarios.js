@@ -66,7 +66,7 @@ export default function Usuarios({ usuario }) {
   const [usuarios, setUsuarios] = useState(() => {
     const jefferson = { id: '2', nome: 'Jefferson Costa', email: 'jeffersoncostat@gmail.com', telefone: '22998985518', empresaIds: EMPRESAS.map(e => e.id), cargo: 'CEO / Administrador Master', perfil: 'master', status: 'ativo', foto: '', ultimoAcesso: 'Nunca', criadoEm: '16/06/2026' }
     try {
-      const saved = localStorage.getItem('x8_usuarios')
+      const saved = localStorage.getItem('x8_usuarios_v2')
       if (saved) {
         const parsed = JSON.parse(saved)
         const hasJefferson = parsed.some(u => u.email === 'jeffersoncostat@gmail.com')
@@ -80,7 +80,7 @@ export default function Usuarios({ usuario }) {
   })
 
   useEffect(() => {
-    localStorage.setItem('x8_usuarios', JSON.stringify(usuarios))
+    localStorage.setItem('x8_usuarios_v2', JSON.stringify(usuarios))
   }, [usuarios])
 
   const [search, setSearch] = useState('')
