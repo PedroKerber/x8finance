@@ -333,6 +333,47 @@ export default function Receitas({ empresa, data, onSave, onDelete, onSaveBatch,
     XLSX.writeFile(wb, `receitas_${empresa.nome}_${filter.inicio}_${filter.fim}.xlsx`)
   }
 
+  const exportPDF = () => {
+    const html = `<html><head><meta charset="utf-8"><style>
+      body{font-family:Arial,sans-serif;font-size:11px;margin:28px;color:#111}
+      h1{font-size:18px;margin:0 0 2px;color:#07140F}
+      .sub{color:#666;font-size:12px;margin:0 0 16px}
+      .kpis{display:flex;gap:28px;padding:12px 0;border-top:2px solid #07140F;border-bottom:1px solid #e5e7eb;margin-bottom:16px}
+      .kpi .kl{font-size:10px;color:#888;margin-bottom:3px;text-transform:uppercase;letter-spacing:.3px}
+      .kpi .kv{font-size:15px;font-weight:700}
+      table{width:100%;border-collapse:collapse}
+      th{background:#f3f4f6;text-align:left;padding:7px 10px;font-size:10px;border-bottom:2px solid #e5e7eb;font-weight:700;text-transform:uppercase;letter-spacing:.4px}
+      td{padding:7px 10px;border-bottom:1px solid #f3f4f6;font-size:11px}
+      tr:nth-child(even) td{background:#fafafa}
+      .val{font-weight:700;color:#16a34a}
+      @media print{body{margin:16px}}
+    </style></head><body>
+      <h1>Receitas — ${empresa?.nome || ''}</h1>
+      <div class="sub">Período: ${filter.inicio} a ${filter.fim} · ${filtered.length} registros</div>
+      <div class="kpis">
+        <div class="kpi"><div class="kl">Total</div><div class="kv" style="color:#16a34a">${fmt(tTotal)}</div></div>
+        <div class="kpi"><div class="kl">Recebidas</div><div class="kv" style="color:#16a34a">${fmt(tRec)}</div></div>
+        <div class="kpi"><div class="kl">A Receber</div><div class="kv">${fmt(tPrev)}</div></div>
+        <div class="kpi"><div class="kl">Atrasadas</div><div class="kv" style="color:#dc2626">${fmt(tAtr)}</div></div>
+      </div>
+      <table>
+        <tr><th>Vencimento</th><th>Descrição</th><th>Cliente</th><th>Categoria</th><th>Centro de Custo</th><th>Forma Rec.</th><th>Valor</th><th>Status</th></tr>
+        ${filtered.map(l => `<tr>
+          <td>${l.vencimento || l.data || '—'}</td>
+          <td>${l.desc || ''}</td>
+          <td>${l.cliente || '—'}</td>
+          <td>${l.catNome || ''}</td>
+          <td>${l.centroCusto || '—'}</td>
+          <td>${l.formaRecebimento || '—'}</td>
+          <td class="val">${fmt(l.valor)}</td>
+          <td>${l.status || ''}</td>
+        </tr>`).join('')}
+      </table>
+    </body></html>`
+    const win = window.open('', '_blank')
+    if (win) { win.document.write(html); win.document.close(); win.print() }
+  }
+
   // Table columns
   const columns = [
     { key: 'vencimento', label: 'Vencimento', render: (v, row) => <span style={{ fontSize: 13, color: row.status === 'Atrasada' ? T.red : 'var(--text)' }}>{fd(v || row.data)}</span> },
@@ -387,7 +428,8 @@ export default function Receitas({ empresa, data, onSave, onDelete, onSaveBatch,
           </div>
         </div>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          <Btn variant="ghost" icon="↑" onClick={exportExcel}>Exportar</Btn>
+          <Btn variant="ghost" icon="📊" onClick={exportExcel}>Excel</Btn>
+          <Btn variant="ghost" icon="📄" onClick={exportPDF}>PDF</Btn>
           <Btn icon="+" onClick={openNew}>Nova receita</Btn>
         </div>
       </div>

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import * as XLSX from 'xlsx'
 import { ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import { T, fmt, fmtS } from '../theme'
 import { Card, KpiCard } from '../components/ui'
@@ -55,7 +56,7 @@ function buildChart(lancs, inicio, fim, view) {
   return pts
 }
 
-export default function FluxoCaixa({ data }) {
+export default function FluxoCaixa({ data, empresa }) {
   const [filter, setFilter] = useState(defaultFilter)
   const [view, setView]     = useState('diario')
 
@@ -95,6 +96,64 @@ export default function FluxoCaixa({ data }) {
 
   const periodoLabel = `${filter.inicio?.slice(5).replace('-', '/')} a ${filter.fim?.slice(5).replace('-', '/')}`
 
+  const exportExcel = () => {
+    const wb = XLSX.utils.book_new()
+    const ws = XLSX.utils.json_to_sheet(chartData.map(r => ({
+      'Período': r.dia,
+      'Entradas (R$)': r.entradas,
+      'Saídas (R$)': r.saidas,
+      'Saldo Acumulado (R$)': r.saldo,
+    })))
+    const wsSumario = XLSX.utils.aoa_to_sheet([
+      ['Resumo do Período'],
+      ['Entradas realizadas', totalEnt],
+      ['Saídas realizadas', totalSaid],
+      ['Saldo do período', saldoPer],
+      ['Saldo acumulado', saldoAcum],
+    ])
+    XLSX.utils.book_append_sheet(wb, ws, 'Fluxo de Caixa')
+    XLSX.utils.book_append_sheet(wb, wsSumario, 'Resumo')
+    XLSX.writeFile(wb, `fluxo_caixa_${empresa?.nome || 'empresa'}_${filter.inicio}_${filter.fim}.xlsx`)
+  }
+
+  const exportPDF = () => {
+    const html = `<html><head><meta charset="utf-8"><style>
+      body{font-family:Arial,sans-serif;font-size:11px;margin:28px;color:#111}
+      h1{font-size:18px;margin:0 0 2px;color:#07140F}
+      .sub{color:#666;font-size:12px;margin:0 0 16px}
+      .kpis{display:flex;gap:28px;padding:12px 0;border-top:2px solid #07140F;border-bottom:1px solid #e5e7eb;margin-bottom:16px}
+      .kpi .kl{font-size:10px;color:#888;margin-bottom:3px;text-transform:uppercase;letter-spacing:.3px}
+      .kpi .kv{font-size:15px;font-weight:700}
+      table{width:100%;border-collapse:collapse}
+      th{background:#f3f4f6;text-align:left;padding:7px 10px;font-size:10px;border-bottom:2px solid #e5e7eb;font-weight:700;text-transform:uppercase;letter-spacing:.4px}
+      td{padding:7px 10px;border-bottom:1px solid #f3f4f6;font-size:11px;text-align:right}
+      td:first-child{text-align:left;font-weight:600}
+      tr:nth-child(even) td{background:#fafafa}
+      .pos{color:#16a34a;font-weight:700}.neg{color:#dc2626;font-weight:700}
+      @media print{body{margin:16px}}
+    </style></head><body>
+      <h1>Fluxo de Caixa — ${empresa?.nome || ''}</h1>
+      <div class="sub">Período: ${filter.inicio} a ${filter.fim} · Visualização: ${view}</div>
+      <div class="kpis">
+        <div class="kpi"><div class="kl">Entradas realizadas</div><div class="kv pos">${fmt(totalEnt)}</div></div>
+        <div class="kpi"><div class="kl">Saídas realizadas</div><div class="kv neg">${fmt(totalSaid)}</div></div>
+        <div class="kpi"><div class="kl">Saldo do período</div><div class="kv ${saldoPer >= 0 ? 'pos' : 'neg'}">${fmt(saldoPer)}</div></div>
+        <div class="kpi"><div class="kl">Saldo acumulado</div><div class="kv ${saldoAcum >= 0 ? 'pos' : 'neg'}">${fmt(saldoAcum)}</div></div>
+      </div>
+      <table>
+        <tr><th>Período</th><th style="text-align:right">Entradas</th><th style="text-align:right">Saídas</th><th style="text-align:right">Saldo Acumulado</th></tr>
+        ${chartData.map(r => `<tr>
+          <td>${r.dia}</td>
+          <td class="pos">${fmt(r.entradas)}</td>
+          <td class="neg">${fmt(r.saidas)}</td>
+          <td class="${r.saldo >= 0 ? 'pos' : 'neg'}">${fmt(r.saldo)}</td>
+        </tr>`).join('')}
+      </table>
+    </body></html>`
+    const win = window.open('', '_blank')
+    if (win) { win.document.write(html); win.document.close(); win.print() }
+  }
+
   return (
     <div style={{ fontFamily: "'Segoe UI', sans-serif", color: 'var(--text)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
@@ -102,9 +161,14 @@ export default function FluxoCaixa({ data }) {
           <h1 style={{ fontWeight: 800, fontSize: 26, margin: '0 0 4px' }}>Fluxo de Caixa</h1>
           <div style={{ color: 'var(--text-sub)', fontSize: 14 }}>Controle de entradas, saídas e saldo acumulado.</div>
         </div>
-        <button style={{ background: T.primary, color: '#fff', border: 'none', borderRadius: 8, padding: '9px 16px', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'inherit' }}>
-          ↑ Exportar
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={exportExcel} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--card)', color: 'var(--text-sub)', border: '1.5px solid var(--border)', borderRadius: 8, padding: '9px 14px', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'inherit' }}>
+            📊 Excel
+          </button>
+          <button onClick={exportPDF} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--card)', color: 'var(--text-sub)', border: '1.5px solid var(--border)', borderRadius: 8, padding: '9px 14px', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'inherit' }}>
+            📄 PDF
+          </button>
+        </div>
       </div>
 
       <AdvancedFilters tipo="all" filter={filter} onApply={setFilter} />
