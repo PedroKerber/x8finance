@@ -93,3 +93,71 @@ input, select, textarea { font-family: inherit; }
 
 * { transition: none; }
 button, a { transition: background .15s, opacity .15s, transform .15s !important; }
+
+/* ── Responsive Grid Utilities ── */
+.g-kpi    { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; margin-bottom: 22px; }
+.g-4      { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 22px; }
+.g-6      { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin-bottom: 18px; }
+.g-3      { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 16px; }
+.g-2      { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+.g-flow   { display: grid; grid-template-columns: 1fr 1fr 320px; gap: 16px; margin-bottom: 16px; }
+.g-side   { display: grid; grid-template-columns: 1fr 300px; gap: 18px; margin-bottom: 16px; }
+.g-side-r { display: grid; grid-template-columns: 1fr 260px; gap: 16px; margin-bottom: 20px; }
+
+/* ── Page Headers ── */
+.page-hd  { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+
+/* ── Login layout ── */
+.login-left  { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px; color: #fff; }
+.login-right { width: 440px; background: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px; }
+
+/* ── Empresa card meta (stats beside card) ── */
+.emp-card-row   { display: flex; align-items: center; gap: 18px; }
+.emp-card-meta  { display: flex; gap: 40px; }
+.emp-card-acts  { display: flex; gap: 8px; }
+
+/* ── Table wrapper ── */
+.tbl-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+/* ── Mobile breakpoints ── */
+@media (max-width: 768px) {
+  /* Grid overrides */
+  .g-kpi    { grid-template-columns: repeat(2, 1fr) !important; gap: 10px; margin-bottom: 14px; }
+  .g-4      { grid-template-columns: repeat(2, 1fr) !important; gap: 10px; margin-bottom: 14px; }
+  .g-6      { grid-template-columns: repeat(2, 1fr) !important; gap: 8px; margin-bottom: 12px; }
+  .g-3      { grid-template-columns: 1fr !important; gap: 10px; margin-bottom: 12px; }
+  .g-2      { grid-template-columns: 1fr !important; gap: 10px; margin-bottom: 12px; }
+  .g-flow   { grid-template-columns: 1fr !important; gap: 10px; margin-bottom: 12px; }
+  .g-side   { grid-template-columns: 1fr !important; gap: 10px; margin-bottom: 12px; }
+  .g-side-r { grid-template-columns: 1fr !important; gap: 10px; margin-bottom: 12px; }
+
+  /* Page header — stack vertically */
+  .page-hd { flex-direction: column !important; align-items: flex-start !important; gap: 10px !important; }
+  .page-hd > *:last-child { width: 100%; }
+
+  /* Login — hide marketing panel, full form */
+  .login-left  { display: none !important; }
+  .login-right { width: 100% !important; padding: 40px 24px !important; min-height: 100vh; }
+
+  /* Empresa card meta — hide on mobile */
+  .emp-card-meta { display: none !important; }
+  .emp-card-row  { flex-wrap: wrap; gap: 12px; }
+
+  /* H1 size */
+  h1 { font-size: 22px !important; }
+
+  /* Prevent body horizontal overflow */
+  body { overflow-x: hidden; }
+
+  /* Select / input full width in filters */
+  .filter-row select, .filter-row input { width: 100%; min-width: 0; }
+
+  /* KPI card font size */
+  .kpi-val { font-size: 18px !important; }
+}
+
+@media (max-width: 480px) {
+  /* Even smaller screens — go to 1-col for KPIs too */
+  .g-kpi { grid-template-columns: 1fr 1fr !important; }
+  .g-4   { grid-template-columns: 1fr 1fr !important; }
+}

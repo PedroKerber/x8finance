@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { T } from '../theme'
 import { useTheme } from '../context/ThemeContext'
 
-// Sidebar palette (independent from T theme)
 const S = {
   bg: 'var(--sidebar-bg)',
   active: 'rgba(22,163,74,0.14)',
@@ -15,7 +14,6 @@ const S = {
   WC: 82,
 }
 
-// Feather-style SVG icon system — all shapes inside a React component (no module-level JSX)
 function Ico({ name, size = 18 }) {
   let inner
   if (name === 'dashboard')
@@ -64,6 +62,8 @@ function Ico({ name, size = 18 }) {
     inner = <><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></>
   else if (name === 'moon')
     inner = <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+  else if (name === 'menu')
+    inner = <><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></>
   else
     inner = <circle cx="12" cy="12" r="4"/>
 
@@ -105,7 +105,51 @@ const NAV_GROUPS = [
   ]},
 ]
 
-export default function Sidebar({ page, setPage, collapsed, onToggle, usuario, perfilFoto, onLogout, empresa }) {
+const BOTTOM_NAV_ITEMS = [
+  { id: 'dashboard', icon: 'dashboard', label: 'Início' },
+  { id: 'receitas', icon: 'receitas', label: 'Receitas' },
+  { id: 'despesas', icon: 'despesas', label: 'Despesas' },
+  { id: 'relatorios', icon: 'relatorios', label: 'Relatórios' },
+]
+
+function BottomNav({ page, setPage, onMenuOpen }) {
+  return (
+    <nav style={{
+      position: 'fixed', bottom: 0, left: 0, right: 0, height: 60,
+      background: S.bg, borderTop: `1px solid ${S.border}`,
+      display: 'flex', alignItems: 'stretch', zIndex: 400,
+      boxShadow: '0 -2px 16px rgba(0,0,0,0.3)',
+    }}>
+      {BOTTOM_NAV_ITEMS.map(item => {
+        const active = page === item.id
+        return (
+          <button key={item.id} onClick={() => setPage(item.id)} style={{
+            flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
+            justifyContent: 'center', gap: 3, background: 'none', border: 'none',
+            cursor: 'pointer', color: active ? '#fff' : S.txt,
+            borderTop: `2px solid ${active ? S.accent : 'transparent'}`,
+            transition: 'color .15s',
+          }}>
+            <span style={{ color: active ? S.accent : 'inherit', display: 'flex' }}>
+              <Ico name={item.icon} size={20} />
+            </span>
+            <span style={{ fontSize: 9, fontWeight: active ? 700 : 400, letterSpacing: '.03em' }}>{item.label}</span>
+          </button>
+        )
+      })}
+      <button onClick={onMenuOpen} style={{
+        flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
+        justifyContent: 'center', gap: 3, background: 'none', border: 'none',
+        cursor: 'pointer', color: S.txt, borderTop: '2px solid transparent',
+      }}>
+        <span style={{ display: 'flex' }}><Ico name="menu" size={20} /></span>
+        <span style={{ fontSize: 9, fontWeight: 400, letterSpacing: '.03em' }}>Menu</span>
+      </button>
+    </nav>
+  )
+}
+
+export default function Sidebar({ page, setPage, collapsed, onToggle, usuario, perfilFoto, onLogout, empresa, isMobile, mobileOpen, onMobileOpen, onMobileClose }) {
   const [userMenu, setUserMenu] = useState(false)
   const { dark, toggleTheme } = useTheme()
 
@@ -114,6 +158,128 @@ export default function Sidebar({ page, setPage, collapsed, onToggle, usuario, p
   const cargoDisplay = savedPerfil.cargo || 'Master'
   const inicial = (nomeDisplay[0] || 'U').toUpperCase()
 
+  const navigate = id => {
+    setPage(id)
+    if (isMobile && onMobileClose) onMobileClose()
+  }
+
+  // ── MOBILE RENDER ────────────────────────────────────────────────────────────
+  if (isMobile) {
+    return (
+      <>
+        {/* Overlay drawer */}
+        {mobileOpen && (
+          <>
+            <div
+              onClick={onMobileClose}
+              style={{ position: 'fixed', inset: 0, zIndex: 498, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(2px)' }}
+            />
+            <aside style={{
+              position: 'fixed', left: 0, top: 0, bottom: 60, width: 288, zIndex: 499,
+              background: S.bg, display: 'flex', flexDirection: 'column',
+              boxShadow: '4px 0 32px rgba(0,0,0,0.45)',
+              overflow: 'hidden',
+            }}>
+              {/* Drawer header */}
+              <div style={{
+                height: 64, display: 'flex', alignItems: 'center', gap: 10,
+                padding: '0 16px 0 18px', borderBottom: `1px solid ${S.border}`, flexShrink: 0,
+              }}>
+                <div style={{
+                  width: 32, height: 32, borderRadius: 8, background: S.accent, flexShrink: 0,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontWeight: 900, fontSize: 13, color: '#fff', letterSpacing: -0.5,
+                }}>X8</div>
+                <span style={{ fontWeight: 800, fontSize: 17, color: '#fff', letterSpacing: -0.3, flex: 1 }}>Finance</span>
+                <button
+                  onClick={onMobileClose}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: S.txt, padding: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8 }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                </button>
+              </div>
+
+              {/* Drawer nav */}
+              <nav className="sidebar-nav" style={{ flex: 1, overflowY: 'auto', padding: '8px 0 6px' }}>
+                {NAV_GROUPS.map((group, gi) => (
+                  <div key={gi} style={{ marginBottom: 2 }}>
+                    {group.label && (
+                      <div style={{
+                        padding: '10px 20px 4px', fontSize: 10, fontWeight: 700,
+                        letterSpacing: 1.2, color: S.txt, textTransform: 'uppercase', userSelect: 'none',
+                      }}>{group.label}</div>
+                    )}
+                    {group.items.map(item => {
+                      const active = page === item.id
+                      return (
+                        <div key={item.id} style={{ padding: '1px 8px' }}>
+                          <button
+                            onClick={() => navigate(item.id)}
+                            style={{
+                              display: 'flex', alignItems: 'center', gap: 11,
+                              width: '100%', padding: '11px 12px',
+                              background: active ? S.active : 'transparent',
+                              color: active ? S.txtActive : S.txt,
+                              border: 'none',
+                              borderLeft: active ? `3px solid ${S.accent}` : '3px solid transparent',
+                              borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit',
+                              fontSize: 14, fontWeight: active ? 600 : 400,
+                              textAlign: 'left',
+                            }}>
+                            <span style={{ color: active ? S.accent : 'inherit', display: 'flex', flexShrink: 0 }}>
+                              <Ico name={item.icon} size={18} />
+                            </span>
+                            <span>{item.label}</span>
+                          </button>
+                        </div>
+                      )
+                    })}
+                  </div>
+                ))}
+              </nav>
+
+              {/* Drawer footer */}
+              <div style={{ borderTop: `1px solid ${S.border}`, padding: '12px 16px', flexShrink: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+                  {perfilFoto ? (
+                    <img src={perfilFoto} alt="Perfil" style={{ width: 38, height: 38, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: `2px solid ${S.accent}55` }} />
+                  ) : (
+                    <div style={{ width: 38, height: 38, borderRadius: '50%', background: S.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 15, flexShrink: 0 }}>
+                      {inicial}
+                    </div>
+                  )}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ color: '#fff', fontWeight: 600, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nomeDisplay}</div>
+                    <div style={{ color: S.txt, fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cargoDisplay}</div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    onClick={() => { toggleTheme(); }}
+                    style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, background: S.hover, border: 'none', borderRadius: 8, padding: '8px', cursor: 'pointer', color: S.txt, fontFamily: 'inherit', fontSize: 12 }}>
+                    <Ico name={dark ? 'sun' : 'moon'} size={14} />
+                    {dark ? 'Claro' : 'Escuro'}
+                  </button>
+                  <button
+                    onClick={() => { onMobileClose && onMobileClose(); onLogout && onLogout() }}
+                    style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, background: 'rgba(220,38,38,0.12)', border: 'none', borderRadius: 8, padding: '8px', cursor: 'pointer', color: '#f87171', fontFamily: 'inherit', fontSize: 12 }}>
+                    <Ico name="logout" size={14} />
+                    Sair
+                  </button>
+                </div>
+              </div>
+            </aside>
+          </>
+        )}
+
+        {/* Bottom navigation bar */}
+        <BottomNav page={page} setPage={setPage} onMenuOpen={onMobileOpen} />
+      </>
+    )
+  }
+
+  // ── DESKTOP RENDER ────────────────────────────────────────────────────────────
   const toggleBtn = (
     <button onClick={onToggle}
       title={collapsed ? 'Expandir menu' : 'Recolher menu'}
@@ -219,7 +385,6 @@ export default function Sidebar({ page, setPage, collapsed, onToggle, usuario, p
       {/* ── FOOTER ── */}
       <div style={{ borderTop: `1px solid ${S.border}`, padding: '10px 8px', flexShrink: 0 }}>
 
-        {/* User menu — rendered at fixed position to escape overflow:hidden */}
         {userMenu && (
           <>
             <div onClick={() => setUserMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 399 }} />
@@ -260,7 +425,6 @@ export default function Sidebar({ page, setPage, collapsed, onToggle, usuario, p
           </>
         )}
 
-        {/* Profile button */}
         <button onClick={() => setUserMenu(m => !m)}
           title={collapsed ? nomeDisplay : undefined}
           style={{

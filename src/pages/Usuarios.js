@@ -262,7 +262,7 @@ export default function Usuarios({ usuario }) {
       <input ref={fotoRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFotoChange} />
 
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+      <div className="page-hd">
         <div>
           <h1 style={{ fontWeight: 800, fontSize: 26, margin: '0 0 4px' }}>Usuários</h1>
           <div style={{ color: T.sub, fontSize: 14 }}>Gerencie usuários, permissões e níveis de acesso.</div>
@@ -271,7 +271,7 @@ export default function Usuarios({ usuario }) {
       </div>
 
       {/* KPIs */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 22 }}>
+      <div className="g-4">
         {[
           { svg: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>, cor: '#2563eb', bg: T.blueL, label: 'Total de Usuários', value: usuarios.length, sub: `${ativos} ativo${ativos !== 1 ? 's' : ''}` },
           { svg: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>, cor: '#7c3aed', bg: '#7c3aed14', label: 'Master', value: masters, sub: `${Math.round(masters / Math.max(usuarios.length, 1) * 100)}% do total` },
@@ -313,7 +313,8 @@ export default function Usuarios({ usuario }) {
       </Card>
 
       {/* Lista de usuários */}
-      <Card style={{ padding: 0, marginBottom: 24 }}>
+      <div className="tbl-wrap" style={{ marginBottom: 24 }}>
+      <Card style={{ padding: 0, minWidth: 680 }}>
         <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.4fr 108px 100px 200px', background: T.bg, borderBottom: `1px solid ${T.border}`, borderRadius: '11px 11px 0 0' }}>
           {[['Usuário', 20], ['Empresa / Cargo', 16], ['Perfil', 16], ['Status', 16], ['Ações', 16]].map(([h, pl]) => (
             <div key={h} style={{ padding: `11px ${pl}px`, fontSize: 11, fontWeight: 700, color: T.muted, textTransform: 'uppercase', letterSpacing: .5 }}>{h}</div>
@@ -408,9 +409,10 @@ export default function Usuarios({ usuario }) {
           Mostrando {filtered.length} de {usuarios.length} usuário{usuarios.length !== 1 ? 's' : ''}
         </div>
       </Card>
+      </div>
 
       {/* Perfis */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 18 }}>
+      <div className="g-side">
         <Card style={{ padding: 22 }}>
           <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>Perfis e Permissões</div>
           <div style={{ color: T.sub, fontSize: 13, marginBottom: 20 }}>Entenda as permissões de cada perfil do sistema.</div>

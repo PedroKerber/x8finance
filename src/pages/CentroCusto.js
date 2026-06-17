@@ -77,7 +77,7 @@ export default function CentroCusto({ empresa, data }) {
   return (
     <div style={{ fontFamily: "'Segoe UI', sans-serif", color: T.text }}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+      <div className="page-hd">
         <div>
           <h1 style={{ fontWeight: 800, fontSize: 26, margin: '0 0 4px' }}>Centro de Custo</h1>
           <div style={{ color: T.sub, fontSize: 14 }}>Organize e analise seus gastos por centro de custo.</div>
@@ -86,7 +86,7 @@ export default function CentroCusto({ empresa, data }) {
       </div>
 
       {/* KPIs */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 22 }}>
+      <div className="g-4">
         {[
           { icon: '📊', bg: T.blueL, label: 'Total de Centros', value: centros.length, sub: 'Centros cadastrados' },
           { icon: '✅', bg: T.greenL, label: 'Centros Ativos', value: ativos, sub: `${Math.round(ativos / centros.length * 100)}% do total` },
@@ -195,7 +195,7 @@ export default function CentroCusto({ empresa, data }) {
       </Card>
 
       {/* Bottom */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
+      <div className="g-2">
         <Card style={{ padding: 20 }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
             <div style={{ fontSize: 36 }}>💡</div>

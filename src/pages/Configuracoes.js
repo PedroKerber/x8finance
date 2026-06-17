@@ -302,7 +302,7 @@ export default function Configuracoes({ usuario, onLogout, empresa, onPerfilUpda
       </Card>
 
       {/* Grid principal */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
+      <div className="g-2">
 
         {/* Informações Pessoais */}
         <Card style={{ padding: '24px 28px' }}>
@@ -382,7 +382,7 @@ export default function Configuracoes({ usuario, onLogout, empresa, onPerfilUpda
       </div>
 
       {/* Grid secundário */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
+      <div className="g-2">
 
         {/* Empresas Vinculadas */}
         <Card style={{ padding: '24px 28px' }}>

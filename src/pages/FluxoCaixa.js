@@ -43,7 +43,7 @@ export default function FluxoCaixa({ data }) {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 22 }}>
+      <div className="g-4">
         <KpiCard icon="↑" iconBg={T.greenL} label="Total de entradas" value={fmt(totalEnt)} delta={18.2} />
         <KpiCard icon="↓" iconBg={T.redL} label="Total de saídas" value={fmt(totalSaid)} delta={-6.8} />
         <KpiCard icon="=" iconBg={T.blueL} label="Saldo do período" value={fmt(saldoPer)} delta={42.1} />
@@ -82,7 +82,7 @@ export default function FluxoCaixa({ data }) {
       </Card>
 
       {/* Projeções */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
+      <div className="g-3">
         {[
           { periodo: '30 dias', entradas: totalEnt * 1.05, saidas: totalSaid * 0.98, cor: T.green },
           { periodo: '60 dias', entradas: totalEnt * 2.1, saidas: totalSaid * 1.95, cor: T.blue },

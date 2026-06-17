@@ -23,7 +23,7 @@ export default function Empresas({ setPage }) {
   return (
     <div style={{ fontFamily: "'Segoe UI', sans-serif", color: T.text }}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+      <div className="page-hd">
         <div>
           <h1 style={{ fontWeight: 800, fontSize: 26, margin: '0 0 4px' }}>Empresas</h1>
           <div style={{ color: T.sub, fontSize: 14 }}>Gerencie todas as empresas do grupo, usuários e permissões.</div>
@@ -32,7 +32,7 @@ export default function Empresas({ setPage }) {
       </div>
 
       {/* KPIs */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 22 }}>
+      <div className="g-4">
         {[
           { icon: '🏢', bg: T.blueL, label: 'Total de Empresas', value: EMPRESAS.length },
           { icon: '✅', bg: T.greenL, label: 'Empresas Ativas', value: ativas },
@@ -75,7 +75,7 @@ export default function Empresas({ setPage }) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {empresas.map(emp => (
           <Card key={emp.id} style={{ padding: '18px 22px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
+            <div className="emp-card-row">
               {/* Logo */}
               <div style={{ width: 60, height: 60, borderRadius: 12, background: '#1a1a2e', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <span style={{ color: emp.cor, fontWeight: 900, fontSize: 16, letterSpacing: -1 }}>{emp.initials}</span>
@@ -87,7 +87,7 @@ export default function Empresas({ setPage }) {
                 <span style={{ background: T.greenL, color: T.green, fontSize: 11, fontWeight: 700, borderRadius: 4, padding: '2px 8px' }}>Ativa</span>
               </div>
               {/* Meta */}
-              <div style={{ display: 'flex', gap: 40 }}>
+              <div className="emp-card-meta">
                 <div>
                   <div style={{ color: T.muted, fontSize: 11, marginBottom: 2 }}>Usuários</div>
                   <div style={{ fontWeight: 700, fontSize: 14 }}>{emp.usuarios} usuários</div>

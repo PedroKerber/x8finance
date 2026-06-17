@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react'
+import { useMobile } from './context/MobileContext'
 import { T } from './theme'
 import { initData, EMPRESAS } from './data'
 import { supabase, getLancamentos, saveLancamento, deleteLancamento, saveLancamentos, getMetas, saveMeta, deleteMeta, signIn, signOut, deleteAllLancamentos, deleteAllMetas } from './supabase'
@@ -28,6 +29,7 @@ import Placeholder from './pages/Placeholder'
 const PLACEHOLDER_PAGES = ['fornecedores', 'clientes', 'scanner', 'contas_pagar', 'contas_receber']
 
 export default function App() {
+  const isMobile = useMobile()
   const [usuario, setUsuario] = useState(null)
   const [empresa, setEmpresa] = useState(null)
   const [page, setPage] = useState('dashboard')
@@ -35,6 +37,7 @@ export default function App() {
   const [loading, setLoading] = useState(true)
   const [perfilFoto, setPerfilFoto] = useState(() => localStorage.getItem('x8_foto') || '')
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('x8_sidebar') === '1')
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const sidebarW = sidebarCollapsed ? 82 : 280
 
   // Verifica sessão ao carregar
@@ -211,17 +214,22 @@ export default function App() {
           localStorage.setItem('x8_sidebar', n ? '1' : '')
         }}
         usuario={usuario} perfilFoto={perfilFoto} onLogout={handleLogout} empresa={empresa}
+        isMobile={isMobile}
+        mobileOpen={mobileMenuOpen}
+        onMobileOpen={() => setMobileMenuOpen(true)}
+        onMobileClose={() => setMobileMenuOpen(false)}
       />
-      <div style={{ marginLeft: sidebarW, flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100vh', minWidth: 0, transition: 'margin-left .2s ease' }}>
+      <div style={{ marginLeft: isMobile ? 0 : sidebarW, flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100vh', minWidth: 0, transition: 'margin-left .2s ease' }}>
         <TopBar
           empresa={empresa}
           setEmpresa={emp => { setEmpresa(emp); setPage('dashboard') }}
           usuario={usuario}
           onLogout={handleLogout}
           setPage={setPage}
-          sidebarWidth={sidebarW}
+          sidebarWidth={isMobile ? 0 : sidebarW}
+          isMobile={isMobile}
         />
-        <main style={{ flex: 1, marginTop: 60, padding: '28px 28px 40px', overflowX: 'hidden' }}>
+        <main style={{ flex: 1, marginTop: 60, padding: isMobile ? '16px 14px 80px' : '28px 28px 40px', overflowX: 'hidden' }}>
           {renderPage()}
         </main>
       </div>

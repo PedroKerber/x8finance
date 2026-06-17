@@ -283,7 +283,7 @@ export default function Relatorios({ empresa, data, setPage }) {
 
       {/* FILTROS */}
       <Card style={{ padding: 18, marginBottom: 20 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr auto auto', gap: 12, alignItems: 'end', marginBottom: 14 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, alignItems: 'end', marginBottom: 14 }}>
           <div>
             <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-sub)', marginBottom: 4 }}>Data inicial</label>
             <input type="date" value={editInicio} onChange={e => { setEditInicio(e.target.value); setPreset('Personalizado') }} style={iSty} />
@@ -324,7 +324,7 @@ export default function Relatorios({ empresa, data, setPage }) {
             Filtros Avançados {showAvancado ? '▲' : '▼'}
           </button>
           {showAvancado && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginTop: 12 }}>
+            <div className="g-4" style={{ marginTop: 12 }}>
               {[
                 { label: 'Centro de Custo',    val: editCentro,  set: setEditCentro,  opts: CENTROS },
                 { label: 'Status',             val: editStatus,  set: setEditStatus,  opts: STATUS_OPTS },
@@ -357,7 +357,7 @@ export default function Relatorios({ empresa, data, setPage }) {
       </Card>
 
       {/* KPI CARDS */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 14, marginBottom: 20 }}>
+      <div className="g-kpi" style={{ marginBottom: 20 }}>
         {[
           { label: 'Receitas',   value: kRec,  d: calcDelta(kRec, pRec),   color: T.green,  bg: T.greenL,  icon: '↑' },
           { label: 'Despesas',   value: kDesp, d: calcDelta(kDesp, pDesp), color: T.red,    bg: T.redL,    icon: '↓' },
@@ -381,7 +381,7 @@ export default function Relatorios({ empresa, data, setPage }) {
       </div>
 
       {/* CHART + RESUMO */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: 16, marginBottom: 20 }}>
+      <div className="g-side-r">
         <Card style={{ padding: 20 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
             <div>

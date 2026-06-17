@@ -46,7 +46,7 @@ export default function Dashboard({ empresa, data, setPage, onNova }) {
     <div style={{ fontFamily: "'Segoe UI', sans-serif", color: T.text }}>
       {/* Header */}
       <div style={{ marginBottom: 24 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div className="page-hd" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
             <h1 style={{ fontWeight: 800, fontSize: 26, margin: '0 0 4px' }}>Dashboard</h1>
             <div style={{ color: T.sub, fontSize: 14 }}>Visão geral da saúde financeira da sua empresa.</div>
@@ -58,7 +58,7 @@ export default function Dashboard({ empresa, data, setPage, onNova }) {
       </div>
 
       {/* KPI Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 14, marginBottom: 22 }}>
+      <div className="g-kpi">
         <KpiCard icon="↑" iconBg={T.greenL} label="Receitas (mês)" value={fmtS(tRec)} />
         <KpiCard icon="↓" iconBg={T.redL} label="Despesas (mês)" value={fmtS(tDesp)} />
         <KpiCard icon="$" iconBg={T.blueL} label="Lucro Líquido (mês)" value={fmtS(lucro)} />
@@ -67,7 +67,7 @@ export default function Dashboard({ empresa, data, setPage, onNova }) {
       </div>
 
       {/* Row 2 */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 320px', gap: 16, marginBottom: 16 }}>
+      <div className="g-flow">
         {/* Fluxo de Caixa */}
         <Card style={{ padding: 18, gridColumn: 'span 1' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
@@ -149,7 +149,7 @@ export default function Dashboard({ empresa, data, setPage, onNova }) {
       </div>
 
       {/* Row 3 - Contas */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 16 }}>
+      <div className="g-3">
         {/* Receitas */}
         <Card style={{ padding: 18 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
@@ -249,7 +249,7 @@ export default function Dashboard({ empresa, data, setPage, onNova }) {
       </div>
 
       {/* Row 4 - Insights + Metas */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+      <div className="g-2">
         {/* Insights IA */}
         <Card style={{ padding: 18 }}>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 14 }}>

@@ -370,14 +370,14 @@ export default function Despesas({ empresa, data, onSave, onDelete }) {
         </select>
       </FilterBar>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 22 }}>
+      <div className="g-4">
         <KpiCard icon="↓" iconBg={T.redL}    label="Despesas totais" value={fmt(tTotal)} />
         <KpiCard icon="✓" iconBg={T.greenL}  label="Pagas"     value={fmt(tPago)} />
         <KpiCard icon="⏳" iconBg={T.yellowL} label="A Pagar"   value={fmt(tPend)} />
         <KpiCard icon="⚠" iconBg={T.orangeL} label="Atrasadas" value={fmt(tAtr)} />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 22 }}>
+      <div className="g-2">
         <Card style={{ padding: 18 }}>
           <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 14 }}>Evolução das despesas</div>
           <ResponsiveContainer width="100%" height={160}>

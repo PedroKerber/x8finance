@@ -83,7 +83,7 @@ export default function Transacoes({ data, onDelete, onNovaDespesa, onNovaReceit
       </div>
 
       {/* KPIs */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 22 }}>
+      <div className="g-3" style={{ marginBottom: 22 }}>
         <KpiCard icon="↑" iconBg={T.greenL} label="Total Receitas" value={fmt(tRec)} delta={18.2} />
         <KpiCard icon="↓" iconBg={T.redL} label="Total Despesas" value={fmt(tDesp)} delta={-6.8} />
         <KpiCard icon="=" iconBg={saldo >= 0 ? T.greenL : T.redL} label="Saldo do período" value={fmt(saldo)} delta={23.7} />

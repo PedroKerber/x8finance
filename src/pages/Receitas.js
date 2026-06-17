@@ -384,14 +384,14 @@ export default function Receitas({ empresa, data, onSave, onDelete }) {
         </select>
       </FilterBar>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 22 }}>
+      <div className="g-4">
         <KpiCard icon="$"  iconBg={T.greenL}  label="Total de receitas"    value={fmt(tTotal)} />
         <KpiCard icon="💳" iconBg={T.blueL}   label="Receitas recebidas"   value={fmt(tRec)} />
         <KpiCard icon="📅" iconBg={T.purpleL} label="A receber"            value={fmt(tPrev)} />
         <KpiCard icon="⏰" iconBg={T.orangeL} label="Atrasadas"            value={fmt(tAtr)} />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 22 }}>
+      <div className="g-2">
         <Card style={{ padding: 18 }}>
           <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 14 }}>Evolução das receitas</div>
           <ResponsiveContainer width="100%" height={160}>

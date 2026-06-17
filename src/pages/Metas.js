@@ -78,7 +78,7 @@ export default function Metas({ empresa, data, onSave, onDelete }) {
   return (
     <div style={{ fontFamily: "'Segoe UI', sans-serif", color: T.text }}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+      <div className="page-hd">
         <div>
           <h1 style={{ fontWeight: 800, fontSize: 26, margin: '0 0 4px' }}>Metas Financeiras</h1>
           <div style={{ color: T.sub, fontSize: 14 }}>Acompanhe e gerencie os objetivos da empresa.</div>
@@ -87,14 +87,14 @@ export default function Metas({ empresa, data, onSave, onDelete }) {
       </div>
 
       {/* KPIs */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 22 }}>
+      <div className="g-4">
         <KpiCard icon="🎯" iconBg={T.primaryLight} label="Total de metas" value={metas.length} />
         <KpiCard icon="✅" iconBg={T.greenL} label="Metas atingidas" value={atingidas} delta={atingidas > 0 ? 100 : 0} deltaLabel="concluídas" />
         <KpiCard icon="⏳" iconBg={T.yellowL} label="Em andamento" value={emAndamento} />
         <KpiCard icon="📊" iconBg={T.blueL} label="Progresso geral" value={fmtPct(progGeral)} />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: metas.length > 0 ? '1fr 300px' : '1fr', gap: 18 }}>
+      <div className={metas.length > 0 ? 'g-side' : ''} style={metas.length > 0 ? {} : {}}>
         {/* Cards de metas */}
         <div>
           {metas.length === 0 ? (

@@ -74,7 +74,7 @@ export default function Categorias({ data }) {
   return (
     <div style={{ fontFamily: "'Segoe UI', sans-serif", color: T.text }}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+      <div className="page-hd">
         <div>
           <h1 style={{ fontWeight: 800, fontSize: 26, margin: '0 0 4px' }}>Categorias</h1>
           <div style={{ color: T.sub, fontSize: 14 }}>Organize e gerencie todas as categorias de receitas e despesas.</div>
@@ -83,7 +83,7 @@ export default function Categorias({ data }) {
       </div>
 
       {/* KPIs */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 22 }}>
+      <div className="g-4">
         {[
           { icon: '🏷', bg: T.blueL, label: 'Total de Categorias', value: allCats.length },
           { icon: '💸', bg: T.redL, label: 'Despesas', value: totalDespesas },
@@ -122,7 +122,8 @@ export default function Categorias({ data }) {
       </div>
 
       {/* Tabela */}
-      <Card style={{ padding: 0, overflow: 'hidden', marginBottom: 20 }}>
+      <Card style={{ padding: 0, marginBottom: 20 }}>
+        <div className="tbl-wrap">
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead>
             <tr style={{ background: T.bg }}>
@@ -169,6 +170,7 @@ export default function Categorias({ data }) {
             ))}
           </tbody>
         </table>
+        </div>
         <div style={{ padding: '12px 16px', color: T.muted, fontSize: 12 }}>
           Mostrando {filtered.length} de {allCats.length} categorias
         </div>
@@ -176,7 +178,7 @@ export default function Categorias({ data }) {
 
       {/* Bottom */}
       {topUsadas.length > 0 && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
+        <div className="g-2">
           <Card style={{ padding: 20 }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
               <div style={{ fontSize: 36 }}>⚙️</div>

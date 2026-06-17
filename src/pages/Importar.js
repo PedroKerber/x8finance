@@ -217,7 +217,7 @@ export default function Importar({ empresa, onImport }) {
       {rows.length > 0 && !result && (
         <>
           {/* Stats */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 18 }}>
+          <div className="g-3">
             {[
               { label: 'Total de linhas', value: rows.length, cor: T.text },
               { label: 'Prontas para importar', value: valid.length, cor: T.green },

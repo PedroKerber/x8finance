@@ -25,7 +25,7 @@ export default function Login({ onLogin }) {
   return (
     <div style={{ minHeight: '100vh', background: T.sidebar, display: 'flex', fontFamily: "'Segoe UI', sans-serif" }}>
       {/* Left panel */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 40, color: '#fff' }}>
+      <div className="login-left">
         <div style={{ maxWidth: 460 }}>
           <div style={{ fontWeight: 900, fontSize: 38, letterSpacing: -1, marginBottom: 16 }}>
             <span style={{ color: T.primary }}>X8</span> FINANCE
@@ -48,7 +48,7 @@ export default function Login({ onLogin }) {
       </div>
 
       {/* Right panel */}
-      <div style={{ width: 440, background: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 40 }}>
+      <div className="login-right">
         <div style={{ width: '100%', maxWidth: 360 }}>
           <div style={{ fontWeight: 900, fontSize: 28, letterSpacing: -0.5, marginBottom: 6 }}>
             <span style={{ color: T.primary }}>X8</span> Finance

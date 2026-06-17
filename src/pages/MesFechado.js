@@ -594,7 +594,7 @@ export default function MesFechado({ empresa, data, onFechar, onReabrir, usuario
       </div>
 
       {/* ── KPIs ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 12, marginBottom: 18 }}>
+      <div className="g-6">
         {[
           { label: 'Receita Total', value: fmt(tRec), cor: T.green, icon: '↑', bg: T.primaryLight },
           { label: 'Despesas Totais', value: fmt(tDesp), cor: T.red, icon: '↓', bg: T.redL },
@@ -614,7 +614,7 @@ export default function MesFechado({ empresa, data, onFechar, onReabrir, usuario
       </div>
 
       {/* ── Saúde + Comparativo ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+      <div className="g-2">
         <Card style={{ padding: 20 }}>
           <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 16 }}>Saúde Financeira X8</div>
           <div style={{ display: 'flex', gap: 20, alignItems: 'center' }}>
@@ -680,7 +680,7 @@ export default function MesFechado({ empresa, data, onFechar, onReabrir, usuario
       </div>
 
       {/* ── Categorias (gráficos) ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+      <div className="g-2">
         {[
           { title: 'Receitas por categoria', data: catRecData, colors: COLORS_R, total: tRec, tipo: 'cat_rec', cor: T.green },
           { title: 'Despesas por categoria', data: catDespData, colors: COLORS_D, total: tDesp, tipo: 'cat_desp', cor: T.red },
@@ -726,7 +726,7 @@ export default function MesFechado({ empresa, data, onFechar, onReabrir, usuario
       </div>
 
       {/* ── Top 5 ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+      <div className="g-2">
         {[
           { title: 'Top 5 Receitas', items: top5Rec.slice(0, 5), cor: T.green, bg: T.primary, type: 'top_rec' },
           { title: 'Top 5 Despesas', items: top5Desp.slice(0, 5), cor: T.red, bg: T.red, type: 'top_desp' },
@@ -768,7 +768,7 @@ export default function MesFechado({ empresa, data, onFechar, onReabrir, usuario
       </div>
 
       {/* ── Fluxo + Painel de Ações ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 16 }}>
+      <div className="g-side">
         <Card style={{ padding: 20 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
             <div style={{ fontWeight: 700, fontSize: 15 }}>Fluxo de Caixa — {mesLabel}</div>

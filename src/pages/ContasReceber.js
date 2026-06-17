@@ -47,7 +47,7 @@ export default function ContasReceber({ data, onSave, setPage }) {
 
   return (
     <div style={{ fontFamily: "'Segoe UI', sans-serif", color: T.text }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+      <div className="page-hd">
         <div>
           <h1 style={{ fontWeight: 800, fontSize: 26, margin: '0 0 4px' }}>Contas a Receber</h1>
           <div style={{ color: T.sub, fontSize: 14 }}>Gerencie os recebíveis da empresa.</div>
@@ -56,7 +56,7 @@ export default function ContasReceber({ data, onSave, setPage }) {
         <Btn icon="+" onClick={() => setPage && setPage('receitas')}>Novo recebível</Btn>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 22 }}>
+      <div className="g-4">
         <KpiCard icon="📥" iconBg={T.greenL} label="Total recebíveis" value={fmt(tTotal)} delta={18.2} />
         <KpiCard icon="✓" iconBg={T.greenL} label="Recebidas" value={fmt(tRec)} delta={16.8} />
         <KpiCard icon="📅" iconBg={T.blueL} label="A receber" value={fmt(tPrev)} delta={22.4} />

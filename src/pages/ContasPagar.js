@@ -48,7 +48,7 @@ export default function ContasPagar({ data, onSave, setPage }) {
 
   return (
     <div style={{ fontFamily: "'Segoe UI', sans-serif", color: T.text }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+      <div className="page-hd">
         <div>
           <h1 style={{ fontWeight: 800, fontSize: 26, margin: '0 0 4px' }}>Contas a Pagar</h1>
           <div style={{ color: T.sub, fontSize: 14 }}>Controle de pagamentos e obrigações financeiras.</div>
@@ -57,7 +57,7 @@ export default function ContasPagar({ data, onSave, setPage }) {
         <Btn variant="danger" icon="+" onClick={() => setPage && setPage('despesas')}>Nova conta a pagar</Btn>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 22 }}>
+      <div className="g-4">
         <KpiCard icon="📤" iconBg={T.redL} label="Total a pagar" value={fmt(tTotal)} delta={-6.8} />
         <KpiCard icon="✓" iconBg={T.greenL} label="Pagas" value={fmt(tPago)} delta={-9.4} />
         <KpiCard icon="⏳" iconBg={T.yellowL} label="Pendentes" value={fmt(tPend)} delta={5.2} />

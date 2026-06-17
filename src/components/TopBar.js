@@ -25,7 +25,7 @@ function MoonIcon() {
   )
 }
 
-export default function TopBar({ empresa, setEmpresa, onMenu, usuario, setPage, sidebarWidth = 280 }) {
+export default function TopBar({ empresa, setEmpresa, onMenu, usuario, setPage, sidebarWidth = 280, isMobile = false }) {
   const [open, setOpen] = useState(false)
   const [userOpen, setUserOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
@@ -54,7 +54,7 @@ export default function TopBar({ empresa, setEmpresa, onMenu, usuario, setPage, 
           <div style={{ background: empresa.cor + '22', borderRadius: 6, width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: empresa.cor, fontSize: 11, flexShrink: 0 }}>
             {empresa.initials}
           </div>
-          <span style={{ fontWeight: 600, fontSize: 14, color: T.text, maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{empresa.nome}</span>
+          <span style={{ fontWeight: 600, fontSize: 14, color: T.text, maxWidth: isMobile ? 110 : 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{empresa.nome}</span>
           <span style={{ color: T.muted, fontSize: 12 }}>▾</span>
         </button>
         {open && (
