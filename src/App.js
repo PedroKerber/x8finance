@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from 'react'
 import { useMobile } from './context/MobileContext'
 import { T, uid } from './theme'
 import { initData, EMPRESAS } from './data'
-import { supabase, getLancamentos, saveLancamento, deleteLancamento, saveLancamentos, getMetas, saveMeta, deleteMeta, signIn, signOut, deleteAllLancamentos, deleteAllMetas } from './supabase'
+import { supabase, getAllLancamentos, getLancamentos, saveLancamento, deleteLancamento, saveLancamentos, getMetas, saveMeta, deleteMeta, signIn, signOut, deleteAllLancamentos, deleteAllMetas } from './supabase'
 
 import Sidebar from './components/Sidebar'
 import TopBar from './components/TopBar'
@@ -79,6 +79,21 @@ export default function App() {
       const found = all.find(e => e.id === lastId)
       if (found) setEmpresa(found)
     }
+    // Pré-carrega todos os lançamentos para exibir stats na tela de seleção
+    getAllLancamentos(usuario.id).then(lancs => {
+      const byEmp = {}
+      lancs.forEach(l => {
+        if (!byEmp[l.empId]) byEmp[l.empId] = []
+        byEmp[l.empId].push(l)
+      })
+      setAppData(prev => {
+        const next = { ...prev }
+        Object.entries(byEmp).forEach(([empId, ls]) => {
+          next[empId] = { ...(next[empId] || { metas: [], mesFechado: false }), lancamentos: ls }
+        })
+        return next
+      })
+    }).catch(console.error)
   }, [usuario])
 
   // Carrega dados da empresa selecionada do banco

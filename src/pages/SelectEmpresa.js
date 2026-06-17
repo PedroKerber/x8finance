@@ -353,7 +353,9 @@ export default function SelectEmpresa({ usuario, onSelect, data, onLogout, empre
   useEffect(() => { setUltimasData(getUltimas()) }, [])
 
   const getStats = (emp) => {
-    const lancs = data[emp.id]?.lancamentos || []
+    const now = new Date()
+    const mes = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+    const lancs = (data[emp.id]?.lancamentos || []).filter(l => l.data?.startsWith(mes))
     const rec  = lancs.filter(l => l.tipo === 'receita').reduce((s, l) => s + l.valor, 0)
     const desp = lancs.filter(l => l.tipo === 'despesa').reduce((s, l) => s + l.valor, 0)
     return { rec, desp, saldo: rec - desp }

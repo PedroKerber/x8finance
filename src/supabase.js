@@ -5,6 +5,22 @@ const SUPABASE_KEY = process.env.REACT_APP_SUPABASE_KEY
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
 
+export const getAllLancamentos = async (userId) => {
+  const { data, error } = await supabase
+    .from('lancamentos')
+    .select('*')
+    .eq('user_id', userId)
+    .order('data', { ascending: false })
+  if (error) throw error
+  return data.map(r => ({
+    id: r.id, tipo: r.tipo, cat: r.cat, catNome: r.cat_nome,
+    desc: r.descricao, valor: r.valor, data: r.data,
+    vencimento: r.vencimento, status: r.status, forma: r.forma,
+    conta: r.conta, cliente: r.cliente, fornecedor: r.fornecedor,
+    centroCusto: r.centro_custo, obs: r.obs, empId: r.empresa_id,
+  }))
+}
+
 export const getLancamentos = async (userId, empresaId) => {
   const { data, error } = await supabase
     .from('lancamentos')
