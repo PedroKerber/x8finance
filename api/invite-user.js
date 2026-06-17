@@ -18,7 +18,8 @@ module.exports = async (req, res) => {
   )
 
   const { error } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
-    data: { nome: nome || email }
+    data: { nome: nome || email },
+    redirectTo: 'https://x8finance.com.br'
   })
 
   if (error) return res.status(400).json({ error: error.message })
