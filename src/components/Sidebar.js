@@ -188,11 +188,11 @@ export default function Sidebar({ page, setPage, collapsed, onToggle, usuario, p
                 height: 64, display: 'flex', alignItems: 'center', gap: 10,
                 padding: '0 16px 0 18px', borderBottom: `1px solid ${S.border}`, flexShrink: 0,
               }}>
-                <div style={{
-                  width: 32, height: 32, borderRadius: 8, background: S.accent, flexShrink: 0,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontWeight: 900, fontSize: 13, color: '#fff', letterSpacing: -0.5,
-                }}>N</div>
+                <svg width="20" height="24" viewBox="0 0 60 70" fill="none" style={{ flexShrink: 0 }}>
+                  <rect x="0" y="0" width="14" height="70" fill="white" rx="1.5" />
+                  <polygon points="14,0 32,0 46,70 28,70" fill="#F47B20" />
+                  <rect x="46" y="0" width="14" height="70" fill="white" rx="1.5" />
+                </svg>
                 <span style={{ fontWeight: 800, fontSize: 17, color: '#fff', letterSpacing: -0.3, flex: 1 }}>Norvo</span>
                 <button
                   onClick={onMobileClose}
@@ -315,11 +315,11 @@ export default function Sidebar({ page, setPage, collapsed, onToggle, usuario, p
         borderBottom: `1px solid ${S.border}`, flexShrink: 0,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, overflow: 'hidden', flex: collapsed ? 0 : 1 }}>
-          <div style={{
-            width: 32, height: 32, borderRadius: 8, background: S.accent, flexShrink: 0,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontWeight: 900, fontSize: 13, color: '#fff', letterSpacing: -0.5,
-          }}>N</div>
+          <svg width="20" height="24" viewBox="0 0 60 70" fill="none" style={{ flexShrink: 0 }}>
+            <rect x="0" y="0" width="14" height="70" fill="white" rx="1.5" />
+            <polygon points="14,0 32,0 46,70 28,70" fill="#F47B20" />
+            <rect x="46" y="0" width="14" height="70" fill="white" rx="1.5" />
+          </svg>
           {!collapsed && (
             <span style={{ fontWeight: 800, fontSize: 17, color: '#fff', letterSpacing: -0.3, whiteSpace: 'nowrap' }}>
               Norvo

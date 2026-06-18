@@ -1,6 +1,22 @@
 import { useState } from 'react'
 import { T } from '../theme'
-import { Btn, Input } from '../components/ui'
+import { Btn } from '../components/ui'
+
+const LogoN = ({ size, light }) => (
+  <svg width={size} height={Math.round(size * 70 / 60)} viewBox="0 0 60 70" fill="none" style={{ flexShrink: 0 }}>
+    <rect x="0" y="0" width="14" height="70" fill={light ? '#ffffff' : '#0D2545'} rx="1.5" />
+    <polygon points="14,0 32,0 46,70 28,70" fill="#F47B20" />
+    <rect x="46" y="0" width="14" height="70" fill={light ? '#ffffff' : '#0D2545'} rx="1.5" />
+  </svg>
+)
+
+const inp = (focus, err) => ({
+  width: '100%', background: '#ffffff',
+  border: `1.5px solid ${err ? T.red : focus ? '#0D2545' : '#C9D3DD'}`,
+  borderRadius: 8, padding: '10px 12px', color: '#111827',
+  fontSize: 14, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit',
+  transition: 'border-color .15s',
+})
 
 export default function Login({ onLogin }) {
   const [email, setEmail] = useState('')
@@ -8,6 +24,8 @@ export default function Login({ onLogin }) {
   const [show, setShow] = useState(false)
   const [loading, setLoading] = useState(false)
   const [erro, setErro] = useState('')
+  const [fEmail, setFEmail] = useState(false)
+  const [fSenha, setFSenha] = useState(false)
 
   const go = async () => {
     if (!email.trim() || !senha.trim()) return
@@ -24,15 +42,28 @@ export default function Login({ onLogin }) {
 
   return (
     <div style={{ minHeight: '100vh', background: T.sidebar, display: 'flex', fontFamily: "'Segoe UI', sans-serif" }}>
+
       {/* Left panel */}
       <div className="login-left">
         <div style={{ maxWidth: 460 }}>
-          <div style={{ fontWeight: 900, fontSize: 38, letterSpacing: -1, marginBottom: 16 }}>
-            <span style={{ color: T.primary }}>NORVO</span>
+
+          {/* Logo mark + wordmark */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 32 }}>
+            <LogoN size={52} light />
+            <div>
+              <div style={{ fontWeight: 900, fontSize: 32, letterSpacing: -0.5, color: '#ffffff', lineHeight: 1.05 }}>
+                NORVO
+              </div>
+              <div style={{ fontSize: 10, color: T.primary, letterSpacing: 2.5, marginTop: 4, fontWeight: 700 }}>
+                GESTÃO FINANCEIRA
+              </div>
+            </div>
           </div>
-          <div style={{ fontSize: 18, opacity: 0.8, marginBottom: 32, lineHeight: 1.6 }}>
+
+          <div style={{ fontSize: 17, opacity: 0.75, marginBottom: 36, lineHeight: 1.65 }}>
             Gestão financeira inteligente para múltiplas empresas.
           </div>
+
           {[
             ['⚡', 'Dashboard em tempo real com insights de IA'],
             ['📊', 'Controle multiempresa com relatórios completos'],
@@ -50,25 +81,44 @@ export default function Login({ onLogin }) {
       {/* Right panel */}
       <div className="login-right">
         <div style={{ width: '100%', maxWidth: 360 }}>
-          <div style={{ fontWeight: 900, fontSize: 28, letterSpacing: -0.5, marginBottom: 6 }}>
-            <span style={{ color: T.primary }}>Norvo</span>
+
+          {/* Logo on right panel */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 28 }}>
+            <LogoN size={30} />
+            <div style={{ fontWeight: 900, fontSize: 26, letterSpacing: -0.5, color: '#0D2545' }}>Norvo</div>
           </div>
-          <div style={{ color: T.sub, fontSize: 14, marginBottom: 32 }}>Acesse sua conta para continuar</div>
 
-          <Input label="E-mail" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="seu@email.com" />
+          <div style={{ color: T.sub, fontSize: 14, marginBottom: 28 }}>Acesse sua conta para continuar</div>
 
-          <div style={{ marginBottom: 14 }}>
-            <label style={{ display: 'block', fontWeight: 600, fontSize: 13, color: T.text, marginBottom: 5 }}>Senha</label>
+          {/* E-mail */}
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ display: 'block', fontWeight: 600, fontSize: 13, color: '#374151', marginBottom: 6 }}>E-mail</label>
+            <input
+              type="email" value={email} onChange={e => setEmail(e.target.value)}
+              onFocus={() => setFEmail(true)} onBlur={() => setFEmail(false)}
+              placeholder="seu@email.com"
+              style={inp(fEmail, false)}
+            />
+          </div>
+
+          {/* Senha */}
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ display: 'block', fontWeight: 600, fontSize: 13, color: '#374151', marginBottom: 6 }}>Senha</label>
             <div style={{ position: 'relative' }}>
-              <input type={show ? 'text' : 'password'} value={senha} onChange={e => setSenha(e.target.value)}
+              <input
+                type={show ? 'text' : 'password'} value={senha} onChange={e => setSenha(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && go()}
-                style={{ width: '100%', background: T.white, border: `1.5px solid ${erro ? T.red : T.border}`, borderRadius: 8, padding: '9px 40px 9px 12px', color: T.text, fontSize: 14, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }} />
-              <button onClick={() => setShow(s => !s)} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: T.muted }}>{show ? '🙈' : '👁️'}</button>
+                onFocus={() => setFSenha(true)} onBlur={() => setFSenha(false)}
+                style={{ ...inp(fSenha, !!erro), paddingRight: 42 }}
+              />
+              <button onClick={() => setShow(s => !s)} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: '#9CA3AF' }}>
+                {show ? '🙈' : '👁️'}
+              </button>
             </div>
             {erro && <div style={{ color: T.red, fontSize: 12, marginTop: 6, fontWeight: 600 }}>{erro}</div>}
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 22, fontSize: 13 }}>
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 24, fontSize: 13 }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: 6, color: T.sub, cursor: 'pointer' }}>
               <input type="checkbox" defaultChecked style={{ accentColor: T.primary }} /> Manter conectado
             </label>
@@ -79,7 +129,7 @@ export default function Login({ onLogin }) {
           </Btn>
 
           <div style={{ textAlign: 'center', marginTop: 24, color: T.muted, fontSize: 12 }}>
-            Ao entrar, você concorda com os <span style={{ color: T.primary }}>Termos de Uso</span>
+            Ao entrar, você concorda com os <span style={{ color: T.primary, cursor: 'pointer' }}>Termos de Uso</span>
           </div>
         </div>
       </div>
