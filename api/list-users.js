@@ -27,6 +27,7 @@ module.exports = async (req, res) => {
     nome: u.user_metadata?.nome || u.email?.split('@')[0] || '',
     criadoEm: u.created_at,
     ultimoAcesso: u.last_sign_in_at,
+    emailConfirmado: !!u.email_confirmed_at,
     empresaIds: (perms || [])
       .filter(p => p.collaborator_user_id === u.id)
       .map(p => p.empresa_id),

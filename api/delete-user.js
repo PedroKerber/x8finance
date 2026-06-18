@@ -8,8 +8,8 @@ module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') return res.status(200).end()
   if (req.method !== 'POST') return res.status(405).json({ error: 'Método não permitido' })
 
-  const { email, nome } = req.body || {}
-  if (!email) return res.status(400).json({ error: 'Email obrigatório' })
+  const { userId } = req.body || {}
+  if (!userId) return res.status(400).json({ error: 'userId obrigatório' })
 
   const supabaseAdmin = createClient(
     process.env.REACT_APP_SUPABASE_URL,
@@ -17,11 +17,13 @@ module.exports = async (req, res) => {
     { auth: { autoRefreshToken: false, persistSession: false } }
   )
 
-  const { data, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
-    data: { nome: nome || email },
-    redirectTo: 'https://norvoapp.com.br/ativar-conta'
-  })
+  await supabaseAdmin
+    .from('user_empresa_access')
+    .delete()
+    .eq('collaborator_user_id', userId)
 
+  const { error } = await supabaseAdmin.auth.admin.deleteUser(userId)
   if (error) return res.status(400).json({ error: error.message })
-  return res.status(200).json({ success: true, userId: data.user?.id })
+
+  return res.status(200).json({ success: true })
 }

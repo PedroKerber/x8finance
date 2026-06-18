@@ -22,6 +22,8 @@ const STATUS_INFO = {
   ativo: { label: 'Ativo', cor: T.green, bg: '#dcfce7' },
   inativo: { label: 'Inativo', cor: '#6b7280', bg: '#f3f4f6' },
   bloqueado: { label: 'Bloqueado', cor: '#dc2626', bg: '#fee2e2' },
+  pendente: { label: 'Convite pendente', cor: '#d97706', bg: '#fef3c7' },
+  expirado: { label: 'Convite expirado', cor: '#7c3aed', bg: '#ede9fe' },
 }
 
 const AUDIT_LABELS = {
@@ -30,8 +32,19 @@ const AUDIT_LABELS = {
   usuario_excluido: 'Usuário excluído',
   usuario_bloqueado: 'Usuário bloqueado',
   usuario_desbloqueado: 'Usuário desbloqueado',
+  usuario_desativado: 'Usuário desativado',
+  usuario_reativado: 'Usuário reativado',
   convite_enviado: 'Convite enviado',
+  convite_cancelado: 'Convite cancelado',
   permissoes_alteradas: 'Permissões alteradas',
+}
+
+const getStatusConvite = (u) => {
+  if (!u.emailConfirmado) {
+    const msDesde = Date.now() - new Date(u.criadoEmRaw || u.criadoEm).getTime()
+    return msDesde > 86400000 ? 'expirado' : 'pendente'
+  }
+  return u.status || 'ativo'
 }
 
 const defaultPerms = (perfil) => {
@@ -96,6 +109,7 @@ export default function Usuarios({ usuario }) {
   const [editId, setEditId] = useState(null)
   const [viewUser, setViewUser] = useState(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState(null)
+  const [confirmCancelId, setConfirmCancelId] = useState(null)
   const [senhaUser, setSenhaUser] = useState(null)
   const [tempSenha, setTempSenha] = useState('')
 
@@ -149,6 +163,8 @@ export default function Usuarios({ usuario }) {
           mustChangePassword: local.mustChangePassword || false,
           ultimoAcesso: su.ultimoAcesso ? new Date(su.ultimoAcesso).toLocaleDateString('pt-BR') : '—',
           criadoEm: su.criadoEm ? new Date(su.criadoEm).toLocaleDateString('pt-BR') : '—',
+          criadoEmRaw: su.criadoEm || null,
+          emailConfirmado: su.email === usuario?.email ? true : (su.emailConfirmado || false),
           empresaIds: su.email === usuario?.email ? EMPRESAS.map(e => e.id) : (su.empresaIds || []),
         }
       })
@@ -265,10 +281,45 @@ export default function Usuarios({ usuario }) {
   const handleBlock = async (id) => {
     const u = usuarios.find(x => x.id === id)
     const novo = u?.status === 'bloqueado' ? 'ativo' : 'bloqueado'
-    setUsuarios(p => p.map(u => u.id === id ? { ...u, status: novo } : u))
+    setUsuarios(p => p.map(x => x.id === id ? { ...x, status: novo } : x))
     setActionMenu(null)
     await logAudit(novo === 'bloqueado' ? 'usuario_bloqueado' : 'usuario_desbloqueado', { userId: id, email: u?.email })
     showToast(novo === 'bloqueado' ? 'Usuário bloqueado.' : 'Usuário desbloqueado.')
+  }
+
+  const handleDeactivate = async (id) => {
+    const u = usuarios.find(x => x.id === id)
+    setUsuarios(p => p.map(x => x.id === id ? { ...x, status: 'inativo' } : x))
+    setActionMenu(null)
+    await logAudit('usuario_desativado', { userId: id, email: u?.email })
+    showToast('Usuário desativado.')
+  }
+
+  const handleReactivate = async (id) => {
+    const u = usuarios.find(x => x.id === id)
+    setUsuarios(p => p.map(x => x.id === id ? { ...x, status: 'ativo' } : x))
+    setActionMenu(null)
+    await logAudit('usuario_reativado', { userId: id, email: u?.email })
+    showToast('Usuário reativado.')
+  }
+
+  const handleCancelInvite = async (id) => {
+    const u = usuarios.find(x => x.id === id)
+    setConfirmCancelId(null)
+    try {
+      const res = await fetch('/api/delete-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: id }),
+      })
+      const json = await res.json()
+      if (!res.ok) { showToast(`Erro: ${json.error}`, false); return }
+      setUsuarios(p => p.filter(x => x.id !== id))
+      await logAudit('convite_cancelado', { userId: id, email: u?.email })
+      showToast('Convite cancelado e usuário removido.')
+    } catch (e) {
+      showToast(`Erro: ${e.message}`, false)
+    }
   }
 
   const handleInvite = async (u) => {
@@ -300,7 +351,7 @@ export default function Usuarios({ usuario }) {
     if (search && !u.nome?.toLowerCase().includes(search.toLowerCase()) && !u.email?.toLowerCase().includes(search.toLowerCase())) return false
     if (filtroEmp !== 'Todas' && !(u.empresaIds || []).includes(filtroEmp)) return false
     if (filtroPerfil !== 'Todos' && u.perfil !== filtroPerfil) return false
-    if (filtroStatus !== 'Todos' && u.status !== filtroStatus) return false
+    if (filtroStatus !== 'Todos' && getStatusConvite(u) !== filtroStatus) return false
     return true
   })
 
@@ -389,7 +440,7 @@ export default function Usuarios({ usuario }) {
               {[
                 { value: filtroEmp, set: setFiltroEmp, opts: [['Todas', 'Todas as empresas'], ...EMPRESAS.map(e => [e.id, e.nome])] },
                 { value: filtroPerfil, set: setFiltroPerfil, opts: [['Todos', 'Todos os perfis'], ...PERFIS.map(p => [p.id, p.nome])] },
-                { value: filtroStatus, set: setFiltroStatus, opts: [['Todos', 'Todos os status'], ['ativo', 'Ativo'], ['inativo', 'Inativo'], ['bloqueado', 'Bloqueado']] },
+                { value: filtroStatus, set: setFiltroStatus, opts: [['Todos', 'Todos os status'], ['ativo', 'Ativo'], ['inativo', 'Inativo'], ['bloqueado', 'Bloqueado'], ['pendente', 'Convite pendente'], ['expirado', 'Convite expirado']] },
               ].map((f, i) => (
                 <select key={i} value={f.value} onChange={e => f.set(e.target.value)}
                   style={{ background: T.white, border: `1.5px solid ${T.border}`, borderRadius: 8, padding: '8px 12px', color: T.text, fontSize: 13, outline: 'none', fontFamily: 'inherit' }}>
@@ -425,7 +476,7 @@ export default function Usuarios({ usuario }) {
                           ? <img src={u.foto} alt="" style={{ width: 42, height: 42, borderRadius: '50%', objectFit: 'cover' }} />
                           : <div style={{ width: 42, height: 42, borderRadius: '50%', background: avatarCor(u.nome), display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 14 }}>{initials(u.nome)}</div>
                         }
-                        <span style={{ position: 'absolute', bottom: 1, right: 1, width: 11, height: 11, borderRadius: '50%', background: u.status === 'ativo' ? T.green : u.status === 'bloqueado' ? '#dc2626' : '#9ca3af', border: '2px solid white' }} />
+                        <span style={{ position: 'absolute', bottom: 1, right: 1, width: 11, height: 11, borderRadius: '50%', background: getStatusConvite(u) === 'ativo' ? T.green : getStatusConvite(u) === 'bloqueado' ? '#dc2626' : getStatusConvite(u) === 'pendente' ? '#d97706' : '#9ca3af', border: '2px solid white' }} />
                       </div>
                       <div>
                         <div style={{ fontWeight: 700, fontSize: 14 }}>{u.nome}</div>
@@ -441,13 +492,15 @@ export default function Usuarios({ usuario }) {
                     </div>
 
                     <div style={{ padding: '14px 16px' }}><PerfilBadge perfil={u.perfil} /></div>
-                    <div style={{ padding: '14px 16px' }}><StatusBdg status={u.status} /></div>
+                    <div style={{ padding: '14px 16px' }}><StatusBdg status={getStatusConvite(u)} /></div>
 
                     <div style={{ padding: '14px 16px', display: 'flex', gap: 6, alignItems: 'center' }}>
-                      <button onClick={() => handleInvite(u)} disabled={inviteLoading === u.id}
-                        style={{ display: 'flex', alignItems: 'center', gap: 5, background: '#fff7ed', color: T.primary, border: `1px solid ${T.primary}44`, borderRadius: 7, padding: '5px 10px', cursor: inviteLoading === u.id ? 'default' : 'pointer', fontSize: 12, fontWeight: 700, fontFamily: 'inherit', opacity: inviteLoading === u.id ? .6 : 1, whiteSpace: 'nowrap', flexShrink: 0 }}>
-                        {inviteLoading === u.id ? 'Enviando…' : <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>Convidar</>}
-                      </button>
+                      {!u.emailConfirmado && (
+                        <button onClick={() => handleInvite(u)} disabled={inviteLoading === u.id}
+                          style={{ display: 'flex', alignItems: 'center', gap: 5, background: '#fff7ed', color: T.primary, border: `1px solid ${T.primary}44`, borderRadius: 7, padding: '5px 10px', cursor: inviteLoading === u.id ? 'default' : 'pointer', fontSize: 12, fontWeight: 700, fontFamily: 'inherit', opacity: inviteLoading === u.id ? .6 : 1, whiteSpace: 'nowrap', flexShrink: 0 }}>
+                          {inviteLoading === u.id ? 'Enviando…' : <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>Reenviar</>}
+                        </button>
+                      )}
                       <button onClick={() => openEdit(u)} title="Editar" style={{ background: 'none', border: `1px solid ${T.border}`, borderRadius: 7, width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: T.sub, flexShrink: 0 }}>
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                       </button>
@@ -458,24 +511,43 @@ export default function Usuarios({ usuario }) {
                         <button onClick={() => setActionMenu(actionMenu === u.id ? null : u.id)} style={{ background: 'none', border: `1px solid ${T.border}`, borderRadius: 7, width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: T.sub }}>
                           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
                         </button>
-                        {actionMenu === u.id && (
-                          <>
-                            <div onClick={() => setActionMenu(null)} style={{ position: 'fixed', inset: 0, zIndex: 299 }} />
-                            <div style={{ position: 'absolute', right: 0, top: '100%', marginTop: 4, background: T.white, border: `1px solid ${T.border}`, borderRadius: 10, boxShadow: T.shadowMd, zIndex: 300, minWidth: 190, overflow: 'hidden' }}>
-                              <button onClick={() => { setSenhaUser(u); setTempSenha(''); setModalTipo('senha'); setActionMenu(null) }}
-                                style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: T.text, textAlign: 'left', fontFamily: 'inherit' }}>🔑 Gerar senha temporária</button>
-                              <div style={{ height: 1, background: T.border, margin: '0 14px' }} />
-                              <button onClick={() => handleBlock(u.id)}
-                                style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: u.status === 'bloqueado' ? T.green : '#d97706', textAlign: 'left', fontFamily: 'inherit' }}>
-                                {u.status === 'bloqueado' ? '🔓 Desbloquear' : '🚫 Bloquear usuário'}
-                              </button>
-                              {u.email !== usuario?.email && (
-                                <button onClick={() => { setConfirmDeleteId(u.id); setActionMenu(null); setModalTipo('delete') }}
-                                  style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: '#dc2626', textAlign: 'left', fontFamily: 'inherit' }}>🗑 Remover acesso</button>
-                              )}
-                            </div>
-                          </>
-                        )}
+                        {actionMenu === u.id && (() => {
+                          const st = getStatusConvite(u)
+                          const isPendente = st === 'pendente' || st === 'expirado'
+                          const mnu = { display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, textAlign: 'left', fontFamily: 'inherit' }
+                          return (
+                            <>
+                              <div onClick={() => setActionMenu(null)} style={{ position: 'fixed', inset: 0, zIndex: 299 }} />
+                              <div style={{ position: 'absolute', right: 0, top: '100%', marginTop: 4, background: T.white, border: `1px solid ${T.border}`, borderRadius: 10, boxShadow: T.shadowMd, zIndex: 300, minWidth: 200, overflow: 'hidden' }}>
+                                {isPendente ? (
+                                  <>
+                                    <button onClick={() => handleInvite(u)} style={{ ...mnu, color: T.primary }}>✉ Reenviar convite</button>
+                                    <div style={{ height: 1, background: T.border, margin: '0 14px' }} />
+                                    {u.email !== usuario?.email && (
+                                      <button onClick={() => { setConfirmCancelId(u.id); setActionMenu(null) }} style={{ ...mnu, color: '#dc2626' }}>✕ Cancelar convite</button>
+                                    )}
+                                  </>
+                                ) : (
+                                  <>
+                                    <button onClick={() => { setSenhaUser(u); setTempSenha(''); setModalTipo('senha'); setActionMenu(null) }} style={{ ...mnu, color: T.text }}>🔑 Gerar senha temporária</button>
+                                    <div style={{ height: 1, background: T.border, margin: '0 14px' }} />
+                                    {st === 'ativo' && <button onClick={() => handleDeactivate(u.id)} style={{ ...mnu, color: '#d97706' }}>⏸ Desativar usuário</button>}
+                                    {st === 'inativo' && <button onClick={() => handleReactivate(u.id)} style={{ ...mnu, color: T.green }}>▶ Reativar usuário</button>}
+                                    <button onClick={() => handleBlock(u.id)} style={{ ...mnu, color: st === 'bloqueado' ? T.green : '#dc2626' }}>
+                                      {st === 'bloqueado' ? '🔓 Desbloquear' : '🚫 Bloquear'}
+                                    </button>
+                                    {u.email !== usuario?.email && (
+                                      <>
+                                        <div style={{ height: 1, background: T.border, margin: '0 14px' }} />
+                                        <button onClick={() => { setConfirmDeleteId(u.id); setActionMenu(null); setModalTipo('delete') }} style={{ ...mnu, color: '#dc2626' }}>🗑 Remover acesso</button>
+                                      </>
+                                    )}
+                                  </>
+                                )}
+                              </div>
+                            </>
+                          )
+                        })()}
                       </div>
                     </div>
                   </div>
@@ -849,6 +921,23 @@ export default function Usuarios({ usuario }) {
             )}
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20 }}>
               <Btn variant="ghost" onClick={() => setModalTipo(null)}>Fechar</Btn>
+            </div>
+          </div>
+        </Overlay>
+      )}
+
+      {/* ── MODAL: CANCELAR CONVITE ── */}
+      {confirmCancelId && (
+        <Overlay onClose={() => setConfirmCancelId(null)}>
+          <div style={{ background: T.white, borderRadius: 16, padding: 32, width: '100%', maxWidth: 400, boxShadow: '0 20px 60px rgba(0,0,0,0.2)', textAlign: 'center' }}>
+            <div style={{ fontSize: 48, marginBottom: 12 }}>✕</div>
+            <div style={{ fontWeight: 800, fontSize: 18, marginBottom: 8 }}>Cancelar convite?</div>
+            <div style={{ color: T.sub, fontSize: 13, marginBottom: 28 }}>
+              O usuário <strong>{usuarios.find(u => u.id === confirmCancelId)?.email}</strong> será removido do sistema. Esta ação não pode ser desfeita.
+            </div>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+              <Btn variant="ghost" onClick={() => setConfirmCancelId(null)}>Cancelar</Btn>
+              <Btn variant="danger" onClick={() => handleCancelInvite(confirmCancelId)}>Sim, cancelar convite</Btn>
             </div>
           </div>
         </Overlay>

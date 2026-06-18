@@ -23,6 +23,7 @@ import Empresas from './pages/Empresas'
 import Categorias from './pages/Categorias'
 import CentroCusto from './pages/CentroCusto'
 import Usuarios from './pages/Usuarios'
+import AtivarConta from './pages/AtivarConta'
 import Configuracoes from './pages/Configuracoes'
 import Notificacoes from './pages/Notificacoes'
 import Placeholder from './pages/Placeholder'
@@ -31,6 +32,12 @@ const PLACEHOLDER_PAGES = ['fornecedores', 'clientes', 'scanner', 'contas_pagar'
 
 export default function App() {
   const isMobile = useMobile()
+
+  const [isInviteFlow] = useState(() => {
+    const params = new URLSearchParams(window.location.hash.substring(1))
+    return params.get('type') === 'invite'
+  })
+
   const [usuario, setUsuario] = useState(null)
   const [empresa, setEmpresa] = useState(null)
   const [page, setPage] = useState(() => localStorage.getItem('x8_last_page') || 'dashboard')
@@ -236,6 +243,8 @@ export default function App() {
     localStorage.setItem('x8_data_reset', '1')
     setAppData(initData())
   }, [usuario])
+
+  if (isInviteFlow) return <AtivarConta />
 
   if (loading) {
     return (
