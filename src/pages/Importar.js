@@ -65,7 +65,7 @@ const downloadTemplate = () => {
   const ws = XLSX.utils.aoa_to_sheet(wsData)
   ws['!cols'] = [{ wch: 12 }, { wch: 32 }, { wch: 12 }, { wch: 14 }, { wch: 20 }, { wch: 14 }, { wch: 14 }, { wch: 20 }, { wch: 22 }, { wch: 18 }, { wch: 18 }, { wch: 18 }, { wch: 20 }]
   XLSX.utils.book_append_sheet(wb, ws, 'Lançamentos')
-  XLSX.writeFile(wb, 'template_x8finance.xlsx')
+  XLSX.writeFile(wb, 'template_norvo.xlsx')
 }
 
 export default function Importar({ empresa, onImport }) {

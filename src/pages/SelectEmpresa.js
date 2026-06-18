@@ -399,8 +399,7 @@ export default function SelectEmpresa({ usuario, onSelect, data, onLogout, empre
       {/* Header */}
       <header style={{ position: 'sticky', top: 0, zIndex: 100, background: 'var(--sidebar-bg)', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', padding: '0 28px', height: 64, gap: 8, boxShadow: '0 2px 16px rgba(0,0,0,0.3)' }}>
         <div style={{ fontWeight: 900, fontSize: 19, letterSpacing: -0.3, color: '#fff', userSelect: 'none', marginRight: 8 }}>
-          <span style={{ color: T.primary }}>X8</span>{' '}
-          <span style={{ fontWeight: 500, letterSpacing: 1.5, fontSize: 12, opacity: 0.8 }}>FINANCE</span>
+          <span style={{ color: T.primary }}>Norvo</span>
         </div>
         <div style={{ flex: 1 }} />
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, borderRight: '1px solid rgba(255,255,255,0.1)', paddingRight: 16, marginRight: 4 }}>

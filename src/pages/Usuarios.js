@@ -164,7 +164,7 @@ export default function Usuarios({ usuario }) {
           empresa:  empresasNome || '',
           cargo:    form.cargo,
           senha:    senhaGerada || '(definida pelo administrador)',
-          link:     'https://x8finance.com.br',
+          link:     'https://norvoapp.com.br',
         },
         EMAILJS_PUBLIC_KEY
       ).then(() => {

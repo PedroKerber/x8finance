@@ -200,7 +200,7 @@ export default function Configuracoes({ usuario, onLogout, empresa, onPerfilUpda
     setEmpSelecionadas(prev => prev.includes(id) ? prev.filter(e => e !== id) : [...prev, id])
   }
 
-  const email = usuario?.email || 'pedro@x8finance.com'
+  const email = usuario?.email || 'pedro@norvo.com.br'
   const inicial = (nome || 'P')[0].toUpperCase()
   const empAtual = empresa?.nome || 'Kazole Imobiliária'
   const isMaster = cargo === 'CEO / Administrador Master'

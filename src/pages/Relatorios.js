@@ -273,7 +273,7 @@ export default function Relatorios({ empresa, data, setPage, extraCats = [] }) {
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(recByCat.map((r,i) => ({ '#': i+1, Categoria: r.nome, 'Valor (R$)': r.valor, 'Pct (%)': tRec>0?(r.valor/tRec*100).toFixed(2):0, Lançamentos: r.count }))), 'Rec por Categoria')
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(despByCat.map((r,i) => ({ '#': i+1, Categoria: r.nome, 'Valor (R$)': r.valor, 'Pct (%)': tDesp>0?(r.valor/tDesp*100).toFixed(2):0, Lançamentos: r.count }))), 'Desp por Categoria')
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(lancsRet.map(l => ({ Data: l.data, Sócio: getSocioRet(l)==='pedro'?'Pedro Kerber':getSocioRet(l)==='leo'?'Léo Ricardo':'—', Tipo: TIPO_LABELS[getTipoRet(l)]||'Retirada', Descrição: l.desc, 'Valor (R$)': l.valor, Status: l.status||'' }))), 'Retirada Sócios')
-    XLSX.writeFile(wb, `relatorio_${empresa?.nome||'x8'}_${applied.inicio}_${applied.fim}.xlsx`)
+    XLSX.writeFile(wb, `relatorio_${empresa?.nome||'norvo'}_${applied.inicio}_${applied.fim}.xlsx`)
   }
 
   const exportPDF = () => {
@@ -331,7 +331,7 @@ export default function Relatorios({ empresa, data, setPage, extraCats = [] }) {
       <table><tr><th>Data</th><th>Tipo</th><th>Descrição</th><th>Categoria</th><th>Status</th><th style="text-align:right">Valor</th></tr>
         ${tableData.slice(0,100).map(l => `<tr><td>${l.data||''}</td><td>${l.tipo==='receita'?'Receita':l.tipo==='retirada'?'Retirada':'Despesa'}</td><td>${l.desc||''}</td><td>${l.catNome||''}</td><td>${l.status||''}</td><td class="${l.tipo==='receita'?'g':l.tipo==='retirada'?'o':'r'}" style="text-align:right">${l.tipo==='receita'?'+':'-'} ${fmt2(l.valor)}</td></tr>`).join('')}
       </table>
-      <div class="footer">X8 Finance · ${empresa?.nome||''} · Período ${fd(applied.inicio)} a ${fd(applied.fim)} · Gerado em ${TODAY}</div>
+      <div class="footer">Norvo · ${empresa?.nome||''} · Período ${fd(applied.inicio)} a ${fd(applied.fim)} · Gerado em ${TODAY}</div>
     </body></html>`
     const win = window.open('','_blank')
     if (win) { win.document.write(html); win.document.close(); win.print() }

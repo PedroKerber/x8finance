@@ -241,7 +241,7 @@ export default function App() {
     return (
       <div style={{ minHeight: '100vh', background: T.sidebar, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ color: '#fff', fontFamily: "'Segoe UI', sans-serif", textAlign: 'center' }}>
-          <div style={{ fontSize: 32, fontWeight: 900, marginBottom: 12 }}><span style={{ color: T.primary }}>X8</span> Finance</div>
+          <div style={{ fontSize: 32, fontWeight: 900, marginBottom: 12 }}><span style={{ color: T.primary }}>Norvo</span></div>
           <div style={{ color: T.sidebarText, fontSize: 14 }}>Carregando...</div>
         </div>
       </div>

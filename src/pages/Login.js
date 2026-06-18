@@ -28,7 +28,7 @@ export default function Login({ onLogin }) {
       <div className="login-left">
         <div style={{ maxWidth: 460 }}>
           <div style={{ fontWeight: 900, fontSize: 38, letterSpacing: -1, marginBottom: 16 }}>
-            <span style={{ color: T.primary }}>X8</span> FINANCE
+            <span style={{ color: T.primary }}>NORVO</span>
           </div>
           <div style={{ fontSize: 18, opacity: 0.8, marginBottom: 32, lineHeight: 1.6 }}>
             Gestão financeira inteligente para múltiplas empresas.
@@ -51,7 +51,7 @@ export default function Login({ onLogin }) {
       <div className="login-right">
         <div style={{ width: '100%', maxWidth: 360 }}>
           <div style={{ fontWeight: 900, fontSize: 28, letterSpacing: -0.5, marginBottom: 6 }}>
-            <span style={{ color: T.primary }}>X8</span> Finance
+            <span style={{ color: T.primary }}>Norvo</span>
           </div>
           <div style={{ color: T.sub, fontSize: 14, marginBottom: 32 }}>Acesse sua conta para continuar</div>
 

@@ -233,7 +233,7 @@ export default function Dashboard({ empresa, data, setPage, onNova, extraCats = 
         {/* Scanner */}
         <Card style={{ padding: 20, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
           <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4, display: 'flex', gap: 8, alignItems: 'center' }}>
-            Scanner Inteligente X8
+            Scanner Inteligente Norvo
             <Badge label="IA" color={T.blue} bg={T.blueL} />
           </div>
           <div style={{ marginTop: 16, marginBottom: 16 }}>

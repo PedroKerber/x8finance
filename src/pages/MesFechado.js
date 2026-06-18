@@ -38,7 +38,7 @@ td{padding:7px 10px;border-bottom:1px solid #f3f4f6}
 .ftr{background:#f9fafb;border-top:1px solid #e5e7eb;padding:14px 32px;text-align:center;font-size:10px;color:#9ca3af;margin-top:24px}
 @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}.hdr{background:#07140F!important}}
 </style></head><body>
-<div class="hdr"><div class="logo"><span>X8</span> Finance</div>
+<div class="hdr"><div class="logo">Norvo</div>
 <div class="co"><h2>${empresa?.nome||''}</h2><p>CNPJ: ${empresa?.cnpj||''}</p><p>Fechamento de ${mesLabel}</p></div></div>
 <div class="body">
 <div class="st">Indicadores do Período</div>
@@ -72,7 +72,7 @@ ${lancs.map(row).join('')||'<tr><td colspan="6" style="color:#9ca3af">Sem lança
 </tbody></table>
 </div>
 <div class="ftr">
-<p>Gerado pelo X8 Finance em ${now.toLocaleDateString('pt-BR')} às ${now.toLocaleTimeString('pt-BR')}</p>
+<p>Gerado pelo Norvo em ${now.toLocaleDateString('pt-BR')} às ${now.toLocaleTimeString('pt-BR')}</p>
 <p style="margin-top:4px">Documento confidencial — uso interno da ${empresa?.nome||''}</p>
 </div></body></html>`
 }
@@ -288,7 +288,7 @@ export default function MesFechado({ empresa, data, onFechar, onReabrir, usuario
     try {
       const wb = XLSX.utils.book_new()
       XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
-        ['FECHAMENTO MENSAL — X8 Finance'],
+        ['FECHAMENTO MENSAL — Norvo'],
         [''],
         ['Empresa', empresa?.nome || ''], ['CNPJ', empresa?.cnpj || ''],
         ['Competência', mesLabel], ['Status', fechado ? 'Fechamento Concluído' : 'Em Andamento'],
@@ -350,14 +350,14 @@ export default function MesFechado({ empresa, data, onFechar, onReabrir, usuario
   }
 
   const shareWA = () => {
-    const txt = `*Fechamento Mensal — ${empresa?.nome}*\n📅 *${mesLabel}*\n\n📈 Receita: ${fmtS(tRec)}\n📉 Despesas: ${fmtS(tDesp)}\n💰 Lucro: ${fmtS(lucro)}\n📊 Margem: ${pct(margem)}\n🏦 Saldo Final: ${fmtS(saldoFinal)}\n\n_Gerado pelo X8 Finance_`
+    const txt = `*Fechamento Mensal — ${empresa?.nome}*\n📅 *${mesLabel}*\n\n📈 Receita: ${fmtS(tRec)}\n📉 Despesas: ${fmtS(tDesp)}\n💰 Lucro: ${fmtS(lucro)}\n📊 Margem: ${pct(margem)}\n🏦 Saldo Final: ${fmtS(saldoFinal)}\n\n_Gerado pelo Norvo_`
     window.open(`https://wa.me/?text=${encodeURIComponent(txt)}`, '_blank')
     addHistorico('compartilhamento_wa', 'Compartilhado via WhatsApp')
   }
 
   const shareEmail = () => {
     const subject = `Fechamento Mensal — ${empresa?.nome} — ${mesLabel}`
-    const body = `Fechamento Mensal — ${empresa?.nome}\n\nCompetência: ${mesLabel}\nReceita Total: ${fmtS(tRec)}\nDespesas Totais: ${fmtS(tDesp)}\nLucro Líquido: ${fmtS(lucro)}\nMargem Líquida: ${pct(margem)}\nSaldo Inicial: ${fmtS(saldoInicial)}\nSaldo Final: ${fmtS(saldoFinal)}\n\nGerado pelo X8 Finance`
+    const body = `Fechamento Mensal — ${empresa?.nome}\n\nCompetência: ${mesLabel}\nReceita Total: ${fmtS(tRec)}\nDespesas Totais: ${fmtS(tDesp)}\nLucro Líquido: ${fmtS(lucro)}\nMargem Líquida: ${pct(margem)}\nSaldo Inicial: ${fmtS(saldoInicial)}\nSaldo Final: ${fmtS(saldoFinal)}\n\nGerado pelo Norvo`
     window.open(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`)
     addHistorico('compartilhamento_email', 'Compartilhado via e-mail')
   }
@@ -616,7 +616,7 @@ export default function MesFechado({ empresa, data, onFechar, onReabrir, usuario
       {/* ── Saúde + Comparativo ── */}
       <div className="g-2">
         <Card style={{ padding: 20 }}>
-          <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 16 }}>Saúde Financeira X8</div>
+          <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 16 }}>Saúde Financeira</div>
           <div style={{ display: 'flex', gap: 20, alignItems: 'center' }}>
             <div style={{ position: 'relative', flexShrink: 0 }}>
               <svg width="120" height="120" viewBox="0 0 120 120">

@@ -10,7 +10,7 @@ const PAGE_INFO = {
   clientes: { icon: '👥', title: 'Clientes', desc: 'Base de clientes com histórico de transações.' },
   metas: { icon: '🎯', title: 'Metas Financeiras', desc: 'Defina e acompanhe metas financeiras mensais e anuais.' },
   configuracoes: { icon: '⚙', title: 'Configurações', desc: 'Configurações da conta, integrações e preferências.' },
-  scanner: { icon: '📷', title: 'Scanner Inteligente X8', desc: 'Escanear nota fiscal com IA para lançamento automático.' },
+  scanner: { icon: '📷', title: 'Scanner Inteligente Norvo', desc: 'Escanear nota fiscal com IA para lançamento automático.' },
 }
 
 export default function Placeholder({ page }) {

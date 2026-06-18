@@ -192,8 +192,8 @@ export default function Sidebar({ page, setPage, collapsed, onToggle, usuario, p
                   width: 32, height: 32, borderRadius: 8, background: S.accent, flexShrink: 0,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontWeight: 900, fontSize: 13, color: '#fff', letterSpacing: -0.5,
-                }}>X8</div>
-                <span style={{ fontWeight: 800, fontSize: 17, color: '#fff', letterSpacing: -0.3, flex: 1 }}>Finance</span>
+                }}>N</div>
+                <span style={{ fontWeight: 800, fontSize: 17, color: '#fff', letterSpacing: -0.3, flex: 1 }}>Norvo</span>
                 <button
                   onClick={onMobileClose}
                   style={{ background: 'none', border: 'none', cursor: 'pointer', color: S.txt, padding: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8 }}>
@@ -319,10 +319,10 @@ export default function Sidebar({ page, setPage, collapsed, onToggle, usuario, p
             width: 32, height: 32, borderRadius: 8, background: S.accent, flexShrink: 0,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontWeight: 900, fontSize: 13, color: '#fff', letterSpacing: -0.5,
-          }}>X8</div>
+          }}>N</div>
           {!collapsed && (
             <span style={{ fontWeight: 800, fontSize: 17, color: '#fff', letterSpacing: -0.3, whiteSpace: 'nowrap' }}>
-              Finance
+              Norvo
             </span>
           )}
         </div>
