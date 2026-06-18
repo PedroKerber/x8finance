@@ -1,14 +1,14 @@
 export const T = {
   // Sidebar (own palette in Sidebar.js, these used only in loading screen / legacy)
-  sidebar: '#0d2318',
-  sidebarHover: '#1a3529',
-  sidebarActive: '#1e4030',
-  sidebarText: '#7db894',
+  sidebar: '#18181B',
+  sidebarHover: '#27272A',
+  sidebarActive: '#27272A',
+  sidebarText: 'rgba(255,255,255,0.5)',
   sidebarTextActive: '#ffffff',
 
   // Brand / status colors — fixed hex, not affected by theme
-  primary: '#16a34a',
-  primaryDark: '#15803d',
+  primary: '#2563EB',
+  primaryDark: '#1D4ED8',
   green: '#16a34a',
   red: '#dc2626',
   blue: '#2563eb',
