@@ -17,11 +17,11 @@ module.exports = async (req, res) => {
     { auth: { autoRefreshToken: false, persistSession: false } }
   )
 
-  const { error } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
+  const { data, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
     data: { nome: nome || email },
     redirectTo: 'https://norvoapp.com.br'
   })
 
   if (error) return res.status(400).json({ error: error.message })
-  return res.status(200).json({ success: true })
+  return res.status(200).json({ success: true, userId: data.user?.id })
 }
