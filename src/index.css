@@ -107,9 +107,6 @@ button, a { transition: background .15s, opacity .15s, transform .15s !important
 /* ── Page Headers ── */
 .page-hd  { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
 
-/* ── Login layout ── */
-.login-left  { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px; color: #fff; }
-.login-right { width: 440px; background: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px; }
 
 /* ── Empresa card meta (stats beside card) ── */
 .emp-card-row   { display: flex; align-items: center; gap: 18px; }
@@ -135,9 +132,6 @@ button, a { transition: background .15s, opacity .15s, transform .15s !important
   .page-hd { flex-direction: column !important; align-items: flex-start !important; gap: 10px !important; }
   .page-hd > *:last-child { width: 100%; }
 
-  /* Login — hide marketing panel, full form */
-  .login-left  { display: none !important; }
-  .login-right { width: 100% !important; padding: 40px 24px !important; min-height: 100vh; }
 
   /* Empresa card meta — hide on mobile */
   .emp-card-meta { display: none !important; }

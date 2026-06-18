@@ -1,22 +1,58 @@
 import { useState } from 'react'
 import { T } from '../theme'
-import { Btn } from '../components/ui'
 
-const LogoN = ({ size, light }) => (
+const LogoN = ({ size }) => (
   <svg width={size} height={Math.round(size * 70 / 60)} viewBox="0 0 60 70" fill="none" style={{ flexShrink: 0 }}>
-    <rect x="0" y="0" width="14" height="70" fill={light ? '#ffffff' : '#0D2545'} rx="1.5" />
+    <rect x="0" y="0" width="14" height="70" fill="#0D2545" rx="1.5" />
     <polygon points="14,0 32,0 46,70 28,70" fill="#F47B20" />
-    <rect x="46" y="0" width="14" height="70" fill={light ? '#ffffff' : '#0D2545'} rx="1.5" />
+    <rect x="46" y="0" width="14" height="70" fill="#0D2545" rx="1.5" />
   </svg>
 )
 
-const inp = (focus, err) => ({
-  width: '100%', background: '#ffffff',
-  border: `1.5px solid ${err ? T.red : focus ? '#0D2545' : '#C9D3DD'}`,
-  borderRadius: 8, padding: '10px 12px', color: '#111827',
-  fontSize: 14, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit',
-  transition: 'border-color .15s',
-})
+const IcoMail = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+    <rect x="2" y="4" width="20" height="16" rx="2" />
+    <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+  </svg>
+)
+
+const IcoLock = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+    <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+  </svg>
+)
+
+const IcoEye = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+    <circle cx="12" cy="12" r="3" />
+  </svg>
+)
+
+const IcoEyeOff = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
+    <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
+    <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
+    <line x1="2" x2="22" y1="2" y2="22" />
+  </svg>
+)
+
+const IcoShield = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+    <path d="m9 12 2 2 4-4" />
+  </svg>
+)
+
+const IcoLogin = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+    <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+    <polyline points="10 17 15 12 10 7" />
+    <line x1="15" x2="3" y1="12" y2="12" />
+  </svg>
+)
 
 export default function Login({ onLogin }) {
   const [email, setEmail] = useState('')
@@ -26,6 +62,7 @@ export default function Login({ onLogin }) {
   const [erro, setErro] = useState('')
   const [fEmail, setFEmail] = useState(false)
   const [fSenha, setFSenha] = useState(false)
+  const [lembrar, setLembrar] = useState(true)
 
   const go = async () => {
     if (!email.trim() || !senha.trim()) return
@@ -33,7 +70,7 @@ export default function Login({ onLogin }) {
     setErro('')
     try {
       await onLogin(email.trim(), senha)
-    } catch (e) {
+    } catch {
       setErro('E-mail ou senha incorretos.')
     } finally {
       setLoading(false)
@@ -41,98 +78,143 @@ export default function Login({ onLogin }) {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: T.sidebar, display: 'flex', fontFamily: "'Segoe UI', sans-serif" }}>
+    <div style={{ minHeight: '100vh', background: '#EEF2F7', display: 'flex', flexDirection: 'column', fontFamily: "'Segoe UI', sans-serif", position: 'relative', overflow: 'hidden' }}>
 
-      {/* Left panel */}
-      <div className="login-left">
-        <div style={{ maxWidth: 460 }}>
+      {/* Dot pattern */}
+      <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.04, pointerEvents: 'none' }} aria-hidden="true">
+        <defs>
+          <pattern id="login-dots" x="0" y="0" width="22" height="22" patternUnits="userSpaceOnUse">
+            <circle cx="2" cy="2" r="1.5" fill="#0D2545" />
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#login-dots)" />
+      </svg>
 
-          {/* Logo mark + wordmark */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 32 }}>
-            <LogoN size={52} light />
-            <div>
-              <div style={{ fontWeight: 900, fontSize: 32, letterSpacing: -0.5, color: '#ffffff', lineHeight: 1.05 }}>
-                NORVO
+      {/* Top-right navy triangle */}
+      <div style={{ position: 'absolute', top: 0, right: 0, width: 340, height: 280, background: '#0D2545', clipPath: 'polygon(100% 0, 20% 0, 100% 100%)', pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', top: 0, right: 0, width: 160, height: 130, background: T.primary, opacity: 0.22, clipPath: 'polygon(100% 0, 55% 0, 100% 100%)', pointerEvents: 'none' }} />
+
+      {/* Bottom-left orange triangle */}
+      <div style={{ position: 'absolute', bottom: 0, left: 0, width: 280, height: 240, background: T.primary, clipPath: 'polygon(0 0, 0 100%, 100% 100%)', pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', bottom: 0, left: 0, width: 130, height: 110, background: '#0D2545', opacity: 0.18, clipPath: 'polygon(0 0, 0 100%, 100% 100%)', pointerEvents: 'none' }} />
+
+      {/* Main content */}
+      <div style={{ position: 'relative', zIndex: 1, flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px 16px 24px' }}>
+        <div style={{ width: '100%', maxWidth: 420, background: '#ffffff', borderRadius: 20, border: '0.5px solid rgba(0,0,0,0.06)', padding: '38px 40px' }}>
+
+          {/* Logo */}
+          <div style={{ textAlign: 'center', marginBottom: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 10 }}>
+              <LogoN size={28} />
+              <div style={{ textAlign: 'left' }}>
+                <div style={{ fontWeight: 800, fontSize: 22, letterSpacing: -0.3, color: '#0D2545', lineHeight: 1 }}>NORVO</div>
+                <div style={{ fontSize: 8, letterSpacing: 2, color: T.primary, fontWeight: 700, marginTop: 3 }}>GESTÃO FINANCEIRA INTELIGENTE</div>
               </div>
-              <div style={{ fontSize: 10, color: T.primary, letterSpacing: 2.5, marginTop: 4, fontWeight: 700 }}>
-                GESTÃO FINANCEIRA
-              </div>
+            </div>
+            <div style={{ fontStyle: 'italic', color: '#6B7280', fontSize: 13 }}>
+              O novo <span style={{ color: T.primary, fontWeight: 600, fontStyle: 'normal' }}>norte</span> do seu negócio.
             </div>
           </div>
 
-          <div style={{ fontSize: 17, opacity: 0.75, marginBottom: 36, lineHeight: 1.65 }}>
-            Gestão financeira inteligente para múltiplas empresas.
+          {/* Divider */}
+          <div style={{ height: 0.5, background: '#E5E7EB', margin: '0 0 22px' }} />
+
+          {/* Title */}
+          <div style={{ textAlign: 'center', marginBottom: 22 }}>
+            <div style={{ fontSize: 17, fontWeight: 700, color: '#111827', marginBottom: 4 }}>Entrar no sistema</div>
+            <div style={{ fontSize: 13, color: '#6B7280' }}>Acesse sua conta para continuar</div>
           </div>
-
-          {[
-            ['⚡', 'Dashboard em tempo real com insights de IA'],
-            ['📊', 'Controle multiempresa com relatórios completos'],
-            ['🔒', 'Fechamento mensal e conciliação bancária'],
-            ['📷', 'Scanner inteligente de notas fiscais'],
-          ].map(([ic, txt]) => (
-            <div key={txt} style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 16 }}>
-              <div style={{ background: T.primary + '22', borderRadius: 8, width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>{ic}</div>
-              <span style={{ opacity: 0.85, fontSize: 14 }}>{txt}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Right panel */}
-      <div className="login-right">
-        <div style={{ width: '100%', maxWidth: 360 }}>
-
-          {/* Logo on right panel */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 28 }}>
-            <LogoN size={30} />
-            <div style={{ fontWeight: 900, fontSize: 26, letterSpacing: -0.5, color: '#0D2545' }}>Norvo</div>
-          </div>
-
-          <div style={{ color: T.sub, fontSize: 14, marginBottom: 28 }}>Acesse sua conta para continuar</div>
 
           {/* E-mail */}
-          <div style={{ marginBottom: 16 }}>
-            <label style={{ display: 'block', fontWeight: 600, fontSize: 13, color: '#374151', marginBottom: 6 }}>E-mail</label>
-            <input
-              type="email" value={email} onChange={e => setEmail(e.target.value)}
-              onFocus={() => setFEmail(true)} onBlur={() => setFEmail(false)}
-              placeholder="seu@email.com"
-              style={inp(fEmail, false)}
-            />
+          <div style={{ marginBottom: 14 }}>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 6 }}>E-mail</label>
+            <div style={{ display: 'flex', alignItems: 'center', border: `1.5px solid ${fEmail ? '#0D2545' : '#D1D5DB'}`, borderRadius: 10, padding: '0 14px', height: 48, background: fEmail ? '#fff' : '#FAFAFA', transition: 'border-color .15s, background .15s', gap: 10 }}>
+              <IcoMail />
+              <input
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                onFocus={() => setFEmail(true)}
+                onBlur={() => setFEmail(false)}
+                placeholder="seu@email.com"
+                style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: 14, color: '#111827', fontFamily: 'inherit' }}
+              />
+            </div>
           </div>
 
           {/* Senha */}
-          <div style={{ marginBottom: 16 }}>
-            <label style={{ display: 'block', fontWeight: 600, fontSize: 13, color: '#374151', marginBottom: 6 }}>Senha</label>
-            <div style={{ position: 'relative' }}>
+          <div style={{ marginBottom: 8 }}>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Senha</label>
+            <div style={{ display: 'flex', alignItems: 'center', border: `1.5px solid ${erro ? T.red : fSenha ? '#0D2545' : '#D1D5DB'}`, borderRadius: 10, padding: '0 14px', height: 48, background: '#fff', transition: 'border-color .15s', gap: 10 }}>
+              <IcoLock />
               <input
-                type={show ? 'text' : 'password'} value={senha} onChange={e => setSenha(e.target.value)}
+                type={show ? 'text' : 'password'}
+                value={senha}
+                onChange={e => setSenha(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && go()}
-                onFocus={() => setFSenha(true)} onBlur={() => setFSenha(false)}
-                style={{ ...inp(fSenha, !!erro), paddingRight: 42 }}
+                onFocus={() => setFSenha(true)}
+                onBlur={() => setFSenha(false)}
+                placeholder="••••••••••"
+                style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: 14, color: '#111827', fontFamily: 'inherit' }}
               />
-              <button onClick={() => setShow(s => !s)} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: '#9CA3AF' }}>
-                {show ? '🙈' : '👁️'}
+              <button
+                onClick={() => setShow(s => !s)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', display: 'flex', alignItems: 'center', padding: 2, flexShrink: 0 }}
+              >
+                {show ? <IcoEyeOff /> : <IcoEye />}
               </button>
             </div>
             {erro && <div style={{ color: T.red, fontSize: 12, marginTop: 6, fontWeight: 600 }}>{erro}</div>}
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 24, fontSize: 13 }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6, color: T.sub, cursor: 'pointer' }}>
-              <input type="checkbox" defaultChecked style={{ accentColor: T.primary }} /> Manter conectado
-            </label>
+          {/* Esqueci senha */}
+          <div style={{ textAlign: 'right', marginBottom: 18 }}>
+            <span style={{ fontSize: 13, color: '#0D2545', fontWeight: 600, cursor: 'pointer' }}>Esqueci minha senha</span>
           </div>
 
-          <Btn full onClick={go} disabled={loading} style={{ padding: '13px', fontSize: 15, borderRadius: 10, marginBottom: 10 }}>
-            {loading ? 'Entrando...' : 'Entrar'}
-          </Btn>
-
-          <div style={{ textAlign: 'center', marginTop: 24, color: T.muted, fontSize: 12 }}>
-            Ao entrar, você concorda com os <span style={{ color: T.primary, cursor: 'pointer' }}>Termos de Uso</span>
+          {/* Manter conectado */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 22 }}>
+            <div
+              onClick={() => setLembrar(l => !l)}
+              role="checkbox"
+              aria-checked={lembrar}
+              tabIndex={0}
+              onKeyDown={e => (e.key === ' ' || e.key === 'Enter') && setLembrar(l => !l)}
+              style={{ width: 17, height: 17, borderRadius: 4, background: lembrar ? '#0D2545' : 'transparent', border: `1.5px solid ${lembrar ? '#0D2545' : '#D1D5DB'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, transition: 'background .15s, border-color .15s' }}
+            >
+              {lembrar && (
+                <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+                  <path d="M2 6l3 3 5-5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              )}
+            </div>
+            <span onClick={() => setLembrar(l => !l)} style={{ fontSize: 13, color: '#6B7280', cursor: 'pointer', userSelect: 'none' }}>Manter conectado</span>
           </div>
+
+          {/* Botão Entrar */}
+          <button
+            onClick={go}
+            disabled={loading}
+            style={{ width: '100%', height: 50, background: loading ? '#0D254580' : '#0D2545', border: 'none', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, cursor: loading ? 'not-allowed' : 'pointer', marginBottom: 16, transition: 'background .15s' }}
+          >
+            {!loading && <IcoLogin />}
+            <span style={{ fontSize: 15, fontWeight: 700, color: '#fff', letterSpacing: 0.4 }}>{loading ? 'Entrando...' : 'Entrar'}</span>
+          </button>
+
+          {/* Segurança */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+            <IcoShield />
+            <span style={{ fontSize: 12, color: '#9CA3AF' }}>Ambiente seguro e criptografado</span>
+          </div>
+
         </div>
       </div>
+
+      {/* Page footer */}
+      <div style={{ position: 'relative', zIndex: 1, textAlign: 'center', padding: '0 16px 18px', fontSize: 11, color: 'rgba(0,0,0,0.3)' }}>
+        © NORVO — Gestão Financeira Inteligente
+      </div>
+
     </div>
   )
 }
