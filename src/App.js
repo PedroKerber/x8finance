@@ -23,6 +23,7 @@ import Empresas from './pages/Empresas'
 import Categorias from './pages/Categorias'
 import CentroCusto from './pages/CentroCusto'
 import Usuarios from './pages/Usuarios'
+import ComparativoEmpresas from './pages/ComparativoEmpresas'
 import AtivarConta from './pages/AtivarConta'
 import Configuracoes from './pages/Configuracoes'
 import Notificacoes from './pages/Notificacoes'
@@ -293,6 +294,7 @@ export default function App() {
       case 'importar': return <Importar empresa={empresa} onImport={handleImport} />
       case 'retirada_socios': return <RetiradaSocios {...sharedProps} />
       case 'relatorios': return <Relatorios {...sharedProps} />
+      case 'comparativo_empresas': return <ComparativoEmpresas appData={appData} empresas={empresas} />
       case 'empresas': return <Empresas setPage={setPage} empresas={empresas} onSaveEmpresa={handleSaveEmpresa} />
       case 'categorias': return <Categorias {...sharedProps} onSaveCat={handleSaveCat} onDeleteCat={handleDeleteCat} />
       case 'centro_custo': return <CentroCusto {...sharedProps} />
