@@ -1,413 +1,501 @@
 import { useMemo, useState } from 'react'
-import { XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, ComposedChart, Bar, Line } from 'recharts'
-import { T, fmt, fmtS, fmtPct } from '../theme'
-import { genFluxoCaixaData, getVariavelIds } from '../data'
-import { Card, Badge } from '../components/ui'
-import AdvancedFilters, { defaultFilter, filterLancamentos, loadSavedFilter } from '../components/AdvancedFilters'
+import {
+  ComposedChart, Bar, Line, BarChart,
+  XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
+} from 'recharts'
+import { T, fmt, fmtPct } from '../theme'
+import { useMobile } from '../context/MobileContext'
 
-const COLORS_PIE = ['#2563eb', '#dc2626', '#7c3aed', '#16a34a', '#ea580c', '#0891b2']
+const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
 
-export default function Dashboard({ empresa, data, setPage, onNova, extraCats = [] }) {
-  const [filter, setFilter] = useState(() => loadSavedFilter('x8_filter_dashboard') || defaultFilter())
+const PERIODOS = [
+  { id: 'mes', label: 'Este Mês' },
+  { id: 'trimestre', label: 'Trimestre' },
+  { id: 'ano', label: 'Este Ano' },
+]
+
+const RANK_OPTS = [
+  { id: 'receita', label: 'Faturamento' },
+  { id: 'lucro', label: 'Lucro' },
+  { id: 'margem', label: 'Margem' },
+  { id: 'caixa', label: 'Caixa' },
+]
+
+function getRange(periodo) {
+  const now = new Date(), y = now.getFullYear(), m = now.getMonth()
+  if (periodo === 'mes') {
+    const last = new Date(y, m + 1, 0).getDate()
+    return {
+      inicio: `${y}-${String(m+1).padStart(2,'0')}-01`,
+      fim: `${y}-${String(m+1).padStart(2,'0')}-${String(last).padStart(2,'0')}`,
+    }
+  }
+  if (periodo === 'trimestre') {
+    const qs = m - (m % 3), qe = qs + 2
+    const last = new Date(y, qe + 1, 0).getDate()
+    return {
+      inicio: `${y}-${String(qs+1).padStart(2,'0')}-01`,
+      fim: `${y}-${String(qe+1).padStart(2,'0')}-${String(last).padStart(2,'0')}`,
+    }
+  }
+  return { inicio: `${y}-01-01`, fim: `${y}-12-31` }
+}
+
+function prevRange(inicio, fim) {
+  const s = new Date(inicio + 'T00:00:00'), e = new Date(fim + 'T00:00:00')
+  const dur = e - s + 86400000
+  const pe = new Date(s - 86400000)
+  const ps = new Date(pe - dur + 86400000)
+  return { inicio: ps.toISOString().slice(0,10), fim: pe.toISOString().slice(0,10) }
+}
+
+function delta(curr, prev) {
+  if (!prev || prev === 0) return null
+  return ((curr - prev) / Math.abs(prev)) * 100
+}
+
+function buildFluxo(lancs, inicio, fim) {
+  const sD = new Date(inicio + 'T00:00:00')
+  const eD = new Date(fim + 'T00:00:00')
+  const days = Math.round((eD - sD) / 86400000) + 1
+  let saldo = 0
+  const pts = []
+
+  if (days <= 32) {
+    for (let d = new Date(sD); d <= eD; d.setDate(d.getDate() + 1)) {
+      const ds = d.toISOString().slice(0, 10)
+      const dl = lancs.filter(l => l.data === ds)
+      const ent = dl.filter(l => l.tipo === 'receita' && l.status === 'Recebida').reduce((s, l) => s + l.valor, 0)
+      const sai = dl.filter(l => (l.tipo === 'despesa' && (l.status === 'Paga' || l.status === 'Pago')) || l.tipo === 'retirada').reduce((s, l) => s + l.valor, 0)
+      saldo += ent - sai
+      pts.push({ label: String(d.getDate()).padStart(2,'0'), entradas: ent, saidas: sai, saldo })
+    }
+  } else {
+    let d = new Date(sD.getFullYear(), sD.getMonth(), 1)
+    while (d <= eD) {
+      const ym = d.toISOString().slice(0, 7)
+      const ml = lancs.filter(l => l.data?.startsWith(ym))
+      const ent = ml.filter(l => l.tipo === 'receita' && l.status === 'Recebida').reduce((s, l) => s + l.valor, 0)
+      const sai = ml.filter(l => (l.tipo === 'despesa' && (l.status === 'Paga' || l.status === 'Pago')) || l.tipo === 'retirada').reduce((s, l) => s + l.valor, 0)
+      saldo += ent - sai
+      pts.push({ label: MESES[d.getMonth()], entradas: ent, saidas: sai, saldo })
+      d.setMonth(d.getMonth() + 1)
+    }
+  }
+  return pts
+}
+
+function DeltaBadge({ value, invert }) {
+  if (value === null || value === undefined) return <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>—</span>
+  const good = invert ? value <= 0 : value >= 0
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 2,
+      padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 600,
+      background: good ? '#dcfce7' : '#fee2e2',
+      color: good ? '#15803d' : '#dc2626',
+    }}>
+      {value >= 0 ? '▲' : '▼'} {Math.abs(value).toFixed(1)}%
+    </span>
+  )
+}
+
+function KpiCard({ label, value, deltaVal, invert, sub, onClick, accent }) {
+  return (
+    <div onClick={onClick} style={{
+      background: 'var(--card)', borderRadius: 14, padding: '20px 22px',
+      border: '1px solid var(--border)',
+      borderTop: accent ? `3px solid ${T.primary}` : '1px solid var(--border)',
+      cursor: onClick ? 'pointer' : 'default',
+      transition: 'box-shadow .15s, transform .15s',
+    }}
+    onMouseEnter={e => { if (onClick) { e.currentTarget.style.boxShadow = 'var(--shadow-md)'; e.currentTarget.style.transform = 'translateY(-2px)' } }}
+    onMouseLeave={e => { if (onClick) { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.transform = 'none' } }}>
+      <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-sub)', textTransform: 'uppercase', letterSpacing: .6, marginBottom: 14 }}>{label}</div>
+      <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--text)', letterSpacing: -.3, marginBottom: 10 }}>{value}</div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <DeltaBadge value={deltaVal} invert={invert} />
+        {sub && <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{sub}</span>}
+      </div>
+    </div>
+  )
+}
+
+function FluxoTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null
+  return (
+    <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', boxShadow: 'var(--shadow-md)', fontSize: 12 }}>
+      <div style={{ fontWeight: 600, color: 'var(--text-sub)', marginBottom: 6 }}>{label}</div>
+      {payload.map((p, i) => (
+        <div key={i} style={{ color: p.color, fontWeight: 600 }}>{p.name}: {fmt(p.value)}</div>
+      ))}
+    </div>
+  )
+}
+
+function CatTooltip({ active, payload }) {
+  if (!active || !payload?.length) return null
+  return (
+    <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', boxShadow: 'var(--shadow-md)', fontSize: 12 }}>
+      <div style={{ fontWeight: 600 }}>{fmt(payload[0].value)}</div>
+    </div>
+  )
+}
+
+function SectionHead({ title, action }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
+      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{title}</div>
+      {action}
+    </div>
+  )
+}
+
+function LinkBtn({ label, onClick }) {
+  return (
+    <button onClick={onClick} style={{ background: 'none', border: 'none', color: T.primary, cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', padding: 0 }}>
+      {label} →
+    </button>
+  )
+}
+
+function Pill({ label, active, onClick }) {
+  return (
+    <button onClick={onClick} style={{
+      padding: '5px 13px', borderRadius: 20, fontSize: 12, fontWeight: active ? 600 : 400,
+      border: active ? 'none' : '1px solid var(--border)',
+      background: active ? T.primary : 'var(--card)',
+      color: active ? '#fff' : 'var(--text-sub)', cursor: 'pointer', fontFamily: 'inherit',
+      transition: 'all .15s',
+    }}>{label}</button>
+  )
+}
+
+export default function Dashboard({ empresa, data, setPage, allData = {}, allEmpresas = [] }) {
+  const isMobile = useMobile()
+  const [periodo, setPeriodo] = useState('mes')
+  const [rankTipo, setRankTipo] = useState('receita')
+
+  const range = useMemo(() => getRange(periodo), [periodo])
+  const prev = useMemo(() => prevRange(range.inicio, range.fim), [range])
 
   const lancs = useMemo(() => data.lancamentos || [], [data.lancamentos])
-  const filteredLancs = useMemo(() => filterLancamentos(lancs, filter), [lancs, filter])
 
-  const tRec      = useMemo(() => filteredLancs.filter(l => l.tipo === 'receita' && l.status === 'Recebida').reduce((s, l) => s + l.valor, 0), [filteredLancs])
-  const tRecPrev  = useMemo(() => filteredLancs.filter(l => l.tipo === 'receita').reduce((s, l) => s + l.valor, 0), [filteredLancs])
-  const variavelIds = useMemo(() => getVariavelIds(extraCats), [extraCats])
-  const tDespVar  = useMemo(() => filteredLancs.filter(l => l.tipo === 'despesa' && variavelIds.has(l.cat) && l.status === 'Paga').reduce((s, l) => s + l.valor, 0), [filteredLancs, variavelIds])
-  const tDespFixed= useMemo(() => filteredLancs.filter(l => l.tipo === 'despesa' && !variavelIds.has(l.cat) && l.status === 'Paga').reduce((s, l) => s + l.valor, 0), [filteredLancs, variavelIds])
-  const tDesp     = tDespVar + tDespFixed
-  const tRetirada = useMemo(() => filteredLancs.filter(l => l.tipo === 'retirada').reduce((s, l) => s + l.valor, 0), [filteredLancs])
-  const lucroBruto  = tRec - tDespVar
-  const resultOper  = lucroBruto - tDespFixed
-  const saldoFinal  = resultOper - tRetirada
-  const margem      = tRec > 0 ? (resultOper / tRec) * 100 : 0
+  const filtered = useMemo(() => lancs.filter(l => l.data >= range.inicio && l.data <= range.fim), [lancs, range])
+  const prevFiltered = useMemo(() => lancs.filter(l => l.data >= prev.inicio && l.data <= prev.fim), [lancs, prev])
 
-  const fluxoData = useMemo(() => genFluxoCaixaData(filteredLancs), [filteredLancs])
-  const fluxoResumo = fluxoData.reduce((acc, d) => ({ e: acc.e + d.entradas, s: acc.s + d.saidas }), { e: 0, s: 0 })
+  // KPIs atuais
+  const { tRec, tDesp, tRet } = useMemo(() => ({
+    tRec: filtered.filter(l => l.tipo === 'receita' && l.status === 'Recebida').reduce((s, l) => s + l.valor, 0),
+    tDesp: filtered.filter(l => l.tipo === 'despesa' && (l.status === 'Paga' || l.status === 'Pago')).reduce((s, l) => s + l.valor, 0),
+    tRet: filtered.filter(l => l.tipo === 'retirada').reduce((s, l) => s + l.valor, 0),
+  }), [filtered])
 
+  const lucro = tRec - tDesp
+  const caixa = lucro - tRet
+
+  // KPIs período anterior
+  const { pRec, pDesp, pRet } = useMemo(() => ({
+    pRec: prevFiltered.filter(l => l.tipo === 'receita' && l.status === 'Recebida').reduce((s, l) => s + l.valor, 0),
+    pDesp: prevFiltered.filter(l => l.tipo === 'despesa' && (l.status === 'Paga' || l.status === 'Pago')).reduce((s, l) => s + l.valor, 0),
+    pRet: prevFiltered.filter(l => l.tipo === 'retirada').reduce((s, l) => s + l.valor, 0),
+  }), [prevFiltered])
+
+  const pLucro = pRec - pDesp
+  const pCaixa = pLucro - pRet
+
+  // Fluxo
+  const fluxo = useMemo(() => buildFluxo(lancs, range.inicio, range.fim), [lancs, range])
+  const fluxoTot = useMemo(() => fluxo.reduce((acc, d) => ({ ent: acc.ent + d.entradas, sai: acc.sai + d.saidas }), { ent: 0, sai: 0 }), [fluxo])
+
+  // Categorias
   const despCats = useMemo(() => {
     const map = {}
-    filteredLancs.filter(l => l.tipo === 'despesa').forEach(l => {
-      map[l.catNome] = (map[l.catNome] || 0) + l.valor
+    filtered.filter(l => l.tipo === 'despesa').forEach(l => { map[l.catNome || 'Outros'] = (map[l.catNome || 'Outros'] || 0) + l.valor })
+    return Object.entries(map).map(([n, v]) => ({ n: n.length > 22 ? n.slice(0,20)+'…' : n, v })).sort((a, b) => b.v - a.v).slice(0, 6)
+  }, [filtered])
+
+  const recCats = useMemo(() => {
+    const map = {}
+    filtered.filter(l => l.tipo === 'receita').forEach(l => { map[l.catNome || 'Outros'] = (map[l.catNome || 'Outros'] || 0) + l.valor })
+    return Object.entries(map).map(([n, v]) => ({ n: n.length > 22 ? n.slice(0,20)+'…' : n, v })).sort((a, b) => b.v - a.v).slice(0, 6)
+  }, [filtered])
+
+  // Ranking multi-empresa
+  const empRanking = useMemo(() => {
+    if (!allEmpresas.length) return []
+    return allEmpresas.map(emp => {
+      const eLancs = allData[emp.id]?.lancamentos || []
+      const inP = eLancs.filter(l => l.data >= range.inicio && l.data <= range.fim)
+      const rec = inP.filter(l => l.tipo === 'receita' && l.status === 'Recebida').reduce((s, l) => s + l.valor, 0)
+      const dep = inP.filter(l => l.tipo === 'despesa' && (l.status === 'Paga' || l.status === 'Pago')).reduce((s, l) => s + l.valor, 0)
+      const ret = inP.filter(l => l.tipo === 'retirada').reduce((s, l) => s + l.valor, 0)
+      const lu = rec - dep
+      const cx = lu - ret
+      const mg = rec > 0 ? (lu / rec) * 100 : 0
+      const pP = eLancs.filter(l => l.data >= prev.inicio && l.data <= prev.fim)
+      const pR = pP.filter(l => l.tipo === 'receita' && l.status === 'Recebida').reduce((s, l) => s + l.valor, 0)
+      return { ...emp, receita: rec, despesa: dep, lucro: lu, caixa: cx, margem: mg, delta: delta(rec, pR) }
+    }).sort((a, b) => {
+      if (rankTipo === 'lucro') return b.lucro - a.lucro
+      if (rankTipo === 'margem') return b.margem - a.margem
+      if (rankTipo === 'caixa') return b.caixa - a.caixa
+      return b.receita - a.receita
     })
-    const total = Object.values(map).reduce((s, v) => s + v, 0) || 1
-    return Object.entries(map).map(([n, v]) => ({ n, v, pct: Math.round(v / total * 100) })).sort((a, b) => b.v - a.v).slice(0, 6)
-  }, [filteredLancs])
+  }, [allData, allEmpresas, range, prev, rankTipo])
 
-  const receitasAReceber = filteredLancs.filter(l => l.tipo === 'receita' && l.status === 'A receber').reduce((s, l) => s + l.valor, 0)
-  const receitasAtrasadas = filteredLancs.filter(l => l.tipo === 'receita' && l.status === 'Atrasada').reduce((s, l) => s + l.valor, 0)
-  const despesasAPagar = filteredLancs.filter(l => l.tipo === 'despesa' && l.status === 'A Pagar').reduce((s, l) => s + l.valor, 0)
-  const despesasAtrasadas = filteredLancs.filter(l => l.tipo === 'despesa' && l.status === 'Atrasada').reduce((s, l) => s + l.valor, 0)
+  const melhorEmp = empRanking[0] || null
 
-  const recentes = [...filteredLancs].sort((a, b) => b.data.localeCompare(a.data)).slice(0, 6)
+  // Insights
+  const insights = useMemo(() => {
+    const items = []
+    const dRec = delta(tRec, pRec)
+    if (dRec !== null)
+      items.push({ texto: `Receitas ${dRec >= 0 ? 'cresceram' : 'caíram'} ${Math.abs(dRec).toFixed(1)}% em relação ao período anterior.`, pos: dRec >= 0 })
+    const margem = tRec > 0 ? (lucro / tRec) * 100 : 0
+    if (tRec > 0)
+      items.push({ texto: `Margem líquida de ${fmtPct(margem)} no período.`, pos: margem > 15 })
+    if (melhorEmp && melhorEmp.receita > 0)
+      items.push({ texto: `${melhorEmp.nome} lidera o faturamento do grupo com ${fmt(melhorEmp.receita)}.`, pos: true })
+    const topDesp = despCats[0]
+    if (topDesp)
+      items.push({ texto: `${topDesp.n} representa a maior concentração de despesas.`, pos: null })
+    items.push({ texto: lucro >= 0 ? `Resultado positivo de ${fmt(lucro)} no período.` : `Resultado negativo de ${fmt(Math.abs(lucro))} — revisão de custos recomendada.`, pos: lucro >= 0 })
+    return items.slice(0, 4)
+  }, [tRec, pRec, lucro, melhorEmp, despCats])
 
+  const recentes = useMemo(() => [...filtered].sort((a, b) => (b.data || '').localeCompare(a.data || '')).slice(0, 6), [filtered])
   const metas = data.metas || []
 
+  const now = new Date()
+  const periodoLabel = `${MESES[now.getMonth()]} ${now.getFullYear()}`
+
+  const col2 = isMobile ? '1fr' : '1fr 1fr'
+  const col3 = isMobile ? '1fr' : '1fr 360px'
+
   return (
-    <div style={{ fontFamily: "'Segoe UI', sans-serif", color: T.text }}>
-      {/* Header */}
-      <div style={{ marginBottom: 24 }}>
-        <div className="page-hd" style={{ marginBottom: 16 }}>
-          <h1 style={{ fontWeight: 800, fontSize: 26, margin: '0 0 4px' }}>Dashboard</h1>
-          <div style={{ color: T.sub, fontSize: 14 }}>Visão geral da saúde financeira da sua empresa.</div>
+    <div style={{ fontFamily: "'Segoe UI', sans-serif", color: 'var(--text)', maxWidth: 1400, margin: '0 auto' }}>
+
+      {/* ── HEADER ── */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 28, flexWrap: 'wrap', gap: 12 }}>
+        <div>
+          <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text)', margin: 0 }}>Dashboard</h1>
+          <div style={{ fontSize: 13, color: 'var(--text-sub)', marginTop: 4 }}>{empresa?.nome} · {periodoLabel}</div>
         </div>
-        <AdvancedFilters tipo="all" filter={filter} onApply={setFilter} storageKey="x8_filter_dashboard" />
+        <div style={{ display: 'flex', gap: 6 }}>
+          {PERIODOS.map(p => <Pill key={p.id} label={p.label} active={periodo === p.id} onClick={() => setPeriodo(p.id)} />)}
+        </div>
       </div>
 
-      {/* ── 5 KPIs PRINCIPAIS ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 16, marginBottom: 24 }}>
-        {[
-          {
-            label: 'Total em Receitas', value: tRec, color: '#16a34a', bg: '#f0fdf4',
-            sub: 'Recebidas no período', icon: '↑',
-          },
-          {
-            label: 'Total em Despesas', value: tDesp, color: '#dc2626', bg: '#fef2f2',
-            sub: 'Fixas + Variáveis pagas', icon: '↓',
-          },
-          {
-            label: 'Lucro Líquido', value: resultOper, color: resultOper >= 0 ? '#2563eb' : '#dc2626', bg: resultOper >= 0 ? '#eff6ff' : '#fef2f2',
-            sub: 'Receitas − Despesas', icon: '$',
-          },
-          {
-            label: 'Retirada dos Sócios', value: tRetirada, color: '#ea580c', bg: '#fff7ed',
-            sub: 'Pró-labore e lucros', icon: '←', onClick: () => setPage('retirada_socios'),
-          },
-          {
-            label: 'Total em Caixa', value: saldoFinal, color: saldoFinal >= 0 ? '#7c3aed' : '#dc2626', bg: saldoFinal >= 0 ? '#ede9fe' : '#fef2f2',
-            sub: 'Saldo disponível final', icon: '=',
-          },
-        ].map(k => (
-          <div key={k.label} onClick={k.onClick}
-            style={{
-              background: 'var(--card)', borderRadius: 14, padding: '18px 18px 16px',
-              border: `1px solid var(--border)`, borderLeft: `4px solid ${k.color}`,
-              cursor: k.onClick ? 'pointer' : 'default',
-              transition: 'transform .15s, box-shadow .15s',
-            }}
-            onMouseEnter={e => { if (k.onClick) { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.12)' } }}
-            onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-              <div style={{ background: k.bg, borderRadius: 8, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', color: k.color, fontWeight: 800, fontSize: 16, flexShrink: 0 }}>{k.icon}</div>
-              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-sub)', letterSpacing: '.04em', textTransform: 'uppercase', lineHeight: 1.3 }}>{k.label}</div>
-            </div>
-            <div style={{ fontSize: 22, fontWeight: 900, color: k.color, lineHeight: 1 }}>{fmtS(k.value)}</div>
-            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}>{k.sub}{k.onClick ? ' ↗' : ''}</div>
-          </div>
-        ))}
+      {/* ── LINHA 1: KPIs ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(185px, 1fr))', gap: 14, marginBottom: 24 }}>
+        <KpiCard label="Receita Total" value={fmt(tRec)} deltaVal={delta(tRec, pRec)} sub="vs. período anterior" />
+        <KpiCard label="Despesas Totais" value={fmt(tDesp)} deltaVal={delta(tDesp, pDesp)} invert sub="vs. período anterior" />
+        <KpiCard label="Lucro Líquido" value={fmt(lucro)} deltaVal={delta(lucro, pLucro)} sub="vs. período anterior" />
+        <KpiCard label="Caixa Disponível" value={fmt(caixa)} deltaVal={delta(caixa, pCaixa)} sub="após retiradas" />
+        <KpiCard
+          label="Empresa Destaque"
+          value={melhorEmp ? fmt(melhorEmp.receita) : '—'}
+          deltaVal={melhorEmp?.delta ?? null}
+          sub={melhorEmp?.nome || 'Sem dados'}
+          onClick={melhorEmp ? () => setPage('comparativo_empresas') : undefined}
+          accent
+        />
       </div>
 
-      {/* DRE — Demonstração de Resultado */}
-      <Card style={{ padding: 20, marginBottom: 24 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <div>
-            <div style={{ fontWeight: 800, fontSize: 15 }}>Demonstração de Resultado — DRE</div>
-            <div style={{ fontSize: 12, color: T.muted, marginTop: 2 }}>{filter.inicio} → {filter.fim}</div>
-          </div>
-          <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: 10, color: T.muted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Saldo Final</div>
-            <div style={{ fontSize: 22, fontWeight: 900, color: saldoFinal >= 0 ? T.green : T.red }}>{fmtS(saldoFinal)}</div>
-          </div>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
-          {[
-            {
-              titulo: 'OPERACIONAL', cor: T.green,
-              linhas: [
-                { label: 'Receitas Totais', value: tRec, color: T.green },
-                { label: '(-) Despesas Variáveis', value: tDespVar, color: T.red },
-                { label: '= Lucro Bruto', value: lucroBruto, color: lucroBruto >= 0 ? T.green : T.red, bold: true },
-              ]
-            },
-            {
-              titulo: 'RESULTADO', cor: T.blue,
-              linhas: [
-                { label: 'Lucro Bruto', value: lucroBruto, color: lucroBruto >= 0 ? T.green : T.red },
-                { label: '(-) Despesas Fixas', value: tDespFixed, color: T.red },
-                { label: '= Resultado Operacional', value: resultOper, color: resultOper >= 0 ? T.green : T.red, bold: true },
-              ]
-            },
-            {
-              titulo: 'SALDO FINAL', cor: '#7c3aed',
-              linhas: [
-                { label: 'Resultado Operacional', value: resultOper, color: resultOper >= 0 ? T.green : T.red },
-                { label: '(-) Retiradas dos Sócios', value: tRetirada, color: '#7c3aed', onClick: () => setPage('retirada_socios') },
-                { label: '= Saldo Final Disponível', value: saldoFinal, color: saldoFinal >= 0 ? T.green : T.red, bold: true },
-              ]
-            },
-          ].map(bloco => (
-            <div key={bloco.titulo} style={{ background: T.bg, borderRadius: 10, padding: 14 }}>
-              <div style={{ fontSize: 10, fontWeight: 800, color: bloco.cor, letterSpacing: '0.08em', marginBottom: 12, textTransform: 'uppercase' }}>{bloco.titulo}</div>
-              {bloco.linhas.map((r, i) => (
-                <div key={i} onClick={r.onClick} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: r.bold ? 10 : 6, marginTop: r.bold ? 2 : 0, borderTop: r.bold ? `1px solid ${T.border}` : 'none', cursor: r.onClick ? 'pointer' : 'default', borderRadius: r.onClick ? 6 : 0 }}
-                  onMouseEnter={e => { if (r.onClick) e.currentTarget.style.background = 'rgba(124,58,237,0.06)' }}
-                  onMouseLeave={e => { if (r.onClick) e.currentTarget.style.background = 'transparent' }}>
-                  <span style={{ fontSize: 11, color: r.bold ? T.text : T.sub, fontWeight: r.bold ? 700 : 400 }}>{r.label}</span>
-                  <span style={{ fontSize: r.bold ? 14 : 12, fontWeight: r.bold ? 800 : 500, color: r.color }}>{fmtS(r.value)}</span>
-                </div>
-              ))}
-            </div>
-          ))}
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginTop: 14, paddingTop: 14, borderTop: `1px solid ${T.border}` }}>
-          {[
-            { label: 'Receitas', value: tRec, color: T.green },
-            { label: 'Desp. Variáveis', value: tDespVar, color: T.red },
-            { label: 'Desp. Fixas', value: tDespFixed, color: T.red },
-            { label: 'Retiradas Sócios', value: tRetirada, color: '#7c3aed' },
-          ].map(k => (
-            <div key={k.label}>
-              <div style={{ fontSize: 11, color: T.muted, marginBottom: 3 }}>{k.label}</div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: k.color }}>{fmtS(k.value)}</div>
-            </div>
-          ))}
-        </div>
-      </Card>
-
-      {/* Row 2 */}
-      <div className="g-flow">
-        {/* Fluxo de Caixa */}
-        <Card style={{ padding: 18, gridColumn: 'span 1' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-            <div>
-              <div style={{ fontWeight: 700, fontSize: 15 }}>Fluxo de Caixa ℹ️</div>
-              <div style={{ display: 'flex', gap: 12, marginTop: 4 }}>
-                {[['Entradas', T.green], ['Saídas', T.red], ['Saldo acumulado', T.text]].map(([l, c]) => (
-                  <div key={l} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: T.sub }}>
-                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: c }} />{l}
-                  </div>
-                ))}
+      {/* ── LINHA 2: FLUXO DE CAIXA ── */}
+      <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 14, marginBottom: 24, overflow: 'hidden' }}>
+        <SectionHead title="Fluxo de Caixa" action={<LinkBtn label="Ver completo" onClick={() => setPage('fluxo')} />} />
+        <div style={{ padding: '20px 20px 16px' }}>
+          <div style={{ display: 'flex', gap: 28, marginBottom: 18, flexWrap: 'wrap' }}>
+            {[['Entradas', T.green, fluxoTot.ent], ['Saídas', T.red, fluxoTot.sai], ['Saldo', T.blue, fluxoTot.ent - fluxoTot.sai]].map(([l, c, v]) => (
+              <div key={l}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-sub)', textTransform: 'uppercase', letterSpacing: .5, marginBottom: 4 }}>{l}</div>
+                <div style={{ fontSize: 17, fontWeight: 700, color: c }}>{fmt(v)}</div>
               </div>
-            </div>
-            <div style={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: 6, padding: '5px 10px', fontSize: 12, color: T.sub }}>{filter.inicio} → {filter.fim}</div>
+            ))}
           </div>
-          <ResponsiveContainer width="100%" height={180}>
-            <ComposedChart data={fluxoData.filter((_, i) => i % 3 === 0)} margin={{ top: 4, right: 0, left: -20, bottom: 0 }}>
-              <XAxis dataKey="dia" tick={{ fill: T.muted, fontSize: 10 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: T.muted, fontSize: 9 }} axisLine={false} tickLine={false} tickFormatter={v => v === 0 ? '0' : v.toLocaleString('pt-BR', { maximumFractionDigits: 0 })} />
-              <Tooltip contentStyle={{ background: T.white, border: `1px solid ${T.border}`, borderRadius: 8, fontSize: 12 }} formatter={v => fmt(v)} />
-              <Bar dataKey="entradas" fill={T.green} opacity={0.8} radius={[2, 2, 0, 0]} maxBarSize={12} />
-              <Bar dataKey="saidas" fill={T.red} opacity={0.8} radius={[2, 2, 0, 0]} maxBarSize={12} />
-              <Line type="monotone" dataKey="saldo" stroke={T.text} strokeWidth={2} dot={false} />
+          <ResponsiveContainer width="100%" height={190}>
+            <ComposedChart data={fluxo} margin={{ top: 4, right: 4, left: -12, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+              <XAxis dataKey="label" tick={{ fill: 'var(--text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => v >= 1000 ? `${(v/1000).toFixed(0)}k` : v} />
+              <Tooltip content={<FluxoTooltip />} />
+              <Bar dataKey="entradas" name="Entradas" fill={T.green} opacity={0.7} radius={[3,3,0,0]} maxBarSize={14} />
+              <Bar dataKey="saidas" name="Saídas" fill={T.red} opacity={0.7} radius={[3,3,0,0]} maxBarSize={14} />
+              <Line type="monotone" dataKey="saldo" name="Saldo" stroke={T.blue} strokeWidth={2} dot={false} />
             </ComposedChart>
           </ResponsiveContainer>
-          <div style={{ display: 'flex', gap: 16, marginTop: 10, fontSize: 12 }}>
-            <div><div style={{ color: T.muted }}>Total de entradas</div><div style={{ color: T.green, fontWeight: 700 }}>{fmt(fluxoResumo.e)}</div></div>
-            <div><div style={{ color: T.muted }}>Total de saídas</div><div style={{ color: T.red, fontWeight: 700 }}>{fmt(fluxoResumo.s)}</div></div>
-            <div><div style={{ color: T.muted }}>Saldo do período</div><div style={{ color: T.text, fontWeight: 700 }}>{fmt(fluxoResumo.e - fluxoResumo.s)}</div></div>
-          </div>
-          <button onClick={() => setPage('fluxo')} style={{ marginTop: 12, background: 'none', border: `1px solid ${T.border}`, borderRadius: 6, padding: '7px 14px', cursor: 'pointer', fontSize: 13, color: T.sub, width: '100%', fontFamily: 'inherit' }}>Ver fluxo de caixa completo</button>
-        </Card>
-
-        {/* Despesas por categoria */}
-        <Card style={{ padding: 18 }}>
-          <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 14 }}>Despesas por categoria</div>
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-            <PieChart width={130} height={130}>
-              <Pie data={despCats} cx={65} cy={65} innerRadius={38} outerRadius={60} dataKey="pct" startAngle={90} endAngle={-270}>
-                {despCats.map((_, i) => <Cell key={i} fill={COLORS_PIE[i % COLORS_PIE.length]} />)}
-              </Pie>
-            </PieChart>
-            <div style={{ flex: 1 }}>
-              {despCats.map((d, i) => (
-                <div key={d.n} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, fontSize: 12 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: COLORS_PIE[i % COLORS_PIE.length], flexShrink: 0 }} />
-                    <span style={{ color: T.text }}>{d.n}</span>
-                  </div>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <span style={{ color: T.muted }}>{d.pct}%</span>
-                    <span style={{ fontWeight: 600, color: T.text }}>{fmtS(d.v)}</span>
-                  </div>
-                </div>
-              ))}
-              {despCats.length === 0 && <div style={{ color: T.muted, fontSize: 13 }}>Nenhuma despesa</div>}
-            </div>
-          </div>
-          <button style={{ marginTop: 12, background: 'none', border: 'none', color: T.primary, cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit' }}>Ver todas as categorias ›</button>
-        </Card>
-
-        {/* Scanner */}
-        <Card style={{ padding: 20, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
-          <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4, display: 'flex', gap: 8, alignItems: 'center' }}>
-            Scanner Inteligente Norvo
-            <Badge label="IA" color={T.blue} bg={T.blueL} />
-          </div>
-          <div style={{ marginTop: 16, marginBottom: 16 }}>
-            <div style={{ width: 80, height: 80, borderRadius: '50%', background: T.bg, border: `2px dashed ${T.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, margin: '0 auto' }}>📷</div>
-          </div>
-          <div style={{ color: T.sub, fontSize: 13, marginBottom: 20, lineHeight: 1.6 }}>
-            Tire uma foto da nota fiscal e nossa IA extrai os dados automaticamente para você.
-          </div>
-          <button onClick={() => setPage('scanner')} style={{ background: T.primary, color: '#fff', border: 'none', borderRadius: 8, padding: '11px 20px', cursor: 'pointer', fontSize: 14, fontWeight: 600, width: '100%', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-            📷 Escanear nota
-          </button>
-          <div style={{ color: T.muted, fontSize: 12, marginTop: 8 }}>🔒 Rápido, seguro e inteligente</div>
-        </Card>
+        </div>
       </div>
 
-      {/* Row 3 - Contas */}
-      <div className="g-3">
-        {/* Receitas */}
-        <Card style={{ padding: 18 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-            <div style={{ fontWeight: 700, fontSize: 14 }}>Receitas</div>
-            <button onClick={() => setPage('receitas')} style={{ background: 'none', border: 'none', color: T.primary, cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit' }}>Ver todas</button>
-          </div>
-          {[
-            { label: 'Recebidas', value: tRec, sub: `Previsto: ${fmt(tRecPrev)}`, pct: tRecPrev > 0 ? Math.round(tRec / tRecPrev * 100) : 0, cor: T.green },
-            { label: 'A receber', value: receitasAReceber, sub: 'Vencem nos próximos 30 dias', pct: receitasAReceber > 0 && tRecPrev > 0 ? Math.round(receitasAReceber / tRecPrev * 100) : 0, cor: T.blue },
-            { label: 'Atrasadas', value: receitasAtrasadas, sub: receitasAtrasadas > 0 ? 'Verificar vencimentos' : 'Nenhuma em atraso', cor: T.orange },
-          ].map(item => (
-            <div key={item.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                <div style={{ background: item.cor + '18', borderRadius: 6, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>
-                  {item.label === 'Atrasadas' ? '⚠️' : item.label === 'A receber' ? '📅' : '📥'}
-                </div>
-                <div>
-                  <div style={{ fontSize: 12, color: T.sub }}>{item.label}</div>
-                  <div style={{ fontWeight: 700, fontSize: 15, color: item.cor }}>{fmt(item.value)}</div>
-                  <div style={{ fontSize: 11, color: T.muted }}>{item.sub}</div>
-                </div>
-              </div>
-              {item.pct > 0 && (
-                <div style={{ width: 36, height: 36, position: 'relative' }}>
-                  <svg width="36" height="36" viewBox="0 0 36 36">
-                    <circle cx="18" cy="18" r="14" fill="none" stroke={T.borderLight} strokeWidth="3" />
-                    <circle cx="18" cy="18" r="14" fill="none" stroke={item.cor} strokeWidth="3"
-                      strokeDasharray={`${Math.min(item.pct, 100) * 0.88} 88`} strokeLinecap="round" transform="rotate(-90 18 18)" />
-                  </svg>
-                  <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: item.cor }}>{Math.min(item.pct, 100)}%</span>
-                </div>
-              )}
-            </div>
-          ))}
-        </Card>
+      {/* ── LINHA 3: PERFORMANCE + INSIGHTS ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: col3, gap: 16, marginBottom: 24 }}>
 
-        {/* Despesas */}
-        <Card style={{ padding: 18 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-            <div style={{ fontWeight: 700, fontSize: 14 }}>Despesas</div>
-            <button onClick={() => setPage('despesas')} style={{ background: 'none', border: 'none', color: T.primary, cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit' }}>Ver todas</button>
-          </div>
-          {[
-            { label: 'Pagas', value: tDesp, sub: `Total: ${filteredLancs.filter(l => l.tipo === 'despesa' && l.status === 'Paga').length} despesas`, pct: 100, cor: T.green },
-            { label: 'A pagar', value: despesasAPagar, sub: 'Vencem nos próximos 30 dias', pct: despesasAPagar > 0 && tDesp + despesasAPagar > 0 ? Math.round(despesasAPagar / (tDesp + despesasAPagar) * 100) : 0, cor: T.yellow },
-            { label: 'Atrasadas', value: despesasAtrasadas, sub: despesasAtrasadas > 0 ? 'Verificar vencimentos' : 'Nenhuma em atraso', cor: T.orange },
-          ].map(item => (
-            <div key={item.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                <div style={{ background: item.cor + '18', borderRadius: 6, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>
-                  {item.label === 'Atrasadas' ? '⚠️' : item.label === 'A pagar' ? '📅' : '📤'}
-                </div>
-                <div>
-                  <div style={{ fontSize: 12, color: T.sub }}>{item.label}</div>
-                  <div style={{ fontWeight: 700, fontSize: 15, color: item.cor }}>{fmt(item.value)}</div>
-                  <div style={{ fontSize: 11, color: T.muted }}>{item.sub}</div>
-                </div>
-              </div>
-              {item.pct > 0 && (
-                <div style={{ width: 36, height: 36, position: 'relative' }}>
-                  <svg width="36" height="36" viewBox="0 0 36 36">
-                    <circle cx="18" cy="18" r="14" fill="none" stroke={T.borderLight} strokeWidth="3" />
-                    <circle cx="18" cy="18" r="14" fill="none" stroke={item.cor} strokeWidth="3"
-                      strokeDasharray={`${Math.min(item.pct, 100) * 0.88} 88`} strokeLinecap="round" transform="rotate(-90 18 18)" />
-                  </svg>
-                  <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: item.cor }}>{Math.min(item.pct, 100)}%</span>
-                </div>
-              )}
-            </div>
-          ))}
-        </Card>
-
-        {/* Últimas movimentações */}
-        <Card style={{ padding: 18 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-            <div style={{ fontWeight: 700, fontSize: 14 }}>Últimas movimentações</div>
-            <button onClick={() => setPage('transacoes')} style={{ background: 'none', border: 'none', color: T.primary, cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit' }}>Ver todas</button>
-          </div>
-          {recentes.map(l => {
-            const isR = l.tipo === 'receita'
-            return (
-              <div key={l.id} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-                <div style={{ background: isR ? T.greenL : T.redL, borderRadius: 6, width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <span style={{ color: isR ? T.green : T.red, fontWeight: 700, fontSize: 12 }}>{isR ? '↑' : '↓'}</span>
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.desc}</div>
-                  <div style={{ fontSize: 11, color: T.muted }}>{isR ? 'Receita' : 'Despesa'} · {l.catNome}</div>
-                </div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: isR ? T.green : T.red, flexShrink: 0 }}>
-                  {isR ? '+' : '-'}{fmtS(l.valor)}
-                </div>
-              </div>
-            )
-          })}
-        </Card>
-      </div>
-
-      {/* Row 4 - Insights + Metas */}
-      <div className="g-2">
-        {/* Insights IA */}
-        <Card style={{ padding: 18 }}>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 14 }}>
-            <div style={{ fontWeight: 700, fontSize: 15 }}>Insights da IA</div>
-            <Badge label="IA" color={T.blue} bg={T.blueL} />
-          </div>
-          <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', marginBottom: 14 }}>
-            <div style={{ background: T.bg, borderRadius: '50%', width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>🤖</div>
-            <div style={{ flex: 1 }}>
-              {[
-                `Receitas cresceram ${18.2}% em relação ao mês anterior.`,
-                `Sua margem líquida (${fmtPct(margem)}) está acima da média dos últimos 6 meses (${fmtPct(margem - 4.8)}).`,
-                `A categoria Marketing representa a maior parte das despesas totais.`,
-                `Se mantiver o ritmo atual, a meta de receita será atingida em junho.`,
-              ].map((t, i) => (
-                <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8, fontSize: 13, color: T.sub }}>
-                  <span style={{ color: T.green, flexShrink: 0 }}>✓</span>
-                  <span>{t}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-          <button style={{ background: 'none', border: `1px solid ${T.border}`, borderRadius: 8, padding: '8px 16px', cursor: 'pointer', fontSize: 13, color: T.sub, width: '100%', fontFamily: 'inherit' }}>Ver mais insights</button>
-        </Card>
-
-        {/* Metas */}
-        <Card style={{ padding: 18 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-            <div style={{ fontWeight: 700, fontSize: 15 }}>Metas financeiras</div>
-            <button onClick={() => setPage('metas')} style={{ background: 'none', border: 'none', color: T.primary, cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit' }}>Ver todas</button>
-          </div>
-          {metas.map(m => {
-            const pct = Math.min(100, Math.round(m.acumulado / m.objetivo * 100))
-            const valores = {
-              receita: { label: 'Meta de Receita', value: fmt(m.acumulado), meta: fmt(m.objetivo) },
-              lucro: { label: 'Meta de Lucro Líquido', value: fmt(m.acumulado), meta: fmt(m.objetivo) },
-              margem: { label: 'Meta de Margem Líquida', value: fmtPct(m.acumulado), meta: fmtPct(m.objetivo) },
+        {/* Central de Performance */}
+        <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
+          <SectionHead
+            title="Central de Performance"
+            action={
+              <button onClick={() => setPage('comparativo_empresas')} style={{
+                padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+                background: T.primary, color: '#fff', border: 'none', cursor: 'pointer', fontFamily: 'inherit',
+              }}>Comparativo Completo</button>
             }
-            const info = valores[m.tipo] || valores.receita
+          />
+          <div style={{ display: 'flex', gap: 6, padding: '12px 20px 8px', flexWrap: 'wrap' }}>
+            {RANK_OPTS.map(o => <Pill key={o.id} label={o.label} active={rankTipo === o.id} onClick={() => setRankTipo(o.id)} />)}
+          </div>
+          <div>
+            {empRanking.length === 0 && (
+              <div style={{ padding: '24px 20px', color: 'var(--text-sub)', fontSize: 13 }}>Sem dados de empresas no período.</div>
+            )}
+            {empRanking.map((emp, i) => {
+              const val = rankTipo === 'lucro' ? emp.lucro : rankTipo === 'margem' ? emp.margem : rankTipo === 'caixa' ? emp.caixa : emp.receita
+              const isMargem = rankTipo === 'margem'
+              return (
+                <div key={emp.id} style={{
+                  display: 'flex', alignItems: 'center', gap: 12, padding: '11px 20px',
+                  borderTop: '1px solid var(--border-light)',
+                }}>
+                  <div style={{ width: 20, fontSize: 13, fontWeight: 700, color: i === 0 ? T.primary : 'var(--text-muted)', textAlign: 'center', flexShrink: 0 }}>
+                    {i + 1}
+                  </div>
+                  <div style={{ width: 30, height: 30, borderRadius: 7, background: emp.cor, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 10, fontWeight: 800, flexShrink: 0 }}>
+                    {emp.initials}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{emp.nome}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-sub)' }}>{emp.setor}</div>
+                  </div>
+                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: val < 0 ? T.red : 'var(--text)' }}>
+                      {isMargem ? fmtPct(val) : fmt(val)}
+                    </div>
+                    {emp.delta !== null && <DeltaBadge value={emp.delta} />}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Insights + Metas */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+          {/* Insights */}
+          <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden', flex: 1 }}>
+            <SectionHead title="Insights Executivos" action={null} />
+            <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {insights.map((ins, i) => (
+                <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                  <div style={{ width: 6, height: 6, borderRadius: '50%', marginTop: 6, flexShrink: 0, background: ins.pos === null ? 'var(--text-sub)' : ins.pos ? T.green : T.red }} />
+                  <span style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.55 }}>{ins.texto}</span>
+                </div>
+              ))}
+              {insights.length === 0 && <div style={{ color: 'var(--text-sub)', fontSize: 13 }}>Sem dados no período.</div>}
+            </div>
+          </div>
+
+          {/* Metas rápidas */}
+          <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
+            <SectionHead title="Metas" action={<LinkBtn label="Gerenciar" onClick={() => setPage('metas')} />} />
+            <div style={{ padding: '16px 20px' }}>
+              {metas.length === 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div style={{ color: 'var(--text-sub)', fontSize: 13 }}>Nenhuma meta cadastrada.</div>
+                  <button onClick={() => setPage('metas')} style={{ padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, background: T.primary, color: '#fff', border: 'none', cursor: 'pointer', fontFamily: 'inherit', alignSelf: 'flex-start' }}>
+                    Criar Meta
+                  </button>
+                </div>
+              )}
+              {metas.slice(0, 2).map(m => {
+                const pct = Math.min(100, Math.round((m.acumulado || 0) / (m.objetivo || 1) * 100))
+                const tipos = { receita: 'Receita', lucro: 'Lucro', margem: 'Margem' }
+                return (
+                  <div key={m.id} style={{ marginBottom: 14 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                      <span style={{ fontSize: 13, fontWeight: 600 }}>{tipos[m.tipo] || 'Meta'}</span>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: pct >= 100 ? T.green : T.primary }}>{pct}%</span>
+                    </div>
+                    <div style={{ background: 'var(--border)', borderRadius: 6, height: 6, overflow: 'hidden' }}>
+                      <div style={{ background: pct >= 100 ? T.green : T.primary, height: '100%', width: pct + '%', borderRadius: 6, transition: 'width .6s' }} />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── LINHA 4: CATEGORIAS ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: col2, gap: 16, marginBottom: 24 }}>
+
+        <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
+          <SectionHead title="Despesas por Categoria" action={<LinkBtn label="Relatório" onClick={() => setPage('relatorios')} />} />
+          <div style={{ padding: '16px 20px' }}>
+            {despCats.length === 0
+              ? <div style={{ color: 'var(--text-sub)', fontSize: 13 }}>Nenhuma despesa no período.</div>
+              : <ResponsiveContainer width="100%" height={Math.max(160, despCats.length * 36)}>
+                  <BarChart data={despCats} layout="vertical" margin={{ top: 0, right: 8, left: 0, bottom: 0 }}>
+                    <XAxis type="number" hide />
+                    <YAxis type="category" dataKey="n" width={140} tick={{ fontSize: 11, fill: 'var(--text-sub)' }} axisLine={false} tickLine={false} />
+                    <Tooltip content={<CatTooltip />} />
+                    <Bar dataKey="v" name="Valor" fill={T.red} radius={[0,4,4,0]} opacity={0.8} maxBarSize={20} />
+                  </BarChart>
+                </ResponsiveContainer>
+            }
+          </div>
+        </div>
+
+        <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
+          <SectionHead title="Receitas por Categoria" action={<LinkBtn label="Relatório" onClick={() => setPage('relatorios')} />} />
+          <div style={{ padding: '16px 20px' }}>
+            {recCats.length === 0
+              ? <div style={{ color: 'var(--text-sub)', fontSize: 13 }}>Nenhuma receita no período.</div>
+              : <ResponsiveContainer width="100%" height={Math.max(160, recCats.length * 36)}>
+                  <BarChart data={recCats} layout="vertical" margin={{ top: 0, right: 8, left: 0, bottom: 0 }}>
+                    <XAxis type="number" hide />
+                    <YAxis type="category" dataKey="n" width={140} tick={{ fontSize: 11, fill: 'var(--text-sub)' }} axisLine={false} tickLine={false} />
+                    <Tooltip content={<CatTooltip />} />
+                    <Bar dataKey="v" name="Valor" fill={T.green} radius={[0,4,4,0]} opacity={0.8} maxBarSize={20} />
+                  </BarChart>
+                </ResponsiveContainer>
+            }
+          </div>
+        </div>
+      </div>
+
+      {/* ── LINHA 5: TRANSAÇÕES ── */}
+      <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
+        <SectionHead title="Últimas Transações" action={<LinkBtn label="Ver todas" onClick={() => setPage('transacoes')} />} />
+        <div>
+          {recentes.length === 0 && (
+            <div style={{ padding: '24px 20px', color: 'var(--text-sub)', fontSize: 13 }}>Nenhuma transação no período.</div>
+          )}
+          {recentes.map((l, i) => {
+            const isR = l.tipo === 'receita'
+            const cor = l.tipo === 'retirada' ? T.purple : isR ? T.green : T.red
             return (
-              <div key={m.id} style={{ marginBottom: 16 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <span style={{ fontSize: 13, color: T.sub }}>{info.label}</span>
-                  <span style={{ fontSize: 12, color: T.muted }}>{info.meta}</span>
+              <div key={l.id} style={{
+                display: 'flex', alignItems: 'center', gap: 14, padding: '12px 20px',
+                borderTop: i > 0 ? '1px solid var(--border-light)' : 'none',
+              }}>
+                <div style={{ width: 7, height: 7, borderRadius: '50%', background: cor, flexShrink: 0 }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.desc}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-sub)' }}>{l.catNome} · {l.data?.split('-').reverse().join('/')}</div>
                 </div>
-                <div style={{ fontWeight: 700, fontSize: 17, marginBottom: 6 }}>{info.value}</div>
-                <div style={{ background: T.borderLight, borderRadius: 4, height: 6, overflow: 'hidden', marginBottom: 3 }}>
-                  <div style={{ background: pct >= 100 ? T.green : T.primary, height: '100%', width: pct + '%', borderRadius: 4, transition: 'width .5s' }} />
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: pct >= 100 ? T.green : T.primary }}>{pct}%</span>
+                <div style={{ fontSize: 13, fontWeight: 700, color: cor, flexShrink: 0 }}>
+                  {isR ? '+' : '-'}{fmt(l.valor)}
                 </div>
               </div>
             )
           })}
-        </Card>
+        </div>
       </div>
+
     </div>
   )
 }

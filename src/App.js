@@ -284,7 +284,7 @@ export default function App() {
   const renderPage = () => {
     if (PLACEHOLDER_PAGES.includes(page)) return <Placeholder page={page} />
     switch (page) {
-      case 'dashboard': return <Dashboard {...sharedProps} />
+      case 'dashboard': return <Dashboard {...sharedProps} allData={appData} allEmpresas={empresas} />
       case 'receitas': return <Receitas {...sharedProps} />
       case 'despesas': return <Despesas {...sharedProps} />
       case 'transacoes': return <Transacoes {...sharedProps} onNovaDespesa={() => setPage('despesas')} onNovaReceita={() => setPage('receitas')} />
