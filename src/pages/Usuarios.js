@@ -112,6 +112,8 @@ export default function Usuarios({ usuario }) {
   const [confirmCancelId, setConfirmCancelId] = useState(null)
   const [senhaUser, setSenhaUser] = useState(null)
   const [tempSenha, setTempSenha] = useState('')
+  const [senhaAplicando, setSenhaAplicando] = useState(false)
+  const [senhaAplicada, setSenhaAplicada] = useState(false)
 
   const [form, setForm] = useState(EMPTY)
   const [formPerms, setFormPerms] = useState(() => defaultPerms('gerente'))
@@ -340,6 +342,27 @@ export default function Usuarios({ usuario }) {
   const gerarSenha = () => {
     const c = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#'
     setTempSenha(Array.from({ length: 10 }, () => c[Math.floor(Math.random() * c.length)]).join(''))
+    setSenhaAplicada(false)
+  }
+
+  const aplicarSenha = async () => {
+    if (!senhaUser?.id || !tempSenha) return
+    setSenhaAplicando(true)
+    try {
+      const res = await fetch('/api/set-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: senhaUser.id, password: tempSenha }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Erro ao aplicar senha')
+      setSenhaAplicada(true)
+      showToast('Senha aplicada! Jefferson já pode entrar com essa senha.')
+    } catch (e) {
+      showToast(`Erro: ${e.message}`, false)
+    } finally {
+      setSenhaAplicando(false)
+    }
   }
 
   const togglePerm = (m, a) => setFormPerms(p => ({ ...p, [m]: { ...p[m], [a]: !p[m][a] } }))
@@ -898,9 +921,9 @@ export default function Usuarios({ usuario }) {
 
       {/* ── MODAL: SENHA ── */}
       {modalTipo === 'senha' && senhaUser && (
-        <Overlay onClose={() => setModalTipo(null)}>
+        <Overlay onClose={() => { setModalTipo(null); setSenhaAplicada(false); setTempSenha('') }}>
           <div style={{ background: T.white, borderRadius: 16, padding: 32, width: '100%', maxWidth: 420, boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
-            <div style={{ fontWeight: 800, fontSize: 20, marginBottom: 4 }}>🔑 Gerar Senha Temporária</div>
+            <div style={{ fontWeight: 800, fontSize: 20, marginBottom: 4 }}>🔑 Definir Senha Temporária</div>
             <div style={{ color: T.sub, fontSize: 13, marginBottom: 24 }}>Para: <strong>{senhaUser.nome}</strong> · {senhaUser.email}</div>
             {!tempSenha ? (
               <div style={{ textAlign: 'center', padding: '20px 0' }}>
@@ -909,18 +932,30 @@ export default function Usuarios({ usuario }) {
               </div>
             ) : (
               <div>
-                <div style={{ background: T.bg, border: `2px solid ${T.primary}`, borderRadius: 10, padding: '16px 18px', marginBottom: 16, textAlign: 'center' }}>
+                <div style={{ background: T.bg, border: `2px solid ${senhaAplicada ? '#16a34a' : T.primary}`, borderRadius: 10, padding: '16px 18px', marginBottom: 16, textAlign: 'center' }}>
                   <div style={{ color: T.muted, fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: .4, marginBottom: 6 }}>Senha gerada</div>
                   <div style={{ fontFamily: 'monospace', fontSize: 22, fontWeight: 800, color: T.text, letterSpacing: 2 }}>{tempSenha}</div>
                 </div>
-                <div style={{ background: '#fef9c3', borderRadius: 8, padding: '10px 14px', marginBottom: 20, fontSize: 12, color: '#92400e' }}>⚠️ Copie e envie esta senha ao usuário. Não será exibida novamente.</div>
+                {senhaAplicada ? (
+                  <div style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 8, padding: '10px 14px', marginBottom: 16, fontSize: 13, color: '#15803d', fontWeight: 600, textAlign: 'center' }}>
+                    Senha aplicada com sucesso! Jefferson pode entrar agora.
+                  </div>
+                ) : (
+                  <div style={{ background: '#fef9c3', borderRadius: 8, padding: '10px 14px', marginBottom: 16, fontSize: 12, color: '#92400e' }}>
+                    Clique em "Aplicar Senha" para definir essa senha no sistema. Depois copie e envie ao usuário.
+                  </div>
+                )}
+                <button onClick={aplicarSenha} disabled={senhaAplicando || senhaAplicada}
+                  style={{ width: '100%', background: senhaAplicada ? '#16a34a' : T.primary, color: '#fff', border: 'none', borderRadius: 8, padding: '11px', fontSize: 13, fontWeight: 700, cursor: senhaAplicando || senhaAplicada ? 'not-allowed' : 'pointer', fontFamily: 'inherit', marginBottom: 8, opacity: senhaAplicando ? 0.7 : 1 }}>
+                  {senhaAplicando ? 'Aplicando...' : senhaAplicada ? 'Senha aplicada' : 'Aplicar Senha no Sistema'}
+                </button>
                 <button onClick={() => navigator.clipboard?.writeText(tempSenha).then(() => showToast('Senha copiada!'))}
                   style={{ width: '100%', background: '#fff7ed', color: T.primary, border: `1px solid ${T.primary}44`, borderRadius: 8, padding: '10px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', marginBottom: 8 }}>📋 Copiar senha</button>
                 <button onClick={gerarSenha} style={{ width: '100%', background: 'none', color: T.muted, border: `1px solid ${T.border}`, borderRadius: 8, padding: '8px', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>↺ Gerar outra senha</button>
               </div>
             )}
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20 }}>
-              <Btn variant="ghost" onClick={() => setModalTipo(null)}>Fechar</Btn>
+              <Btn variant="ghost" onClick={() => { setModalTipo(null); setSenhaAplicada(false); setTempSenha('') }}>Fechar</Btn>
             </div>
           </div>
         </Overlay>
