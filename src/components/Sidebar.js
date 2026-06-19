@@ -123,10 +123,11 @@ const BOTTOM_NAV_ITEMS = [
 function BottomNav({ page, setPage, onMenuOpen }) {
   return (
     <nav style={{
-      position: 'fixed', bottom: 0, left: 0, right: 0, height: 60,
+      position: 'fixed', bottom: 0, left: 0, right: 0,
       background: S.bg, borderTop: `1px solid ${S.border}`,
       display: 'flex', alignItems: 'stretch', zIndex: 400,
       boxShadow: '0 -2px 16px rgba(0,0,0,0.3)',
+      paddingBottom: 'env(safe-area-inset-bottom, 0px)',
     }}>
       {BOTTOM_NAV_ITEMS.map(item => {
         const active = page === item.id
@@ -136,12 +137,13 @@ function BottomNav({ page, setPage, onMenuOpen }) {
             justifyContent: 'center', gap: 3, background: 'none', border: 'none',
             cursor: 'pointer', color: active ? '#fff' : S.txt,
             borderTop: `2px solid ${active ? S.accent : 'transparent'}`,
-            transition: 'color .15s',
+            transition: 'color .15s', minHeight: 56, padding: '8px 4px',
+            WebkitTapHighlightColor: 'transparent',
           }}>
             <span style={{ color: active ? S.accent : 'inherit', display: 'flex' }}>
-              <Ico name={item.icon} size={20} />
+              <Ico name={item.icon} size={22} />
             </span>
-            <span style={{ fontSize: 9, fontWeight: active ? 700 : 400, letterSpacing: '.03em' }}>{item.label}</span>
+            <span style={{ fontSize: 10, fontWeight: active ? 700 : 400, letterSpacing: '.02em' }}>{item.label}</span>
           </button>
         )
       })}
@@ -149,9 +151,10 @@ function BottomNav({ page, setPage, onMenuOpen }) {
         flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
         justifyContent: 'center', gap: 3, background: 'none', border: 'none',
         cursor: 'pointer', color: S.txt, borderTop: '2px solid transparent',
+        minHeight: 56, padding: '8px 4px', WebkitTapHighlightColor: 'transparent',
       }}>
-        <span style={{ display: 'flex' }}><Ico name="menu" size={20} /></span>
-        <span style={{ fontSize: 9, fontWeight: 400, letterSpacing: '.03em' }}>Menu</span>
+        <span style={{ display: 'flex' }}><Ico name="menu" size={22} /></span>
+        <span style={{ fontSize: 10, fontWeight: 400, letterSpacing: '.02em' }}>Menu</span>
       </button>
     </nav>
   )

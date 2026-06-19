@@ -372,7 +372,7 @@ export default function App() {
           isMobile={isMobile}
           empresas={empresas}
         />
-        <main style={{ flex: 1, marginTop: 60, padding: isMobile ? '16px 14px 80px' : '28px 28px 40px', overflowX: 'hidden' }}>
+        <main style={{ flex: 1, marginTop: 60, padding: isMobile ? '16px 14px calc(80px + env(safe-area-inset-bottom, 0px))' : '28px 28px 40px', overflowX: 'hidden' }}>
           {renderPage()}
         </main>
       </div>

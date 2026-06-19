@@ -481,8 +481,8 @@ export default function Despesas({ empresa, data, onSave, onDelete, onSaveBatch,
       </div>
 
       <Card>
-        <div style={{ padding: '16px 18px', borderBottom: `1px solid var(--border)`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ fontWeight: 700, fontSize: 15 }}>Despesas lançadas</div>
+        <div className="table-header-bar">
+          <div style={{ fontWeight: 700, fontSize: 15, flexShrink: 0 }}>Despesas lançadas</div>
           <SearchInput value={search} onChange={setSearch} placeholder="Buscar despesa..." />
         </div>
         <Table columns={columns} data={filtered} onRow={openEdit}
@@ -775,7 +775,7 @@ export default function Despesas({ empresa, data, onSave, onDelete, onSaveBatch,
             </div>
 
             {/* Sidebar direita */}
-            <div style={{ width: 264, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 14, position: 'sticky', top: 84 }}>
+            <div className="form-side-panel-w">
 
               {/* Campo de valor em destaque */}
               <div style={{ background: 'var(--card)', borderRadius: 12, border: `1.5px solid ${errors.valor ? T.red : 'var(--border)'}`, padding: 20 }}>
@@ -788,6 +788,7 @@ export default function Despesas({ empresa, data, onSave, onDelete, onSaveBatch,
                     value={form.valorMasked}
                     onChange={handleValor}
                     placeholder="0,00"
+                    className="form-val-input"
                     style={{ flex: 1, border: 'none', outline: 'none', fontSize: 28, fontWeight: 800, color: T.red, fontFamily: 'inherit', background: 'transparent', width: '100%', minWidth: 0 }}
                   />
                 </div>

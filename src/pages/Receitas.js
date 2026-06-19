@@ -495,8 +495,8 @@ export default function Receitas({ empresa, data, onSave, onDelete, onSaveBatch,
       </div>
 
       <Card>
-        <div style={{ padding: '16px 18px', borderBottom: `1px solid var(--border)`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ fontWeight: 700, fontSize: 15 }}>Receitas lançadas</div>
+        <div className="table-header-bar">
+          <div style={{ fontWeight: 700, fontSize: 15, flexShrink: 0 }}>Receitas lançadas</div>
           <SearchInput value={search} onChange={setSearch} placeholder="Buscar receita..." />
         </div>
         <Table columns={columns} data={filtered} onRow={openEdit}
@@ -548,6 +548,7 @@ export default function Receitas({ empresa, data, onSave, onDelete, onSaveBatch,
                       value={form.valorMasked}
                       onChange={handleValor}
                       placeholder="0,00"
+                      className="form-val-input"
                       style={{ flex: 1, border: 'none', outline: 'none', fontSize: 28, fontWeight: 800, color: T.green, fontFamily: 'inherit', background: 'transparent', width: '100%', minWidth: 0 }}
                     />
                   </div>
@@ -841,7 +842,7 @@ export default function Receitas({ empresa, data, onSave, onDelete, onSaveBatch,
             </div>
 
             {/* Sidebar direita */}
-            <div style={{ width: 264, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 14, position: 'sticky', top: 84 }}>
+            <div className="form-side-panel">
 
               {/* Card de resumo */}
               <div style={{ background: 'var(--card)', borderRadius: 12, border: `1px solid var(--border)`, padding: 20 }}>

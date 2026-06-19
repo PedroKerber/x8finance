@@ -289,22 +289,22 @@ export default function Dashboard({ empresa, data, setPage }) {
           </div>
         </div>
 
-        {/* Quick presets */}
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
+        {/* Quick presets — horizontal scroll on mobile */}
+        <div className="dash-pills">
           {QUICK_PRESETS.map(p => <Pill key={p} label={p} active={preset === p} onClick={() => applyPreset(p)} />)}
         </div>
 
         {/* Date picker + Apply */}
         <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
-          <div>
+          <div style={{ flex: isMobile ? 1 : 'none' }}>
             <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-sub)', marginBottom: 5 }}>De</div>
-            <input type="date" value={editInicio} onChange={e => { setEditInicio(e.target.value); setPreset('Personalizado') }} style={inpSty} />
+            <input type="date" value={editInicio} onChange={e => { setEditInicio(e.target.value); setPreset('Personalizado') }} style={{ ...inpSty, width: isMobile ? '100%' : 'auto' }} />
           </div>
-          <div>
+          <div style={{ flex: isMobile ? 1 : 'none' }}>
             <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-sub)', marginBottom: 5 }}>Até</div>
-            <input type="date" value={editFim} onChange={e => { setEditFim(e.target.value); setPreset('Personalizado') }} style={inpSty} />
+            <input type="date" value={editFim} onChange={e => { setEditFim(e.target.value); setPreset('Personalizado') }} style={{ ...inpSty, width: isMobile ? '100%' : 'auto' }} />
           </div>
-          <button onClick={applyDates} style={{ background: T.primary, color: '#fff', border: 'none', borderRadius: 8, padding: '8px 20px', cursor: 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'inherit' }}>Aplicar</button>
+          <button onClick={applyDates} style={{ background: T.primary, color: '#fff', border: 'none', borderRadius: 8, padding: '10px 20px', cursor: 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'inherit', minHeight: 42, width: isMobile ? '100%' : 'auto', WebkitTapHighlightColor: 'transparent' }}>Aplicar</button>
         </div>
       </div>
 

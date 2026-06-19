@@ -4,8 +4,8 @@ import { useMobile } from '../context/MobileContext'
 
 export const Card = ({ children, style = {}, onClick }) => (
   <div onClick={onClick} style={{
-    background: T.white, borderRadius: 12, boxShadow: T.shadow,
-    border: `1px solid ${T.border}`, cursor: onClick ? 'pointer' : 'default', ...style
+    background: 'var(--card)', borderRadius: 12, boxShadow: 'var(--shadow)',
+    border: `1px solid var(--border)`, cursor: onClick ? 'pointer' : 'default', ...style
   }}>{children}</div>
 )
 
@@ -23,8 +23,9 @@ export const Btn = ({ children, onClick, variant = 'primary', sm, full, disabled
       ...v, borderRadius: 8, padding: sm ? '6px 14px' : '10px 18px',
       fontWeight: 600, fontSize: sm ? 13 : 14, cursor: disabled ? 'not-allowed' : 'pointer',
       opacity: disabled ? 0.5 : 1, width: full ? '100%' : 'auto',
-      fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 6,
-      whiteSpace: 'nowrap', transition: 'opacity .15s', ...style
+      fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+      whiteSpace: 'nowrap', transition: 'opacity .15s', minHeight: sm ? 32 : 42,
+      WebkitTapHighlightColor: 'transparent', ...style
     }}>
       {icon && <span style={{ fontSize: 14 }}>{icon}</span>}
       {children}
@@ -85,7 +86,7 @@ export const Input = ({ label, value, onChange, placeholder, type = 'text', err,
       {label && <label style={{ display: 'block', fontWeight: 600, fontSize: 13, color: T.text, marginBottom: 5 }}>{label}</label>}
       <input type={type} value={value} onChange={onChange} placeholder={placeholder}
         onFocus={() => setFoc(true)} onBlur={() => setFoc(false)}
-        style={{ width: '100%', background: T.white, border: `1.5px solid ${err ? T.red : foc ? T.primary : T.border}`, borderRadius: 8, padding: '9px 12px', color: T.text, fontSize: 14, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }} />
+        style={{ width: '100%', background: 'var(--card)', border: `1.5px solid ${err ? T.red : foc ? T.primary : 'var(--border)'}`, borderRadius: 8, padding: '10px 12px', color: 'var(--text)', fontSize: 14, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit', minHeight: 44 }} />
       {err && <div style={{ color: T.red, fontSize: 12, marginTop: 3 }}>⚠ {err}</div>}
     </div>
   )
@@ -95,7 +96,7 @@ export const Select = ({ label, value, onChange, options, placeholder, style = {
   <div style={{ marginBottom: 14, ...style }}>
     {label && <label style={{ display: 'block', fontWeight: 600, fontSize: 13, color: T.text, marginBottom: 5 }}>{label}</label>}
     <div style={{ position: 'relative' }}>
-      <select value={value} onChange={onChange} style={{ width: '100%', background: T.white, border: `1.5px solid ${T.border}`, borderRadius: 8, padding: '9px 32px 9px 12px', color: value ? T.text : T.muted, fontSize: 14, outline: 'none', appearance: 'none', fontFamily: 'inherit' }}>
+      <select value={value} onChange={onChange} style={{ width: '100%', background: 'var(--card)', border: `1.5px solid var(--border)`, borderRadius: 8, padding: '10px 32px 10px 12px', color: value ? 'var(--text)' : T.muted, fontSize: 14, outline: 'none', appearance: 'none', fontFamily: 'inherit', minHeight: 44 }}>
         {placeholder && <option value="">{placeholder}</option>}
         {options.map(o => typeof o === 'string' ? <option key={o} value={o}>{o}</option> : <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>
@@ -108,7 +109,7 @@ export const Modal = ({ title, onClose, children, footer, width = 520 }) => {
   const isMobile = useMobile()
   return (
     <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000,
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 1000,
       display: 'flex', alignItems: isMobile ? 'flex-end' : 'center',
       justifyContent: 'center', padding: isMobile ? 0 : 20,
     }}>
@@ -116,15 +117,21 @@ export const Modal = ({ title, onClose, children, footer, width = 520 }) => {
         width: '100%', maxWidth: isMobile ? '100%' : width,
         maxHeight: isMobile ? '92dvh' : '90vh',
         display: 'flex', flexDirection: 'column',
-        borderRadius: isMobile ? '18px 18px 0 0' : 12,
+        borderRadius: isMobile ? '20px 20px 0 0' : 12,
       }}>
-        <div style={{ padding: '16px 20px', borderBottom: `1px solid ${T.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
-          <span style={{ fontWeight: 700, fontSize: 16 }}>{title}</span>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: T.sub }}>✕</button>
+        {/* Drag handle on mobile */}
+        {isMobile && (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 4px' }}>
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--border)' }} />
+          </div>
+        )}
+        <div style={{ padding: isMobile ? '8px 20px 14px' : '16px 20px', borderBottom: `1px solid var(--border)`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+          <span style={{ fontWeight: 700, fontSize: isMobile ? 17 : 16 }}>{title}</span>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: T.sub, padding: 4, lineHeight: 1, WebkitTapHighlightColor: 'transparent' }}>✕</button>
         </div>
-        <div style={{ padding: isMobile ? '16px' : 20, overflowY: 'auto', flex: 1 }}>{children}</div>
+        <div style={{ padding: isMobile ? '16px' : 20, overflowY: 'auto', flex: 1, WebkitOverflowScrolling: 'touch' }}>{children}</div>
         {footer && (
-          <div style={{ padding: '14px 20px', borderTop: `1px solid ${T.border}`, display: 'flex', justifyContent: 'flex-end', gap: 10, flexShrink: 0, flexWrap: 'wrap' }}>
+          <div className="modal-footer" style={{ flexShrink: 0 }}>
             {footer}
           </div>
         )}
@@ -165,10 +172,10 @@ export const Confirm = ({ msg, onYes, onNo }) => (
 )
 
 export const EmptyState = ({ icon, title, sub, action }) => (
-  <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-    <div style={{ fontSize: 52, marginBottom: 14 }}>{icon}</div>
-    <div style={{ fontWeight: 700, fontSize: 16, color: T.sub, marginBottom: 6 }}>{title}</div>
-    {sub && <div style={{ color: T.muted, fontSize: 14, marginBottom: 20 }}>{sub}</div>}
+  <div style={{ textAlign: 'center', padding: '44px 20px' }}>
+    <div style={{ fontSize: 44, marginBottom: 12 }}>{icon}</div>
+    <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-sub)', marginBottom: 6 }}>{title}</div>
+    {sub && <div style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 18 }}>{sub}</div>}
     {action}
   </div>
 )
@@ -181,9 +188,9 @@ export const FilterBar = ({ children }) => (
 
 export const SearchInput = ({ value, onChange, placeholder = 'Buscar...' }) => (
   <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
-    <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: T.muted, fontSize: 14 }}>🔍</span>
+    <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: T.muted, fontSize: 14, pointerEvents: 'none' }}>🔍</span>
     <input value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
-      style={{ width: '100%', background: T.white, border: `1.5px solid ${T.border}`, borderRadius: 8, padding: '8px 12px 8px 34px', color: T.text, fontSize: 14, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }} />
+      style={{ width: '100%', background: 'var(--card)', border: `1.5px solid var(--border)`, borderRadius: 8, padding: '10px 12px 10px 34px', color: 'var(--text)', fontSize: 14, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit', minHeight: 42 }} />
   </div>
 )
 
@@ -201,19 +208,19 @@ export const Table = ({ columns, data, onRow, emptyState }) => {
         {data.map((row, i) => (
           <div key={row.id || i}
             onClick={onRow ? () => onRow(row) : undefined}
-            style={{ padding: '13px 16px', borderBottom: `1px solid ${T.borderLight}`, cursor: onRow ? 'pointer' : 'default' }}>
+            style={{ padding: '14px 16px', borderBottom: `1px solid var(--border-light)`, cursor: onRow ? 'pointer' : 'default', WebkitTapHighlightColor: 'transparent' }}>
             {mainCols.map(col => {
               const rendered = col.render ? col.render(row[col.key], row) : row[col.key]
               return (
-                <div key={col.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5, gap: 8, minWidth: 0 }}>
-                  <span style={{ fontSize: 11, color: T.muted, fontWeight: 600, flexShrink: 0, minWidth: 72 }}>{col.label}</span>
-                  <div style={{ textAlign: 'right', minWidth: 0, overflow: 'hidden' }}>{rendered}</div>
+                <div key={col.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6, gap: 8, minWidth: 0 }}>
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, flexShrink: 0, minWidth: 90, textTransform: 'uppercase', letterSpacing: '.03em', paddingTop: 2 }}>{col.label}</span>
+                  <div style={{ textAlign: 'right', minWidth: 0, flex: 1, wordBreak: 'break-word' }}>{rendered}</div>
                 </div>
               )
             })}
             {actionCol && (
               <div onClick={e => e.stopPropagation()}
-                style={{ marginTop: 8, paddingTop: 8, borderTop: `1px solid ${T.borderLight}`, display: 'flex', justifyContent: 'flex-end', flexWrap: 'wrap', gap: 6 }}>
+                style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid var(--border-light)`, display: 'flex', justifyContent: 'flex-end', flexWrap: 'wrap', gap: 8 }}>
                 {actionCol.render ? actionCol.render(row[actionCol.key], row) : null}
               </div>
             )}
