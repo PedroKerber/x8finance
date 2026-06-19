@@ -8,7 +8,7 @@ module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') return res.status(200).end()
   if (req.method !== 'POST') return res.status(405).json({ error: 'Método não permitido' })
 
-  const { ownerUserId, collaboratorUserId, empresaIds } = req.body || {}
+  const { ownerUserId, collaboratorUserId, empresaIds, role } = req.body || {}
   if (!ownerUserId || !collaboratorUserId) {
     return res.status(400).json({ error: 'ownerUserId e collaboratorUserId são obrigatórios' })
   }
@@ -32,7 +32,7 @@ module.exports = async (req, res) => {
       owner_user_id: ownerUserId,
       collaborator_user_id: collaboratorUserId,
       empresa_id,
-      role: 'viewer',
+      role: role || 'viewer',
     }))
     const { error: insError } = await supabaseAdmin
       .from('user_empresa_access')

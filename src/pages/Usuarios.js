@@ -178,24 +178,19 @@ export default function Usuarios({ usuario }) {
         merged.map(u => ({ id: u.id, email: u.email, nome: u.nome, telefone: u.telefone, foto: u.foto, cargo: u.cargo, perfil: u.perfil, status: u.status, mustChangePassword: u.mustChangePassword, empresaIds: u.empresaIds }))
       ))
     } catch {
-      const local = getLocal()
-      if (local.length > 0) {
-        setUsuarios(local)
-      } else {
-        setUsuarios([{ id: usuario?.id || '1', nome: 'Pedro Kerber', email: usuario?.email || 'pedrork22@icloud.com', telefone: '', empresaIds: EMPRESAS.map(e => e.id), cargo: 'CEO / Administrador Master', perfil: 'master', status: 'ativo', foto: '', ultimoAcesso: 'Hoje', criadoEm: new Date().toLocaleDateString('pt-BR') }])
-      }
+      setUsuarios(getLocal())
     } finally {
       setSupabaseLoading(false)
     }
   }, [usuario])
 
-  const syncPermissions = useCallback(async (collaboratorUserId, empresaIds) => {
+  const syncPermissions = useCallback(async (collaboratorUserId, empresaIds, perfil) => {
     if (!usuario?.id || !collaboratorUserId || collaboratorUserId === usuario.id) return
     try {
       await fetch('/api/set-permissions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ownerUserId: usuario.id, collaboratorUserId, empresaIds: empresaIds || [] }),
+        body: JSON.stringify({ ownerUserId: usuario.id, collaboratorUserId, empresaIds: empresaIds || [], role: perfil || 'viewer' }),
       })
     } catch {}
   }, [usuario])
@@ -234,8 +229,22 @@ export default function Usuarios({ usuario }) {
       if (editId) {
         const prev = usuarios.find(u => u.id === editId)
         setUsuarios(p => p.map(u => u.id === editId ? { ...form, id: editId } : u))
-        localStorage.setItem(`x8_perms_${editId}`, JSON.stringify(formPerms))
-        await syncPermissions(editId, form.empresaIds)
+        try {
+          const saved = JSON.parse(localStorage.getItem('x8_usuarios_v2') || '[]')
+          localStorage.setItem('x8_usuarios_v2', JSON.stringify(
+            saved.map(u => u.id === editId
+              ? { ...u, nome: form.nome, cargo: form.cargo, perfil: form.perfil, status: form.status, empresaIds: form.empresaIds, telefone: form.telefone, foto: form.foto, mustChangePassword: form.mustChangePassword }
+              : u
+            )
+          ))
+          localStorage.setItem(`x8_perms_${editId}`, JSON.stringify(formPerms))
+        } catch {}
+        fetch('/api/update-user', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: editId, nome: form.nome, cargo: form.cargo, perfil: form.perfil }),
+        }).catch(() => {})
+        await syncPermissions(editId, form.empresaIds, form.perfil)
         await logAudit('usuario_editado', { userId: editId, email: form.email, empresasAnteriores: prev?.empresaIds || [], empresasNovas: form.empresaIds, perfil: form.perfil })
         showToast('Usuário atualizado com sucesso!')
         setModalTipo(null)
@@ -253,7 +262,7 @@ export default function Usuarios({ usuario }) {
         const inviteLink  = inviteJson.inviteLink
 
         if (newUserId) {
-          await syncPermissions(newUserId, form.empresaIds)
+          await syncPermissions(newUserId, form.empresaIds, form.perfil)
           const newUser = { ...form, id: newUserId, emailConfirmado: false, ultimoAcesso: '—', criadoEm: new Date().toLocaleDateString('pt-BR') }
           setUsuarios(p => [...p.filter(u => u.email !== form.email), newUser])
           localStorage.setItem(`x8_perms_${newUserId}`, JSON.stringify(formPerms))
@@ -288,11 +297,29 @@ export default function Usuarios({ usuario }) {
 
   const handleDelete = async (id) => {
     const u = usuarios.find(x => x.id === id)
-    setUsuarios(p => p.filter(u => u.id !== id))
+    const isMasterUser = u?.perfil === 'master'
+    const masterCount = usuarios.filter(x => x.perfil === 'master').length
+    if (isMasterUser && masterCount <= 1) {
+      showToast('Não é possível excluir o único usuário Master.', false)
+      setConfirmDeleteId(null); setModalTipo(null)
+      return
+    }
+    setUsuarios(p => p.filter(x => x.id !== id))
     setConfirmDeleteId(null); setModalTipo(null)
-    await syncPermissions(id, [])
+    try {
+      const saved = JSON.parse(localStorage.getItem('x8_usuarios_v2') || '[]')
+      localStorage.setItem('x8_usuarios_v2', JSON.stringify(saved.filter(x => x.id !== id)))
+      localStorage.removeItem(`x8_perms_${id}`)
+    } catch {}
+    try {
+      await fetch('/api/delete-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: id }),
+      })
+    } catch {}
     await logAudit('usuario_excluido', { userId: id, email: u?.email })
-    showToast('Acesso do usuário removido.')
+    showToast('Usuário excluído permanentemente.')
   }
 
   const handleBlock = async (id) => {
@@ -593,7 +620,7 @@ export default function Usuarios({ usuario }) {
                                     {u.email !== usuario?.email && (
                                       <>
                                         <div style={{ height: 1, background: T.border, margin: '0 14px' }} />
-                                        <button onClick={() => { setConfirmDeleteId(u.id); setActionMenu(null); setModalTipo('delete') }} style={{ ...mnu, color: '#dc2626' }}>🗑 Remover acesso</button>
+                                        <button onClick={() => { setConfirmDeleteId(u.id); setActionMenu(null); setModalTipo('delete') }} style={{ ...mnu, color: '#dc2626' }}>🗑 Excluir usuário</button>
                                       </>
                                     )}
                                   </>
@@ -1058,11 +1085,11 @@ export default function Usuarios({ usuario }) {
         <Overlay onClose={() => setModalTipo(null)}>
           <div style={{ background: T.white, borderRadius: 16, padding: 32, width: '100%', maxWidth: 400, boxShadow: '0 20px 60px rgba(0,0,0,0.2)', textAlign: 'center' }}>
             <div style={{ fontSize: 48, marginBottom: 12 }}>🗑</div>
-            <div style={{ fontWeight: 800, fontSize: 18, marginBottom: 8 }}>Remover acesso do usuário?</div>
-            <div style={{ color: T.sub, fontSize: 13, marginBottom: 28 }}>O usuário perderá acesso a todas as empresas. O registro no Supabase Auth é mantido.</div>
+            <div style={{ fontWeight: 800, fontSize: 18, marginBottom: 8 }}>Excluir usuário permanentemente?</div>
+            <div style={{ color: T.sub, fontSize: 13, marginBottom: 28 }}>O usuário será removido do sistema, incluindo o acesso de login. Esta ação não pode ser desfeita.</div>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
               <Btn variant="ghost" onClick={() => setModalTipo(null)}>Cancelar</Btn>
-              <Btn variant="danger" onClick={() => handleDelete(confirmDeleteId)}>Sim, remover acesso</Btn>
+              <Btn variant="danger" onClick={() => handleDelete(confirmDeleteId)}>Sim, excluir permanentemente</Btn>
             </div>
           </div>
         </Overlay>

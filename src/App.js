@@ -58,13 +58,15 @@ export default function App() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       if (data.session?.user) {
-        setUsuario({ id: data.session.user.id, email: data.session.user.email, nome: data.session.user.email.split('@')[0] })
+        const u = data.session.user
+        setUsuario({ id: u.id, email: u.email, nome: u.user_metadata?.nome || u.email.split('@')[0], perfil: u.user_metadata?.perfil || 'master' })
       }
       setLoading(false)
     })
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
-        setUsuario({ id: session.user.id, email: session.user.email, nome: session.user.email.split('@')[0] })
+        const u = session.user
+        setUsuario({ id: u.id, email: u.email, nome: u.user_metadata?.nome || u.email.split('@')[0], perfil: u.user_metadata?.perfil || 'master' })
       } else {
         setUsuario(null)
         setEmpresa(null)
@@ -85,12 +87,35 @@ export default function App() {
       const custom = JSON.parse(localStorage.getItem(`x8_empresas_${usuario.id}`) || '[]')
       if (custom.length > 0) all = [...EMPRESAS, ...custom]
     } catch {}
-    setEmpresas(all)
-    const lastId = localStorage.getItem('x8_last_empresa')
-    if (lastId) {
-      const found = all.find(e => e.id === lastId)
-      if (found) setEmpresa(found)
+
+    const applyEmpresas = (list) => {
+      setEmpresas(list)
+      const lastId = localStorage.getItem('x8_last_empresa')
+      if (lastId) {
+        const found = list.find(e => e.id === lastId)
+        if (found) setEmpresa(found)
+      }
     }
+
+    // Usuários não-master/admin só veem as empresas às quais têm acesso
+    if (usuario.perfil && usuario.perfil !== 'master' && usuario.perfil !== 'admin') {
+      supabase.from('user_empresa_access')
+        .select('empresa_id')
+        .eq('collaborator_user_id', usuario.id)
+        .then(({ data: accessData }) => {
+          if (accessData && accessData.length > 0) {
+            const ids = new Set(accessData.map(r => r.empresa_id))
+            const accessible = all.filter(e => ids.has(e.id))
+            applyEmpresas(accessible.length > 0 ? accessible : all)
+          } else {
+            applyEmpresas(all)
+          }
+        })
+        .catch(() => applyEmpresas(all))
+    } else {
+      applyEmpresas(all)
+    }
+
     // Pré-carrega todos os lançamentos para exibir stats na tela de seleção
     getAllLancamentos(usuario.id).then(lancs => {
       const byEmp = {}
@@ -125,7 +150,7 @@ export default function App() {
 
   const handleLogin = useCallback(async (email, senha) => {
     const user = await signIn(email, senha)
-    setUsuario({ id: user.id, email: user.email, nome: user.email.split('@')[0] })
+    setUsuario({ id: user.id, email: user.email, nome: user.user_metadata?.nome || user.email.split('@')[0], perfil: user.user_metadata?.perfil || 'master' })
   }, [])
 
   const handlePerfilUpdate = useCallback(() => {
