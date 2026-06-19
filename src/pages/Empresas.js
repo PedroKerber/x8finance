@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { T } from '../theme'
 import { Card, Btn, Modal } from '../components/ui'
-import { SEGMENTOS, labelSegmento } from '../modules'
+import { SEGMENTOS, labelSegmento, labelPlano, getCorPlano } from '../modules'
 
 const EMPTY = { nome: '', cnpj: '', segmento: '', cor: '#16a34a' }
 
@@ -14,7 +14,7 @@ function mascaraCNPJ(v) {
   return `${d.slice(0,2)}.${d.slice(2,5)}.${d.slice(5,8)}/${d.slice(8,12)}-${d.slice(12)}`
 }
 
-export default function Empresas({ setPage, empresas = [], onSaveEmpresa }) {
+export default function Empresas({ setPage, empresas = [], onSaveEmpresa, plano = 'basico', limiteEmpresas = 1 }) {
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState('Todas')
   const [ordem, setOrdem] = useState('Nome (A-Z)')
@@ -22,6 +22,10 @@ export default function Empresas({ setPage, empresas = [], onSaveEmpresa }) {
   const [form, setForm] = useState(EMPTY)
   const [erros, setErros] = useState({})
   const [saving, setSaving] = useState(false)
+  const [limitErr, setLimitErr] = useState(null)
+
+  const noLimitInfinite = limiteEmpresas === Infinity
+  const atingiuLimite   = !noLimitInfinite && empresas.length >= limiteEmpresas
 
   const lista = useMemo(() => {
     let list = [...empresas]
@@ -44,11 +48,22 @@ export default function Empresas({ setPage, empresas = [], onSaveEmpresa }) {
     const e = validar()
     if (Object.keys(e).length) { setErros(e); return }
     setSaving(true)
-    if (onSaveEmpresa) onSaveEmpresa(form)
+    if (onSaveEmpresa) {
+      onSaveEmpresa(form, (limite, nomeP) => {
+        setSaving(false)
+        setModal(false)
+        setLimitErr({ limite, plano: nomeP })
+      })
+    }
     setModal(false)
     setForm(EMPTY)
     setErros({})
     setSaving(false)
+  }
+
+  const abrirModal = () => {
+    if (atingiuLimite) { setLimitErr({ limite: limiteEmpresas, plano: labelPlano(plano) }); return }
+    setForm(EMPTY); setErros({}); setModal(true)
   }
 
   const iSty = (err) => ({
@@ -66,7 +81,7 @@ export default function Empresas({ setPage, empresas = [], onSaveEmpresa }) {
           <h1 style={{ fontWeight: 800, fontSize: 26, margin: '0 0 4px' }}>Empresas</h1>
           <div style={{ color: T.sub, fontSize: 14 }}>Gerencie todas as empresas do grupo.</div>
         </div>
-        <Btn onClick={() => { setForm(EMPTY); setErros({}); setModal(true) }} icon="＋">Nova Empresa</Btn>
+        <Btn onClick={abrirModal} icon="＋" disabled={atingiuLimite}>Nova Empresa</Btn>
       </div>
 
       {/* KPIs */}
@@ -74,15 +89,15 @@ export default function Empresas({ setPage, empresas = [], onSaveEmpresa }) {
         {[
           { icon: '🏢', bg: T.blueL, label: 'Total de Empresas', value: empresas.length },
           { icon: '✅', bg: T.greenL, label: 'Empresas Ativas', value: empresas.length },
-          { icon: '⏸', bg: T.borderLight, label: 'Empresas Inativas', value: 0 },
-          { icon: '🔑', bg: T.purpleL, label: 'Plano', value: 'Premium' },
+          { icon: '⏸', bg: T.borderLight, label: 'Limite do Plano', value: noLimitInfinite ? 'Ilimitado' : `${empresas.length} / ${limiteEmpresas}` },
+          { icon: '🔑', bg: T.purpleL, label: 'Plano Atual', value: labelPlano(plano), cor: getCorPlano(plano) },
         ].map(k => (
           <Card key={k.label} style={{ padding: '16px 18px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <div style={{ background: k.bg, borderRadius: 10, width: 42, height: 42, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>{k.icon}</div>
               <div>
                 <div style={{ color: T.sub, fontSize: 12 }}>{k.label}</div>
-                <div style={{ fontWeight: 800, fontSize: 24 }}>{k.value}</div>
+                <div style={{ fontWeight: 800, fontSize: 24, color: k.cor || 'inherit' }}>{k.value}</div>
               </div>
             </div>
           </Card>
@@ -128,7 +143,7 @@ export default function Empresas({ setPage, empresas = [], onSaveEmpresa }) {
               <div className="emp-card-meta">
                 <div>
                   <div style={{ color: T.muted, fontSize: 11, marginBottom: 2 }}>Plano</div>
-                  <div style={{ fontWeight: 700, fontSize: 14, color: T.primary }}>Premium</div>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: getCorPlano(emp.plano || plano) }}>{labelPlano(emp.plano || plano)}</div>
                 </div>
               </div>
             </div>
@@ -142,16 +157,53 @@ export default function Empresas({ setPage, empresas = [], onSaveEmpresa }) {
           </div>
         )}
 
-        {/* Add card */}
-        <div onClick={() => { setForm(EMPTY); setErros({}); setModal(true) }}
-          style={{ border: `2px dashed ${T.border}`, borderRadius: 12, padding: 28, textAlign: 'center', cursor: 'pointer', transition: 'border-color .15s' }}
-          onMouseEnter={e => e.currentTarget.style.borderColor = T.primary}
-          onMouseLeave={e => e.currentTarget.style.borderColor = T.border}>
-          <div style={{ width: 44, height: 44, borderRadius: '50%', background: T.primary, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, color: '#fff', margin: '0 auto 10px' }}>+</div>
-          <div style={{ fontWeight: 700, fontSize: 15, color: T.primary, marginBottom: 4 }}>Cadastrar nova empresa</div>
-          <div style={{ color: T.muted, fontSize: 13 }}>Clique para adicionar uma nova empresa ao sistema</div>
-        </div>
+        {/* Add card — bloqueado se atingiu limite */}
+        {atingiuLimite ? (
+          <div style={{ border: `2px dashed ${T.border}`, borderRadius: 12, padding: 28, textAlign: 'center', opacity: .6 }}>
+            <div style={{ width: 44, height: 44, borderRadius: '50%', background: T.border, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, margin: '0 auto 10px' }}>🔒</div>
+            <div style={{ fontWeight: 700, fontSize: 15, color: T.sub, marginBottom: 4 }}>Limite de empresas atingido</div>
+            <div style={{ color: T.muted, fontSize: 13, marginBottom: 12 }}>
+              Seu plano <strong>{labelPlano(plano)}</strong> permite até <strong>{limiteEmpresas} empresa{limiteEmpresas !== 1 ? 's' : ''}</strong>.
+            </div>
+            <button onClick={() => setPage('meu_plano')}
+              style={{ background: '#7c3aed', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+              Fazer Upgrade
+            </button>
+          </div>
+        ) : (
+          <div onClick={abrirModal}
+            style={{ border: `2px dashed ${T.border}`, borderRadius: 12, padding: 28, textAlign: 'center', cursor: 'pointer', transition: 'border-color .15s' }}
+            onMouseEnter={e => e.currentTarget.style.borderColor = T.primary}
+            onMouseLeave={e => e.currentTarget.style.borderColor = T.border}>
+            <div style={{ width: 44, height: 44, borderRadius: '50%', background: T.primary, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, color: '#fff', margin: '0 auto 10px' }}>+</div>
+            <div style={{ fontWeight: 700, fontSize: 15, color: T.primary, marginBottom: 4 }}>Cadastrar nova empresa</div>
+            <div style={{ color: T.muted, fontSize: 13 }}>Clique para adicionar uma nova empresa ao sistema</div>
+          </div>
+        )}
       </div>
+
+      {/* Modal de limite de plano */}
+      {limitErr && (
+        <Modal title="Limite de Empresas" onClose={() => setLimitErr(null)}
+          footer={
+            <>
+              <Btn variant="ghost" onClick={() => setLimitErr(null)}>Fechar</Btn>
+              <Btn onClick={() => { setLimitErr(null); setPage('meu_plano') }}>Ver Meu Plano</Btn>
+            </>
+          }>
+          <div style={{ textAlign: 'center', padding: '8px 0 16px' }}>
+            <div style={{ fontSize: 44, marginBottom: 12 }}>🔒</div>
+            <p style={{ color: T.text, fontSize: 15, margin: '0 0 8px', fontWeight: 600 }}>
+              Limite de empresas atingido
+            </p>
+            <p style={{ color: T.sub, fontSize: 14, lineHeight: 1.6, margin: 0 }}>
+              Seu plano <strong>{limitErr.plano}</strong> permite até{' '}
+              <strong>{limitErr.limite} empresa{limitErr.limite !== 1 ? 's' : ''}</strong>.
+              Faça upgrade para adicionar mais empresas.
+            </p>
+          </div>
+        </Modal>
+      )}
 
       {/* Modal nova empresa */}
       {modal && (

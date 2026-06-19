@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from 'react'
 import { useMobile } from './context/MobileContext'
 import { T, uid } from './theme'
 import { initData, EMPRESAS, CATS_KZL } from './data'
-import { isModuloPermitido, labelSegmento } from './modules'
+import { getModuloStatus, labelSegmento, labelPlano, getLimitesPlano } from './modules'
 import { supabase, getAllLancamentos, getLancamentos, saveLancamento, deleteLancamento, saveLancamentos, getMetas, saveMeta, deleteMeta, signIn, signOut, deleteAllLancamentos, deleteAllMetas } from './supabase'
 
 import Sidebar from './components/Sidebar'
@@ -30,6 +30,7 @@ import Configuracoes from './pages/Configuracoes'
 import Notificacoes from './pages/Notificacoes'
 import Placeholder from './pages/Placeholder'
 import ViabilidadeIncorporacao from './pages/ViabilidadeIncorporacao'
+import MeuPlano from './pages/MeuPlano'
 
 const PLACEHOLDER_PAGES = ['fornecedores', 'clientes', 'scanner', 'contas_pagar', 'contas_receber']
 
@@ -244,7 +245,12 @@ export default function App() {
     setAppData(prev => ({ ...prev, [empresa.id]: { ...prev[empresa.id], mesFechado: false } }))
   }, [empresa])
 
-  const handleSaveEmpresa = useCallback((form) => {
+  const handleSaveEmpresa = useCallback((form, onLimitError) => {
+    const limites = getLimitesPlano(empresa?.plano)
+    if (empresas.length >= limites.empresas) {
+      if (onLimitError) onLimitError(limites.empresas, labelPlano(empresa?.plano))
+      return
+    }
     const words = form.nome.trim().split(/\s+/).filter(Boolean)
     const initials = words.slice(0, 2).map(w => w[0].toUpperCase()).join('') || 'EM'
     const newEmp = {
@@ -255,6 +261,7 @@ export default function App() {
       cor: form.cor || '#16a34a',
       segmento: form.segmento || '',
       setor: labelSegmento(form.segmento),
+      plano: 'basico',
     }
     try {
       const saved = JSON.parse(localStorage.getItem(`x8_empresas_${usuario.id}`) || '[]')
@@ -262,7 +269,7 @@ export default function App() {
     } catch {}
     setEmpresas(prev => [...prev, newEmp])
     setAppData(prev => ({ ...prev, [newEmp.id]: { lancamentos: [], metas: [], mesFechado: false } }))
-  }, [usuario])
+  }, [usuario, empresa, empresas])
 
   const handleSaveCat = useCallback((cat, isEdit) => {
     setExtraCats(prev => {
@@ -327,8 +334,10 @@ export default function App() {
   const renderPage = () => {
     if (PLACEHOLDER_PAGES.includes(page)) return <Placeholder page={page} />
 
-    // ── Guarda de segmento: bloqueia módulos não permitidos ──────────────────
-    if (!isModuloPermitido(page, empresa?.segmento)) {
+    // ── Guarda de acesso: segmento oculta; plano exibe tela de upgrade ───────
+    const moduloStatus = getModuloStatus(page, empresa?.segmento, empresa?.plano)
+
+    if (moduloStatus === 'bloqueado_segmento') {
       const segLabel = labelSegmento(empresa?.segmento)
       return (
         <div style={{ textAlign: 'center', padding: '64px 24px', fontFamily: "'Segoe UI', sans-serif" }}>
@@ -337,17 +346,43 @@ export default function App() {
             Módulo não disponível
           </h2>
           <p style={{ color: 'var(--text-sub)', fontSize: 15, maxWidth: 420, margin: '0 auto 10px', lineHeight: 1.6 }}>
-            Este módulo não está disponível para empresas do segmento
-            {' '}<strong style={{ color: T.primary }}>{segLabel}</strong>.
+            Este módulo não está disponível para empresas do segmento{' '}
+            <strong style={{ color: T.primary }}>{segLabel}</strong>.
           </p>
           <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>
             Se precisar desta funcionalidade, verifique com o administrador do sistema.
           </p>
-          <button
-            onClick={() => setPage('dashboard')}
+          <button onClick={() => setPage('dashboard')}
             style={{ marginTop: 24, background: T.primary, color: '#fff', border: 'none', borderRadius: 8, padding: '10px 24px', fontFamily: 'inherit', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
             ← Voltar ao Dashboard
           </button>
+        </div>
+      )
+    }
+
+    if (moduloStatus === 'bloqueado_plano') {
+      const planoAtual = labelPlano(empresa?.plano)
+      return (
+        <div style={{ textAlign: 'center', padding: '64px 24px', fontFamily: "'Segoe UI', sans-serif" }}>
+          <div style={{ fontSize: 52, marginBottom: 16 }}>⭐</div>
+          <h2 style={{ fontWeight: 800, fontSize: 22, margin: '0 0 10px', color: 'var(--text)' }}>
+            Disponível em planos superiores
+          </h2>
+          <p style={{ color: 'var(--text-sub)', fontSize: 15, maxWidth: 420, margin: '0 auto 10px', lineHeight: 1.6 }}>
+            Este módulo não está incluído no Plano{' '}
+            <strong style={{ color: T.primary }}>{planoAtual}</strong>.
+            Faça upgrade para desbloquear esta funcionalidade.
+          </p>
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginTop: 24 }}>
+            <button onClick={() => setPage('dashboard')}
+              style={{ background: 'var(--card)', color: 'var(--text)', border: '1.5px solid var(--border)', borderRadius: 8, padding: '10px 20px', fontFamily: 'inherit', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+              ← Voltar
+            </button>
+            <button onClick={() => setPage('meu_plano')}
+              style={{ background: '#7c3aed', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 20px', fontFamily: 'inherit', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+              Ver Meu Plano
+            </button>
+          </div>
         </div>
       )
     }
@@ -364,7 +399,8 @@ export default function App() {
       case 'retirada_socios': return <RetiradaSocios {...sharedProps} />
       case 'relatorios': return <Relatorios {...sharedProps} allData={appData} allEmpresas={empresas} />
       case 'comparativo_empresas': return <ComparativoEmpresas appData={appData} empresas={empresas} />
-      case 'empresas': return <Empresas setPage={setPage} empresas={empresas} onSaveEmpresa={handleSaveEmpresa} />
+      case 'empresas': return <Empresas setPage={setPage} empresas={empresas} onSaveEmpresa={handleSaveEmpresa} plano={empresa?.plano} limiteEmpresas={getLimitesPlano(empresa?.plano).empresas} />
+      case 'meu_plano': return <MeuPlano empresa={empresa} empresas={empresas} usuario={usuario} setPage={setPage} />
       case 'categorias': return <Categorias {...sharedProps} onSaveCat={handleSaveCat} onDeleteCat={handleDeleteCat} />
       case 'centro_custo': return <CentroCusto {...sharedProps} />
       case 'usuarios': return <Usuarios usuario={usuario} />

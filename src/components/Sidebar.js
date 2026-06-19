@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { T } from '../theme'
 import { useTheme } from '../context/ThemeContext'
-import { isModuloPermitido } from '../modules'
+import { getModuloStatus, planoMinimoModulo } from '../modules'
 
 const PERFIL_CARGO = { master: 'Master', admin: 'Administrador', gerente: 'Gerente Financeiro', contador: 'Contador', visualizador: 'Visualizador' }
 
@@ -57,6 +57,10 @@ function Ico({ name, size = 18 }) {
     inner = <><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></>
   else if (name === 'viabilidade_inc')
     inner = <><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></>
+  else if (name === 'meu_plano')
+    inner = <><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></>
+  else if (name === 'lock')
+    inner = <><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></>
   else if (name === 'chevron_left')
     inner = <polyline points="15 18 9 12 15 6"/>
   else if (name === 'chevron_right')
@@ -113,6 +117,7 @@ const NAV_GROUPS = [
     { id: 'viabilidade_inc', label: 'Viabilidade', icon: 'viabilidade_inc' },
   ]},
   { label: 'Sistema', items: [
+    { id: 'meu_plano', label: 'Meu Plano', icon: 'meu_plano' },
     { id: 'usuarios', label: 'Usuários', icon: 'usuarios' },
     { id: 'configuracoes', label: 'Configurações', icon: 'configuracoes' },
     { id: 'logs', label: 'Logs do Sistema', icon: 'logs' },
@@ -175,16 +180,31 @@ export default function Sidebar({ page, setPage, collapsed, onToggle, usuario, p
   const cargoDisplay = savedPerfil.cargo || usuario?.cargo || PERFIL_CARGO[usuario?.perfil] || 'Usuário'
   const inicial = (nomeDisplay[0] || 'U').toUpperCase()
 
+  const [upgradeHint, setUpgradeHint] = useState(null)
+
   const navigate = id => {
     setPage(id)
     if (isMobile && onMobileClose) onMobileClose()
   }
 
-  // Filtra grupos/itens pelo segmento da empresa selecionada
+  const handleItemClick = (item) => {
+    if (item.status === 'bloqueado_plano') {
+      const minPlano = planoMinimoModulo(item.id)
+      setUpgradeHint({ label: item.label, plano: minPlano })
+      const t = setTimeout(() => setUpgradeHint(null), 4000)
+      return () => clearTimeout(t)
+    }
+    navigate(item.id)
+  }
+
+  // Filtra grupos: oculta itens bloqueados por segmento; mantém (com lock) os bloqueados por plano
   const segmento = empresa?.segmento
+  const plano    = empresa?.plano
   const visibleGroups = NAV_GROUPS.map(group => ({
     ...group,
-    items: group.items.filter(item => isModuloPermitido(item.id, segmento)),
+    items: group.items
+      .map(item => ({ ...item, status: getModuloStatus(item.id, segmento, plano) }))
+      .filter(item => item.status !== 'bloqueado_segmento'),
   })).filter(group => group.items.length > 0)
 
   // ── MOBILE RENDER ────────────────────────────────────────────────────────────
@@ -236,25 +256,27 @@ export default function Sidebar({ page, setPage, collapsed, onToggle, usuario, p
                     )}
                     {group.items.map(item => {
                       const active = page === item.id
+                      const locked = item.status === 'bloqueado_plano'
                       return (
                         <div key={item.id} style={{ padding: '1px 8px' }}>
                           <button
-                            onClick={() => navigate(item.id)}
+                            onClick={() => handleItemClick(item)}
                             style={{
                               display: 'flex', alignItems: 'center', gap: 11,
                               width: '100%', padding: '11px 12px',
                               background: active ? S.active : 'transparent',
-                              color: active ? S.txtActive : S.txt,
+                              color: locked ? 'rgba(255,255,255,0.28)' : (active ? S.txtActive : S.txt),
                               border: 'none',
                               borderLeft: active ? `3px solid ${S.accent}` : '3px solid transparent',
-                              borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit',
+                              borderRadius: 10, cursor: locked ? 'default' : 'pointer', fontFamily: 'inherit',
                               fontSize: 14, fontWeight: active ? 600 : 400,
                               textAlign: 'left',
                             }}>
-                            <span style={{ color: active ? S.accent : 'inherit', display: 'flex', flexShrink: 0 }}>
+                            <span style={{ color: locked ? 'rgba(255,255,255,0.28)' : (active ? S.accent : 'inherit'), display: 'flex', flexShrink: 0 }}>
                               <Ico name={item.icon} size={18} />
                             </span>
-                            <span>{item.label}</span>
+                            <span style={{ flex: 1 }}>{item.label}</span>
+                            {locked && <Ico name="lock" size={13} />}
                           </button>
                         </div>
                       )
@@ -368,35 +390,39 @@ export default function Sidebar({ page, setPage, collapsed, onToggle, usuario, p
             )}
             {group.items.map(item => {
               const active = page === item.id
+              const locked = item.status === 'bloqueado_plano'
               return (
                 <div key={item.id} style={{ padding: '1px 8px' }}>
                   <button
-                    onClick={() => setPage(item.id)}
-                    title={collapsed ? item.label : undefined}
+                    onClick={() => handleItemClick(item)}
+                    title={collapsed ? (locked ? `🔒 ${item.label}` : item.label) : undefined}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 11,
                       justifyContent: collapsed ? 'center' : 'flex-start',
                       width: '100%', padding: collapsed ? '11px 0' : '9px 12px',
                       background: active ? S.active : 'transparent',
-                      color: active ? S.txtActive : S.txt,
+                      color: locked ? 'rgba(255,255,255,0.28)' : (active ? S.txtActive : S.txt),
                       border: 'none',
                       borderLeft: active ? `3px solid ${S.accent}` : '3px solid transparent',
-                      borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit',
+                      borderRadius: 10, cursor: locked ? 'default' : 'pointer', fontFamily: 'inherit',
                       fontSize: 13.5, fontWeight: active ? 600 : 400,
                       textAlign: 'left', whiteSpace: 'nowrap', overflow: 'hidden',
                       transition: 'background .15s, color .15s',
                     }}
                     onMouseEnter={e => {
-                      if (!active) { e.currentTarget.style.background = S.hover; e.currentTarget.style.color = '#fff' }
+                      if (!active && !locked) { e.currentTarget.style.background = S.hover; e.currentTarget.style.color = '#fff' }
                     }}
                     onMouseLeave={e => {
-                      if (!active) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = S.txt }
+                      if (!active && !locked) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = S.txt }
                     }}>
-                    <span style={{ color: active ? S.accent : 'inherit', display: 'flex', flexShrink: 0 }}>
+                    <span style={{ color: locked ? 'rgba(255,255,255,0.28)' : (active ? S.accent : 'inherit'), display: 'flex', flexShrink: 0 }}>
                       <Ico name={item.icon} size={18} />
                     </span>
                     {!collapsed && (
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.label}</span>
+                      <>
+                        <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.label}</span>
+                        {locked && <Ico name="lock" size={12} />}
+                      </>
                     )}
                   </button>
                 </div>
@@ -408,6 +434,27 @@ export default function Sidebar({ page, setPage, collapsed, onToggle, usuario, p
 
       {/* ── FOOTER ── */}
       <div style={{ borderTop: `1px solid ${S.border}`, padding: '10px 8px', flexShrink: 0 }}>
+
+        {/* Toast de upgrade */}
+        {upgradeHint && !collapsed && (
+          <div style={{
+            background: 'rgba(124,58,237,0.18)', border: '1px solid rgba(124,58,237,0.35)',
+            borderRadius: 10, padding: '10px 12px', marginBottom: 8,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 4 }}>
+              <Ico name="lock" size={13} />
+              <span style={{ color: '#c4b5fd', fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: .7 }}>Módulo Bloqueado</span>
+            </div>
+            <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, lineHeight: 1.4, marginBottom: 8 }}>
+              <strong style={{ color: '#fff' }}>{upgradeHint.label}</strong> está disponível no Plano{' '}
+              <strong style={{ color: '#c4b5fd' }}>{upgradeHint.plano}</strong>.
+            </div>
+            <button onClick={() => { setUpgradeHint(null); setPage('meu_plano') }}
+              style={{ width: '100%', background: '#7c3aed', border: 'none', borderRadius: 7, padding: '6px', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+              Ver Meu Plano
+            </button>
+          </div>
+        )}
 
         {userMenu && (
           <>

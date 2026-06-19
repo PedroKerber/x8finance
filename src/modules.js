@@ -11,101 +11,130 @@ export const SEGMENTOS = [
   { id: 'outro',         label: 'Outros'             },
 ]
 
-// ── Configuração central de módulos ────────────────────────────────────────
+// ── Planos contratados ─────────────────────────────────────────────────────
+export const PLANOS = {
+  basico: {
+    id: 'basico',
+    label: 'Básico',
+    cor: '#6b7280',
+    corBg: '#f3f4f6',
+    limites: { empresas: 1, usuarios: 3 },
+  },
+  profissional: {
+    id: 'profissional',
+    label: 'Profissional',
+    cor: '#2563eb',
+    corBg: '#eff6ff',
+    limites: { empresas: 5, usuarios: 15 },
+  },
+  enterprise: {
+    id: 'enterprise',
+    label: 'Enterprise',
+    cor: '#7c3aed',
+    corBg: '#f5f3ff',
+    limites: { empresas: Infinity, usuarios: Infinity },
+  },
+}
+
+const PLANOS_ORDEM = ['basico', 'profissional', 'enterprise']
+const B_P_E = ['basico', 'profissional', 'enterprise']
+const P_E   = ['profissional', 'enterprise']
+const E     = ['enterprise']
+
+// ── Configuração central de módulos ───────────────────────────────────────
 // segmentos: 'todos' → universal; string[] → apenas esses segmentos
+// planos: array de planos que têm acesso ao módulo
 export const MODULE_CONFIG = {
 
-  // ── Universais: todos os segmentos ────────────────────────────────────────
-  dashboard:            { segmentos: 'todos', label: 'Dashboard'              },
-  transacoes:           { segmentos: 'todos', label: 'Transações'             },
-  receitas:             { segmentos: 'todos', label: 'Receitas'               },
-  despesas:             { segmentos: 'todos', label: 'Despesas'               },
-  fluxo:                { segmentos: 'todos', label: 'Fluxo de Caixa'         },
-  retirada_socios:      { segmentos: 'todos', label: 'Retirada dos Sócios'    },
-  relatorios:           { segmentos: 'todos', label: 'Relatórios'             },
-  comparativo_empresas: { segmentos: 'todos', label: 'Comparativo'            },
-  mes_fechado:          { segmentos: 'todos', label: 'Fechamento Mensal'      },
-  metas:                { segmentos: 'todos', label: 'Metas Financeiras'      },
-  importar:             { segmentos: 'todos', label: 'Importar'               },
-  categorias:           { segmentos: 'todos', label: 'Categorias'             },
-  centro_custo:         { segmentos: 'todos', label: 'Centro de Custo'        },
-  fornecedores:         { segmentos: 'todos', label: 'Fornecedores'           },
-  clientes:             { segmentos: 'todos', label: 'Clientes'               },
-  scanner:              { segmentos: 'todos', label: 'Scanner'                },
-  contas_pagar:         { segmentos: 'todos', label: 'Contas a Pagar'         },
-  contas_receber:       { segmentos: 'todos', label: 'Contas a Receber'       },
-  usuarios:             { segmentos: 'todos', label: 'Usuários'               },
-  configuracoes:        { segmentos: 'todos', label: 'Configurações'          },
-  logs:                 { segmentos: 'todos', label: 'Logs do Sistema'        },
-  notificacoes:         { segmentos: 'todos', label: 'Notificações'           },
-  empresas:             { segmentos: 'todos', label: 'Empresas'               },
+  // ── Básico+ — disponível em todos os planos ───────────────────────────────
+  dashboard:            { segmentos: 'todos', planos: B_P_E, label: 'Dashboard'           },
+  receitas:             { segmentos: 'todos', planos: B_P_E, label: 'Receitas'            },
+  despesas:             { segmentos: 'todos', planos: B_P_E, label: 'Despesas'            },
+  fluxo:                { segmentos: 'todos', planos: B_P_E, label: 'Fluxo de Caixa'      },
+  relatorios:           { segmentos: 'todos', planos: B_P_E, label: 'Relatórios'          },
+  categorias:           { segmentos: 'todos', planos: B_P_E, label: 'Categorias'          },
+  centro_custo:         { segmentos: 'todos', planos: B_P_E, label: 'Centro de Custo'     },
+  clientes:             { segmentos: 'todos', planos: B_P_E, label: 'Clientes'            },
+  fornecedores:         { segmentos: 'todos', planos: B_P_E, label: 'Fornecedores'        },
 
-  // ── Incorporação / Construção ─────────────────────────────────────────────
-  viabilidade_inc: {
-    segmentos: ['incorporadora', 'construtora'],
-    label: 'Viabilidade de Incorporação',
-  },
-  controle_obras: {
-    segmentos: ['incorporadora', 'construtora'],
-    label: 'Controle de Obras',
-  },
-  contratos_obra: {
-    segmentos: ['incorporadora', 'construtora'],
-    label: 'Contratos de Obra',
-  },
-  investidores: {
-    segmentos: ['incorporadora', 'construtora'],
-    label: 'Investidores',
-  },
+  // ── Infraestrutura — sempre disponível ────────────────────────────────────
+  usuarios:             { segmentos: 'todos', planos: B_P_E, label: 'Usuários'            },
+  configuracoes:        { segmentos: 'todos', planos: B_P_E, label: 'Configurações'       },
+  logs:                 { segmentos: 'todos', planos: B_P_E, label: 'Logs do Sistema'     },
+  notificacoes:         { segmentos: 'todos', planos: B_P_E, label: 'Notificações'        },
+  empresas:             { segmentos: 'todos', planos: B_P_E, label: 'Empresas'            },
+  meu_plano:            { segmentos: 'todos', planos: B_P_E, label: 'Meu Plano'          },
 
-  // ── Imobiliária ───────────────────────────────────────────────────────────
-  captacao_imoveis: {
-    segmentos: ['imobiliaria', 'incorporadora'],
-    label: 'Captação de Imóveis',
-  },
-  crm_vendas: {
-    segmentos: ['imobiliaria'],
-    label: 'CRM Imobiliário',
-  },
-  comissoes: {
-    segmentos: ['imobiliaria', 'incorporadora'],
-    label: 'Comissões',
-  },
+  // ── Profissional+ ─────────────────────────────────────────────────────────
+  transacoes:           { segmentos: 'todos', planos: P_E,   label: 'Transações'          },
+  retirada_socios:      { segmentos: 'todos', planos: P_E,   label: 'Retirada dos Sócios' },
+  metas:                { segmentos: 'todos', planos: P_E,   label: 'Metas Financeiras'   },
+  mes_fechado:          { segmentos: 'todos', planos: P_E,   label: 'Fechamento Mensal'   },
+  comparativo_empresas: { segmentos: 'todos', planos: P_E,   label: 'Comparativo'         },
+  importar:             { segmentos: 'todos', planos: P_E,   label: 'Importar'            },
+  scanner:              { segmentos: 'todos', planos: P_E,   label: 'Scanner IA'          },
+  contas_pagar:         { segmentos: 'todos', planos: P_E,   label: 'Contas a Pagar'      },
+  contas_receber:       { segmentos: 'todos', planos: P_E,   label: 'Contas a Receber'    },
 
-  // ── Academia / Saúde ──────────────────────────────────────────────────────
-  planos_alunos: {
-    segmentos: ['academia', 'saude'],
-    label: 'Planos e Mensalidades',
-  },
-  agendamentos: {
-    segmentos: ['academia', 'saude'],
-    label: 'Agendamentos',
-  },
-  controle_alunos: {
-    segmentos: ['academia'],
-    label: 'Controle de Alunos',
-  },
-
-  // ── Tecnologia ────────────────────────────────────────────────────────────
-  projetos: {
-    segmentos: ['tecnologia'],
-    label: 'Projetos',
-  },
+  // ── Enterprise — módulos de segmento ──────────────────────────────────────
+  viabilidade_inc:  { segmentos: ['incorporadora', 'construtora'],    planos: E, label: 'Viabilidade de Incorporação' },
+  controle_obras:   { segmentos: ['incorporadora', 'construtora'],    planos: E, label: 'Controle de Obras'           },
+  contratos_obra:   { segmentos: ['incorporadora', 'construtora'],    planos: E, label: 'Contratos de Obra'           },
+  investidores:     { segmentos: ['incorporadora', 'construtora'],    planos: E, label: 'Investidores'                },
+  captacao_imoveis: { segmentos: ['imobiliaria', 'incorporadora'],    planos: E, label: 'Captação de Imóveis'         },
+  crm_vendas:       { segmentos: ['imobiliaria'],                     planos: E, label: 'CRM Imobiliário'            },
+  comissoes:        { segmentos: ['imobiliaria', 'incorporadora'],    planos: E, label: 'Comissões'                   },
+  planos_alunos:    { segmentos: ['academia', 'saude'],               planos: E, label: 'Planos e Mensalidades'       },
+  agendamentos:     { segmentos: ['academia', 'saude'],               planos: E, label: 'Agendamentos'               },
+  controle_alunos:  { segmentos: ['academia'],                        planos: E, label: 'Controle de Alunos'         },
+  projetos:         { segmentos: ['tecnologia'],                      planos: E, label: 'Projetos'                   },
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-// Retorna true se o módulo está disponível para o segmento informado.
-// Falha aberta: sem segmento ou módulo desconhecido → permite acesso
-// (garante retrocompatibilidade com empresas sem segmento definido)
-export function isModuloPermitido(id, segmento) {
-  if (!segmento) return true
+// Retorna: 'permitido' | 'bloqueado_segmento' | 'bloqueado_plano'
+// Segmento oculta; Plano exibe com cadeado
+export function getModuloStatus(id, segmento, plano) {
   const cfg = MODULE_CONFIG[id]
-  if (!cfg) return true
-  return cfg.segmentos === 'todos' || cfg.segmentos.includes(segmento)
+  if (!cfg) return 'permitido'
+
+  if (segmento && cfg.segmentos !== 'todos' && !cfg.segmentos.includes(segmento)) {
+    return 'bloqueado_segmento'
+  }
+
+  if (plano && cfg.planos && !cfg.planos.includes(plano)) {
+    return 'bloqueado_plano'
+  }
+
+  return 'permitido'
 }
 
-// Retorna o label do segmento a partir do ID
+export function isModuloPermitido(id, segmento, plano) {
+  return getModuloStatus(id, segmento, plano) === 'permitido'
+}
+
 export function labelSegmento(id) {
   return SEGMENTOS.find(s => s.id === id)?.label || id || '—'
+}
+
+export function labelPlano(id) {
+  return PLANOS[id]?.label || id || '—'
+}
+
+export function getLimitesPlano(plano) {
+  return PLANOS[plano]?.limites || PLANOS.basico.limites
+}
+
+export function getCorPlano(plano) {
+  return PLANOS[plano]?.cor || '#6b7280'
+}
+
+// Retorna o label do plano mínimo que libera este módulo
+export function planoMinimoModulo(id) {
+  const cfg = MODULE_CONFIG[id]
+  if (!cfg || !cfg.planos) return null
+  for (const p of PLANOS_ORDEM) {
+    if (cfg.planos.includes(p)) return PLANOS[p]?.label || p
+  }
+  return null
 }
