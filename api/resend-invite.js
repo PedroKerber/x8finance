@@ -17,10 +17,16 @@ module.exports = async (req, res) => {
     { auth: { autoRefreshToken: false, persistSession: false } }
   )
 
-  // generateLink({ type: 'invite' }) works for both new and existing unconfirmed users.
-  // It generates a fresh token without sending Supabase's default email.
+  // Ensure email is confirmed so recovery link works immediately.
+  const { data: listData } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 })
+  const existing = listData?.users?.find(u => u.email === email)
+  if (existing && !existing.email_confirmed_at) {
+    await supabaseAdmin.auth.admin.updateUserById(existing.id, { email_confirm: true })
+  }
+
+  // Recovery link works for any confirmed user without OTP expiry issues.
   const { data, error } = await supabaseAdmin.auth.admin.generateLink({
-    type: 'invite',
+    type: 'recovery',
     email,
     options: {
       data: { nome: nome || email },

@@ -17,26 +17,44 @@ module.exports = async (req, res) => {
     { auth: { autoRefreshToken: false, persistSession: false } }
   )
 
-  // generateLink creates the invite WITHOUT sending Supabase's default email.
-  // The actual invite link is returned so we can send a custom email.
-  const { data, error } = await supabaseAdmin.auth.admin.generateLink({
-    type: 'invite',
+  // Step 1: Create user with confirmed email so recovery link works immediately.
+  // If user already exists, find their ID from the list.
+  let userId = null
+  const { data: createData, error: createError } = await supabaseAdmin.auth.admin.createUser({
     email,
-    options: {
-      data: {
-        nome:   nome   || email,
-        perfil: perfil || 'gerente',
-        cargo:  cargo  || '',
-      },
-      redirectTo: 'https://norvoapp.com.br/ativar-conta',
+    email_confirm: true,
+    user_metadata: {
+      nome:   nome   || email,
+      perfil: perfil || 'gerente',
+      cargo:  cargo  || '',
     },
   })
 
-  if (error) return res.status(400).json({ error: error.message })
+  if (createError) {
+    if (!createError.message.toLowerCase().includes('already been registered')) {
+      return res.status(400).json({ error: createError.message })
+    }
+    // User exists — find their ID
+    const { data: listData } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 })
+    const existing = listData?.users?.find(u => u.email === email)
+    userId = existing?.id || null
+  } else {
+    userId = createData.user?.id || null
+  }
+
+  // Step 2: Generate a password-setup link using recovery type.
+  // Recovery works for any confirmed user and does NOT expire immediately.
+  const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+    type: 'recovery',
+    email,
+    options: { redirectTo: 'https://norvoapp.com.br/ativar-conta' },
+  })
+
+  if (linkError) return res.status(400).json({ error: linkError.message })
 
   return res.status(200).json({
     success:    true,
-    userId:     data.user?.id     || null,
-    inviteLink: data.properties?.action_link || null,
+    userId,
+    inviteLink: linkData.properties?.action_link || null,
   })
 }
