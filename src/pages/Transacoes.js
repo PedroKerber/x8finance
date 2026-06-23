@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import * as XLSX from 'xlsx'
-import { T, fmt, fd } from '../theme'
+import { T, fmt, fd, errMsgAcao } from '../theme'
 import { Card, Btn, Badge, StatusBadge, SearchInput, Table, KpiCard, Confirm, Toast } from '../components/ui'
 import { CATS_RECEITA, CATS_DESPESA, CATS_RETIRADA } from '../data'
 import AdvancedFilters, { defaultFilter, filterLancamentos, loadSavedFilter } from '../components/AdvancedFilters'
@@ -8,7 +8,7 @@ import AdvancedFilters, { defaultFilter, filterLancamentos, loadSavedFilter } fr
 const COLORS_R = ['#16a34a', '#2563eb', '#7c3aed', '#ea580c', '#0891b2', '#9ca3af']
 const COLORS_D = ['#2563eb', '#dc2626', '#7c3aed', '#16a34a', '#ea580c', '#0891b2', '#ca8a04', '#9ca3af']
 
-export default function Transacoes({ data, onDelete, onNovaDespesa, onNovaReceita }) {
+export default function Transacoes({ data, onDelete, onNovaDespesa, onNovaReceita, can = () => false }) {
   const [filter, setFilter] = useState(() => loadSavedFilter('x8_filter_transacoes') || defaultFilter())
   const [search, setSearch] = useState('')
   const [fTipo, setFTipo] = useState('')
@@ -16,6 +16,13 @@ export default function Transacoes({ data, onDelete, onNovaDespesa, onNovaReceit
   const [toast, setToast] = useState(null)
 
   const allLancs = useMemo(() => data.lancamentos || [], [data.lancamentos])
+
+  // Gate de botões (Fase 4·E2) — ramifica pelo TIPO do lançamento (igual à RLS do Tempo 2):
+  // receita→receitas, despesa→despesas, retirada→retirada_socios.
+  const moduloDoTipo = (tipo) => tipo === 'receita' ? 'receitas' : tipo === 'despesa' ? 'despesas' : 'retirada_socios'
+  const podeExportar = can('receitas', 'exportar') || can('despesas', 'exportar') || can('retirada_socios', 'exportar')
+  const podeNovaReceita = can('receitas', 'criar')
+  const podeNovaDespesa = can('despesas', 'criar')
 
   const lancs = useMemo(() => {
     let l = filterLancamentos(allLancs, filter)
@@ -87,7 +94,9 @@ export default function Transacoes({ data, onDelete, onNovaDespesa, onNovaReceit
     {
       key: 'id', label: 'Ações',
       render: (_, row) => (
-        <button onClick={e => { e.stopPropagation(); setConfirm(row) }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.red, fontSize: 14 }}>🗑</button>
+        can(moduloDoTipo(row.tipo), 'excluir')
+          ? <button onClick={e => { e.stopPropagation(); setConfirm(row) }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.red, fontSize: 14 }}>🗑</button>
+          : <span style={{ color: T.muted, fontSize: 13 }}>—</span>
       )
     },
   ]
@@ -95,7 +104,13 @@ export default function Transacoes({ data, onDelete, onNovaDespesa, onNovaReceit
   return (
     <div style={{ fontFamily: "'Segoe UI', sans-serif", color: T.text }}>
       {toast && <Toast msg={toast.msg} type={toast.type} onDone={() => setToast(null)} />}
-      {confirm && <Confirm msg={`Excluir "${confirm.desc}"?`} onYes={() => { onDelete(confirm.id); setConfirm(null); setToast({ msg: 'Transação excluída!', type: 'success' }) }} onNo={() => setConfirm(null)} />}
+      {confirm && <Confirm msg={`Excluir "${confirm.desc}"?`}
+        onYes={async () => {
+          try { await onDelete(confirm.id); setToast({ msg: 'Transação excluída!', type: 'success' }) }
+          catch (e) { setToast({ msg: errMsgAcao(e), type: 'error' }) }
+          setConfirm(null)
+        }}
+        onNo={() => setConfirm(null)} />}
 
       <div className="page-hd">
         <div>
@@ -103,9 +118,9 @@ export default function Transacoes({ data, onDelete, onNovaDespesa, onNovaReceit
           <div style={{ color: T.sub, fontSize: 14 }}>Histórico completo de receitas e despesas.</div>
         </div>
         <div className="page-actions">
-          <Btn variant="ghost" icon="↑" onClick={exportExcel}>Exportar</Btn>
-          <Btn icon="+" onClick={onNovaReceita}>+ Receita</Btn>
-          <Btn variant="danger" icon="+" onClick={onNovaDespesa}>+ Despesa</Btn>
+          {podeExportar && <Btn variant="ghost" icon="↑" onClick={exportExcel}>Exportar</Btn>}
+          {podeNovaReceita && <Btn icon="+" onClick={onNovaReceita}>+ Receita</Btn>}
+          {podeNovaDespesa && <Btn variant="danger" icon="+" onClick={onNovaDespesa}>+ Despesa</Btn>}
         </div>
       </div>
 

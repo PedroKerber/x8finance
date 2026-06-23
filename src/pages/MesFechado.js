@@ -1,7 +1,7 @@
 import { useMemo, useState, useCallback, useEffect } from 'react'
 import * as XLSX from 'xlsx'
 import { ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
-import { T, fmt, fmtS, fmtPct } from '../theme'
+import { T, fmt, fmtS, fmtPct, errMsgAcao } from '../theme'
 import { genFluxoCaixaData } from '../data'
 import { Card, Btn, Toast } from '../components/ui'
 import CompetenciaSelector, { COMPETENCIA_DEFAULT, filterByCompetencia } from '../components/CompetenciaSelector'
@@ -176,7 +176,7 @@ function TopTable({ items, cor, bg }) {
   )
 }
 
-export default function MesFechado({ empresa, data, onFechar, onReabrir, usuario }) {
+export default function MesFechado({ empresa, data, onFechar, onReabrir, usuario, can = () => false, isMaster = false }) {
   const [toast, setToast] = useState(null)
   const [modal, setModal] = useState(null)
   const [motivo, setMotivo] = useState('')
@@ -190,6 +190,11 @@ export default function MesFechado({ empresa, data, onFechar, onReabrir, usuario
 
   const [historico, setHistorico] = useState([])
   const [fechado, setFechado] = useState(false)
+
+  // Gate de botões (Fase 4·E2): fechar = has_perm criar (admin+master);
+  // reabrir = SOMENTE Master (decisão D6).
+  const podeFechar = can('mes_fechado', 'criar')
+  const podeReabrir = isMaster
 
   const lancs = useMemo(() => data.lancamentos || [], [data.lancamentos])
 
@@ -274,23 +279,31 @@ export default function MesFechado({ empresa, data, onFechar, onReabrir, usuario
   }, [empresa, mesAno, usuario])
 
   const handleFechar = async () => {
-    if (empresa?.id) { try { await setMesFechado(empresa.id, mesAno, true, usuario?.id) } catch {} }
-    setFechado(true)
-    onFechar?.()
-    addHistorico('fechamento', 'Período fechado')
-    setModal(null)
-    setToast({ msg: 'Período fechado com sucesso!', type: 'success' })
+    try {
+      if (empresa?.id) await setMesFechado(empresa.id, mesAno, true, usuario?.id)
+      setFechado(true)
+      onFechar?.()
+      addHistorico('fechamento', 'Período fechado')
+      setModal(null)
+      setToast({ msg: 'Período fechado com sucesso!', type: 'success' })
+    } catch (e) {
+      setToast({ msg: errMsgAcao(e), type: 'error' })
+    }
   }
 
   const handleReabrir = async () => {
     if (!motivo.trim()) { setToast({ msg: 'Informe o motivo da reabertura.', type: 'error' }); return }
-    if (empresa?.id) { try { await setMesFechado(empresa.id, mesAno, false, usuario?.id) } catch {} }
-    setFechado(false)
-    onReabrir?.()
-    addHistorico('reabertura', motivo)
-    setMotivo('')
-    setModal(null)
-    setToast({ msg: 'Período reaberto com sucesso!', type: 'success' })
+    try {
+      if (empresa?.id) await setMesFechado(empresa.id, mesAno, false, usuario?.id)
+      setFechado(false)
+      onReabrir?.()
+      addHistorico('reabertura', motivo)
+      setMotivo('')
+      setModal(null)
+      setToast({ msg: 'Período reaberto com sucesso!', type: 'success' })
+    } catch (e) {
+      setToast({ msg: errMsgAcao(e), type: 'error' })
+    }
   }
 
   const exportExcel = () => {
@@ -569,8 +582,8 @@ export default function MesFechado({ empresa, data, onFechar, onReabrir, usuario
           <button onClick={shareWA} style={{ background: '#25D366', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 12px', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600 }}>WhatsApp</button>
           <button onClick={shareEmail} style={{ background: T.blue, color: '#fff', border: 'none', borderRadius: 8, padding: '8px 12px', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600 }}>E-mail</button>
           {!fechado
-            ? <Btn onClick={() => setModal('fechar')}>Fechar período</Btn>
-            : <Btn variant="ghost" onClick={() => setModal('reabrir')}>Reabrir período</Btn>
+            ? (podeFechar && <Btn onClick={() => setModal('fechar')}>Fechar período</Btn>)
+            : (podeReabrir && <Btn variant="ghost" onClick={() => setModal('reabrir')}>Reabrir período</Btn>)
           }
         </div>
       </div>
@@ -804,7 +817,9 @@ export default function MesFechado({ empresa, data, onFechar, onReabrir, usuario
         <Card style={{ padding: 18 }}>
           <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 12 }}>Ações do período</div>
           {[
-            { label: fechado ? 'Reabrir período' : 'Fechar período', icon: fechado ? '🔓' : '🔒', action: () => setModal(fechado ? 'reabrir' : 'fechar'), cor: fechado ? '#ea580c' : T.primary, bg: fechado ? 'rgba(234,88,12,0.10)' : T.primaryLight },
+            ...((fechado ? podeReabrir : podeFechar)
+              ? [{ label: fechado ? 'Reabrir período' : 'Fechar período', icon: fechado ? '🔓' : '🔒', action: () => setModal(fechado ? 'reabrir' : 'fechar'), cor: fechado ? '#ea580c' : T.primary, bg: fechado ? 'rgba(234,88,12,0.10)' : T.primaryLight }]
+              : []),
             { label: 'Abrir relatório PDF', icon: '📄', action: exportPDF, cor: T.blue, bg: T.blueL },
             { label: 'Exportar Excel', icon: '📊', action: exportExcel, cor: T.green, bg: T.primaryLight },
             { label: 'Compartilhar WhatsApp', icon: '💬', action: shareWA, cor: '#25D366', bg: 'rgba(37,211,102,0.10)' },

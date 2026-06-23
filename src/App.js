@@ -3,7 +3,7 @@ import { useMobile } from './context/MobileContext'
 import { T, uid } from './theme'
 import { initData, EMPRESAS, CATS_KZL } from './data'
 import { getModuloStatus, labelSegmento, labelPlano, getLimitesPlano } from './modules'
-import { supabase, getAllLancamentos, getLancamentos, saveLancamento, deleteLancamento, saveLancamentos, getMetas, saveMeta, deleteMeta, signIn, signOut, deleteAllLancamentos, deleteAllMetas, getEmpresas, seedEmpresas, saveEmpresa, updateEmpresa, setEmpresaStatus, getCategorias, saveCategoria, deleteCategoria, getMyAccess } from './supabase'
+import { supabase, getAllLancamentos, getLancamentos, saveLancamento, deleteLancamento, saveLancamentos, getMetas, saveMeta, deleteMeta, signIn, signOut, deleteAllLancamentos, deleteAllMetas, getEmpresas, seedEmpresas, saveEmpresa, updateEmpresa, setEmpresaStatus, getCategorias, saveCategoria, deleteCategoria, getMyAccess, getRolePermissions } from './supabase'
 
 import Sidebar from './components/Sidebar'
 import TopBar from './components/TopBar'
@@ -54,6 +54,7 @@ export default function App() {
   const [loading, setLoading] = useState(true)
   const [perfilFoto, setPerfilFoto] = useState('')
   const [acesso, setAcesso] = useState(null) // { isMaster, empresas } — verdade do servidor (Fase 2)
+  const [rolePerms, setRolePerms] = useState({}) // matriz { perfil: { modulo: { acao: bool } } } (Fase 4·E2 — gate do front)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('x8_sidebar') === '1')
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const sidebarW = sidebarCollapsed ? 82 : 280
@@ -110,6 +111,8 @@ export default function App() {
     ;(async () => {
       const acc = await getMyAccess()
       setAcesso(acc)
+      // Matriz de permissões (Fase 4·E2): alimenta o helper can() do gate de botões.
+      getRolePermissions().then(setRolePerms).catch(() => setRolePerms({}))
       const isOwner = acc.isMaster
       try {
         let emps = await getEmpresas()
@@ -347,22 +350,24 @@ export default function App() {
     } catch {}
   }, [usuario])
 
+  // Fase 4·E2: NÃO engole erro e só atualiza o estado após o banco confirmar.
+  // Em falha (rede/permissão RLS), relança para a página exibir o erro real.
   const handleSaveCat = useCallback(async (cat, isEdit) => {
     if (!empresa) return
     const item = { ...cat, status: cat.status || 'ativa' }
-    try { await saveCategoria(item, empresa.id) } catch {}
+    await saveCategoria(item, empresa.id)
     setExtraCats(prev => isEdit ? prev.map(c => c.id === item.id ? item : c) : [...prev, item])
   }, [empresa])
 
   const handleDeleteCat = useCallback(async (id) => {
-    try { await deleteCategoria(id) } catch {}
+    await deleteCategoria(id)
     setExtraCats(prev => prev.filter(c => c.id !== id))
   }, [])
 
   const handleSetCatStatus = useCallback(async (cat, status) => {
     if (!empresa) return
     const item = { ...cat, status }
-    try { await saveCategoria(item, empresa.id) } catch {}
+    await saveCategoria(item, empresa.id)
     setExtraCats(prev => prev.map(c => c.id === item.id ? item : c))
   }, [empresa])
 
@@ -406,7 +411,19 @@ export default function App() {
 
   const effectiveExtraCats = empresa?.id === 'kzl' ? [...CATS_KZL, ...extraCats] : extraCats
   const extraCatsAtivas = effectiveExtraCats.filter(c => c.status !== 'inativa')
-  const sharedProps = { empresa, data: empData, setPage, onSave: handleSave, onDelete: handleDelete, onSaveBatch: handleSaveBatch, extraCats: extraCatsAtivas }
+
+  // Gate do front (Fase 4·E2): can(modulo, acao) reflete a matriz role_permissions
+  // para o perfil do usuário NA empresa atual. Master ⇒ tudo. Espelha o has_perm do
+  // banco (que vira a trava REAL na Etapa 2). Não troca enforcement por UI.
+  const isMaster = !!acesso?.isMaster
+  const can = (modulo, acao) => {
+    if (isMaster) return true
+    const role = empresa ? acesso?.empresas?.[empresa.id] : null
+    if (!role) return false
+    return !!(rolePerms?.[role]?.[modulo]?.[acao])
+  }
+
+  const sharedProps = { empresa, data: empData, setPage, onSave: handleSave, onDelete: handleDelete, onSaveBatch: handleSaveBatch, extraCats: extraCatsAtivas, can, isMaster }
 
   const renderPage = () => {
     if (PLACEHOLDER_PAGES.includes(page)) return <Placeholder page={page} />

@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
-import { T, uid } from '../theme'
-import { Card, Btn, Input, Modal } from '../components/ui'
+import { T, uid, errMsgAcao } from '../theme'
+import { Card, Btn, Input, Modal, Toast } from '../components/ui'
 import { CATS_RECEITA, CATS_DESPESA } from '../data'
 
 const ICONS_DESPESA = { marketing: '📣', comercial: '💼', administrativo: '🏛', trafego_pago: '📱', operacional: '⚙', tecnologia: '💻', folha_pagamento: '👥', aluguel_escritorio: '🏠', impostos: '📋' }
@@ -8,7 +8,7 @@ const ICONS_RECEITA = { venda_imoveis: '🏠', locacao: '🔑', alugueis: '🔑'
 
 const EMPTY_CAT = { nome: '', tipo: 'despesa', descricao: '', cor: '#2563eb' }
 
-export default function Categorias({ data, extraCats = [], onSaveCat, onDeleteCat, onSetStatus }) {
+export default function Categorias({ data, extraCats = [], onSaveCat, onDeleteCat, onSetStatus, can = () => false }) {
   const lancamentos = useMemo(() => data.lancamentos || [], [data.lancamentos])
   const [tab, setTab] = useState('Todas')
   const [search, setSearch] = useState('')
@@ -16,6 +16,12 @@ export default function Categorias({ data, extraCats = [], onSaveCat, onDeleteCa
   const [form, setForm] = useState(EMPTY_CAT)
   const [isEdit, setIsEdit] = useState(false)
   const [confirm, setConfirm] = useState(null)
+  const [toast, setToast] = useState(null)
+
+  // Gate de botões (Fase 4·E2) — espelha a RLS por ação que entra na Etapa 2
+  const podeCriar = can('categorias', 'criar')
+  const podeEditar = can('categorias', 'editar')
+  const podeExcluir = can('categorias', 'excluir')
 
   const allCats = useMemo(() => {
     const despesas = CATS_DESPESA.map(c => ({ ...c, tipo: 'despesa', descricao: 'Categoria de despesa', icon: ICONS_DESPESA[c.id] || '📂', builtin: true }))
@@ -53,29 +59,45 @@ export default function Categorias({ data, extraCats = [], onSaveCat, onDeleteCa
   const openAdd = () => { setForm(EMPTY_CAT); setIsEdit(false); setModal(true) }
   const openEdit = cat => { setForm({ ...cat }); setIsEdit(true); setModal(true) }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.nome.trim()) return
     const cat = isEdit ? form : { ...form, id: uid(), builtin: false, icon: '📂', status: 'ativa' }
-    if (onSaveCat) onSaveCat(cat, isEdit)
-    setModal(false)
+    try {
+      if (onSaveCat) await onSaveCat(cat, isEdit)
+      setModal(false)
+      setToast({ msg: isEdit ? 'Categoria atualizada!' : 'Categoria criada!', type: 'success' })
+    } catch (e) {
+      setToast({ msg: errMsgAcao(e), type: 'error' })
+    }
   }
 
-  const handleDelete = id => {
-    if (onDeleteCat) onDeleteCat(id)
-    setConfirm(null)
+  const handleDelete = async id => {
+    try {
+      if (onDeleteCat) await onDeleteCat(id)
+      setConfirm(null)
+      setToast({ msg: 'Categoria excluída!', type: 'success' })
+    } catch (e) {
+      setToast({ msg: errMsgAcao(e), type: 'error' })
+    }
+  }
+
+  const handleToggleStatus = async (cat) => {
+    try { if (onSetStatus) await onSetStatus(cat, cat.status === 'inativa' ? 'ativa' : 'inativa') }
+    catch (e) { setToast({ msg: errMsgAcao(e), type: 'error' }) }
   }
 
   const TABS = ['Todas', 'Despesas', 'Receitas']
 
   return (
     <div style={{ fontFamily: "'Segoe UI', sans-serif", color: T.text }}>
+      {toast && <Toast msg={toast.msg} type={toast.type} onDone={() => setToast(null)} />}
       {/* Header */}
       <div className="page-hd">
         <div>
           <h1 style={{ fontWeight: 800, fontSize: 26, margin: '0 0 4px' }}>Categorias</h1>
           <div style={{ color: T.sub, fontSize: 14 }}>Organize e gerencie todas as categorias de receitas e despesas.</div>
         </div>
-        <Btn onClick={openAdd} icon="＋">Nova Categoria</Btn>
+        {podeCriar && <Btn onClick={openAdd} icon="＋">Nova Categoria</Btn>}
       </div>
 
       {/* KPIs */}
@@ -162,16 +184,19 @@ export default function Categorias({ data, extraCats = [], onSaveCat, onDeleteCa
                 </td>
                 <td style={{ padding: '12px 16px' }}>
                   <div style={{ display: 'flex', gap: 6 }}>
-                    <button onClick={() => openEdit(cat)} title="Editar" style={{ background: 'none', border: `1px solid ${T.border}`, borderRadius: 6, padding: '5px 9px', cursor: 'pointer', fontSize: 14 }}>✏️</button>
-                    {!cat.builtin && (
-                      <>
-                        <button onClick={() => onSetStatus && onSetStatus(cat, cat.status === 'inativa' ? 'ativa' : 'inativa')}
-                          style={{ background: 'none', border: `1px solid ${T.border}`, borderRadius: 6, padding: '5px 10px', cursor: 'pointer', fontSize: 12, color: cat.status === 'inativa' ? T.green : T.sub, fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
-                          {cat.status === 'inativa' ? 'Reativar' : 'Desativar'}
-                        </button>
-                        <button onClick={() => setConfirm(cat.id)} title="Excluir" style={{ background: 'none', border: `1px solid ${T.redL}`, borderRadius: 6, padding: '5px 9px', cursor: 'pointer', fontSize: 14, color: T.red }}>🗑</button>
-                      </>
+                    {podeEditar && (
+                      <button onClick={() => openEdit(cat)} title="Editar" style={{ background: 'none', border: `1px solid ${T.border}`, borderRadius: 6, padding: '5px 9px', cursor: 'pointer', fontSize: 14 }}>✏️</button>
                     )}
+                    {!cat.builtin && podeEditar && (
+                      <button onClick={() => handleToggleStatus(cat)}
+                        style={{ background: 'none', border: `1px solid ${T.border}`, borderRadius: 6, padding: '5px 10px', cursor: 'pointer', fontSize: 12, color: cat.status === 'inativa' ? T.green : T.sub, fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
+                        {cat.status === 'inativa' ? 'Reativar' : 'Desativar'}
+                      </button>
+                    )}
+                    {!cat.builtin && podeExcluir && (
+                      <button onClick={() => setConfirm(cat.id)} title="Excluir" style={{ background: 'none', border: `1px solid ${T.redL}`, borderRadius: 6, padding: '5px 9px', cursor: 'pointer', fontSize: 14, color: T.red }}>🗑</button>
+                    )}
+                    {!podeEditar && !podeExcluir && <span style={{ color: T.muted, fontSize: 13 }}>—</span>}
                   </div>
                 </td>
               </tr>
