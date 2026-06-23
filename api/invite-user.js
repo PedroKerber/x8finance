@@ -9,7 +9,7 @@ module.exports = async (req, res) => {
   const caller = await requireMaster(req, res, supabaseAdmin)
   if (!caller) return
 
-  const { email, nome, perfil, cargo } = req.body || {}
+  const { email, nome, perfil, cargo, telefone } = req.body || {}
   if (!email) return res.status(400).json({ error: 'Email obrigatório' })
 
   // Step 1: Create user with confirmed email so recovery link works immediately.
@@ -19,9 +19,12 @@ module.exports = async (req, res) => {
     email,
     email_confirm: true,
     user_metadata: {
-      nome:   nome   || email,
-      perfil: perfil || 'gerente',
-      cargo:  cargo  || '',
+      nome:     nome   || email,
+      perfil:   perfil || 'gerente',
+      cargo:    cargo  || '',
+      telefone: telefone || '',
+      status:   'ativo',
+      mustChangePassword: false,
     },
   })
 

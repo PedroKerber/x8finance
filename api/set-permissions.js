@@ -11,7 +11,8 @@ module.exports = async (req, res) => {
 
   // Identidade do "dono" vem do TOKEN, nunca do body (anti-escalonamento).
   const ownerUserId = caller.id
-  const { collaboratorUserId, empresaIds, role } = req.body || {}
+  const body = req.body || {}
+  const { collaboratorUserId } = body
   if (!collaboratorUserId) {
     return res.status(400).json({ error: 'collaboratorUserId é obrigatório' })
   }
@@ -19,34 +20,41 @@ module.exports = async (req, res) => {
     return res.status(400).json({ error: 'Não é possível vincular o próprio usuário' })
   }
 
-  // Valida que TODAS as empresas pertencem ao caller (não dá para vincular
-  // colaborador a empresa de terceiros).
-  let validIds = []
-  if (Array.isArray(empresaIds) && empresaIds.length > 0) {
+  // Perfil POR empresa: aceita vinculos [{empresa_id, role}] (preferido) ou empresaIds+role (legado)
+  let vinculos = []
+  if (Array.isArray(body.vinculos)) {
+    vinculos = body.vinculos
+      .filter(v => v && v.empresa_id)
+      .map(v => ({ empresa_id: v.empresa_id, role: v.role || 'gerente' }))
+  } else if (Array.isArray(body.empresaIds)) {
+    vinculos = body.empresaIds.map(id => ({ empresa_id: id, role: body.role || 'gerente' }))
+  }
+
+  // Valida que TODAS as empresas pertencem ao caller (não vincula empresa de terceiros).
+  if (vinculos.length > 0) {
     const { data: owned, error: ownErr } = await supabaseAdmin
       .from('empresas').select('id').eq('owner_user_id', ownerUserId)
     if (ownErr) return res.status(400).json({ error: ownErr.message })
     const ownedSet = new Set((owned || []).map(e => e.id))
-    validIds = empresaIds.filter(id => ownedSet.has(id))
-    if (validIds.length !== empresaIds.length) {
+    if (vinculos.some(v => !ownedSet.has(v.empresa_id))) {
       return res.status(403).json({ error: 'Alguma empresa não pertence ao usuário autenticado' })
     }
   }
 
+  // Estratégia "replace": apaga os vínculos atuais e insere o novo conjunto.
   const { error: delError } = await supabaseAdmin
     .from('user_empresa_access')
     .delete()
     .eq('owner_user_id', ownerUserId)
     .eq('collaborator_user_id', collaboratorUserId)
-
   if (delError) return res.status(400).json({ error: delError.message })
 
-  if (validIds.length > 0) {
-    const rows = validIds.map(empresa_id => ({
+  if (vinculos.length > 0) {
+    const rows = vinculos.map(v => ({
       owner_user_id: ownerUserId,
       collaborator_user_id: collaboratorUserId,
-      empresa_id,
-      role: role || 'viewer',
+      empresa_id: v.empresa_id,
+      role: v.role || 'gerente',
     }))
     const { error: insError } = await supabaseAdmin
       .from('user_empresa_access')

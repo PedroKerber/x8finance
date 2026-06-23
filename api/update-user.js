@@ -9,16 +9,22 @@ module.exports = async (req, res) => {
   const caller = await requireMaster(req, res, supabaseAdmin)
   if (!caller) return
 
-  const { userId, nome, cargo, perfil } = req.body || {}
+  const { userId, nome, cargo, perfil, telefone, foto, status, mustChangePassword } = req.body || {}
   if (!userId) return res.status(400).json({ error: 'userId obrigatório' })
 
-  // Obs.: perfil em user_metadata é rótulo de exibição; a autorização real é
-  // server-side (NORVO_MASTER_IDS / app_metadata). Fonte de verdade do perfil
-  // migra para o servidor na Etapa 2.
-  const { error } = await supabaseAdmin.auth.admin.updateUserById(userId, {
-    user_metadata: { nome, cargo, perfil },
-  })
+  // user_metadata é MESCLADO (merge) pelo updateUserById — enviamos só os campos presentes,
+  // movendo telefone/foto/status/mustChangePassword do localStorage para o Supabase (Etapa 3).
+  // Obs.: perfil aqui é rótulo de exibição; a autorização real é is_master + role por empresa.
+  const meta = {}
+  if (nome     !== undefined) meta.nome     = nome
+  if (cargo    !== undefined) meta.cargo    = cargo
+  if (perfil   !== undefined) meta.perfil   = perfil
+  if (telefone !== undefined) meta.telefone = telefone
+  if (foto     !== undefined && foto !== '') meta.foto = foto   // não apaga foto existente com vazio
+  if (status   !== undefined) meta.status   = status
+  if (mustChangePassword !== undefined) meta.mustChangePassword = !!mustChangePassword
 
+  const { error } = await supabaseAdmin.auth.admin.updateUserById(userId, { user_metadata: meta })
   if (error) return res.status(400).json({ error: error.message })
 
   return res.status(200).json({ success: true })

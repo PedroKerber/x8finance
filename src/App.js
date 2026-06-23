@@ -502,7 +502,7 @@ export default function App() {
       case 'meu_plano': return <MeuPlano empresa={empresa} empresas={empresas} usuario={usuario} setPage={setPage} />
       case 'categorias': return <Categorias {...sharedProps} extraCats={effectiveExtraCats} onSaveCat={handleSaveCat} onDeleteCat={handleDeleteCat} onSetStatus={handleSetCatStatus} />
       case 'centro_custo': return <CentroCusto {...sharedProps} />
-      case 'usuarios': return <Usuarios usuario={usuario} />
+      case 'usuarios': return <Usuarios usuario={usuario} empresas={empresasAtivas} />
       case 'configuracoes': return <Configuracoes usuario={usuario} onLogout={handleLogout} empresa={empresa} onPerfilUpdate={handlePerfilUpdate} setPage={setPage} onReset={handleReset} />
       case 'notificacoes': return <Notificacoes setPage={setPage} />
       case 'viabilidade_inc': return <ViabilidadeIncorporacao />
