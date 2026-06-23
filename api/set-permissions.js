@@ -21,13 +21,19 @@ module.exports = async (req, res) => {
   }
 
   // Perfil POR empresa: aceita vinculos [{empresa_id, role}] (preferido) ou empresaIds+role (legado)
+  // Validação forte de role (Fase 4 · Etapa 1): ausente/inválido → 400; sem fallback silencioso 'gerente'.
+  const VALID_ROLES = ['admin', 'gerente', 'contador', 'operacional']
   let vinculos = []
   if (Array.isArray(body.vinculos)) {
     vinculos = body.vinculos
       .filter(v => v && v.empresa_id)
-      .map(v => ({ empresa_id: v.empresa_id, role: v.role || 'gerente' }))
+      .map(v => ({ empresa_id: v.empresa_id, role: v.role }))
   } else if (Array.isArray(body.empresaIds)) {
-    vinculos = body.empresaIds.map(id => ({ empresa_id: id, role: body.role || 'gerente' }))
+    // ramo legado: fallback 'operacional' (nunca 'gerente')
+    vinculos = body.empresaIds.map(id => ({ empresa_id: id, role: body.role || 'operacional' }))
+  }
+  if (vinculos.some(v => !VALID_ROLES.includes(v.role))) {
+    return res.status(400).json({ error: 'Perfil inválido. Use: admin, gerente, contador ou operacional.' })
   }
 
   // Valida que TODAS as empresas pertencem ao caller (não vincula empresa de terceiros).
@@ -54,7 +60,7 @@ module.exports = async (req, res) => {
       owner_user_id: ownerUserId,
       collaborator_user_id: collaboratorUserId,
       empresa_id: v.empresa_id,
-      role: v.role || 'gerente',
+      role: v.role,
     }))
     const { error: insError } = await supabaseAdmin
       .from('user_empresa_access')

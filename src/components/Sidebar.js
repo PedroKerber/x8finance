@@ -3,7 +3,7 @@ import { T } from '../theme'
 import { useTheme } from '../context/ThemeContext'
 import { getModuloStatus, planoMinimoModulo } from '../modules'
 
-const PERFIL_CARGO = { master: 'Master', admin: 'Administrador', gerente: 'Gerente Financeiro', contador: 'Contador', visualizador: 'Visualizador' }
+const PERFIL_CARGO = { master: 'Master', admin: 'Administrador', gerente: 'Gerente Financeiro', contador: 'Contador', operacional: 'Operacional' }
 
 const S = {
   bg: 'var(--sidebar-bg)',
