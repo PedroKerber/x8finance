@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import * as XLSX from 'xlsx'
-import { T, fmt, fd, uid } from '../theme'
+import { T, fmt, fd, uid, errMsgAcao } from '../theme'
 import { Card, Btn, Badge, StatusBadge, KpiCard, Toast, Confirm, SearchInput, Table } from '../components/ui'
 import { CATS_RETIRADA, CONTAS } from '../data'
 import AdvancedFilters, { defaultFilter, filterLancamentos, loadSavedFilter } from '../components/AdvancedFilters'
@@ -69,7 +69,7 @@ function newForm() {
   }
 }
 
-export default function RetiradaSocios({ empresa, data, onSave, onDelete }) {
+export default function RetiradaSocios({ empresa, data, onSave, onDelete, can = () => false }) {
   const [filter, setFilter]     = useState(() => loadSavedFilter('x8_filter_retirada') || defaultFilter())
   const [search, setSearch]     = useState('')
   const [fSocio, setFSocio]     = useState('')
@@ -81,6 +81,12 @@ export default function RetiradaSocios({ empresa, data, onSave, onDelete }) {
   const [confirm, setConfirm]   = useState(null)
   const [toast, setToast]       = useState(null)
   const sf = (k, v) => setForm(f => ({ ...f, [k]: v }))
+
+  // Gate de botões (Fase 4·E2) — módulo 'retirada_socios'
+  const podeCriar = can('retirada_socios', 'criar')
+  const podeEditar = can('retirada_socios', 'editar')
+  const podeExcluir = can('retirada_socios', 'excluir')
+  const podeExportar = can('retirada_socios', 'exportar')
 
   const allLancs     = useMemo(() => data.lancamentos || [], [data.lancamentos])
   const allRetiradas = useMemo(() => allLancs.filter(l => l.tipo === 'retirada'), [allLancs])
@@ -124,39 +130,51 @@ export default function RetiradaSocios({ empresa, data, onSave, onDelete }) {
     setShowForm(true)
   }
 
-  const marcarPago = (item) => {
+  const marcarPago = async (item) => {
     if (item.status === 'Pago') return
-    onSave({ ...item, status: 'Pago' }, true)
-    setToast({ msg: 'Retirada marcada como paga!', type: 'success' })
+    try {
+      await onSave({ ...item, status: 'Pago' }, true)
+      setToast({ msg: 'Retirada marcada como paga!', type: 'success' })
+    } catch (e) {
+      setToast({ msg: errMsgAcao(e), type: 'error' })
+    }
   }
 
-  const salvar = () => {
+  const salvar = async () => {
     const v = parseR(form.valor)
     if (!form.desc.trim() || v <= 0) return
     const catEntry = getCatEntry(form.socio, form.tipoRet) || CATS_RETIRADA[0]
-    onSave({
-      id: editItem?.id || uid(),
-      tipo: 'retirada',
-      cat: catEntry?.id || 'retirada_socios',
-      catNome: catEntry?.nome || 'Retirada dos Sócios',
-      desc: form.desc,
-      valor: v,
-      data: form.data,
-      status: form.status,
-      contaBancaria: form.contaBancaria,
-      fornecedor: form.socio === 'pedro' ? 'Pedro Kerber' : 'Léo Ricardo',
-      obs: form.obs,
-      anexo: form.anexo,
-      empId: empresa.id,
-    }, !!editItem)
-    setShowForm(false)
-    setToast({ msg: editItem ? 'Retirada atualizada!' : 'Retirada registrada!', type: 'success' })
-    setEditItem(null)
+    try {
+      await onSave({
+        id: editItem?.id || uid(),
+        tipo: 'retirada',
+        cat: catEntry?.id || 'retirada_socios',
+        catNome: catEntry?.nome || 'Retirada dos Sócios',
+        desc: form.desc,
+        valor: v,
+        data: form.data,
+        status: form.status,
+        contaBancaria: form.contaBancaria,
+        fornecedor: form.socio === 'pedro' ? 'Pedro Kerber' : 'Léo Ricardo',
+        obs: form.obs,
+        anexo: form.anexo,
+        empId: empresa.id,
+      }, !!editItem)
+      setShowForm(false)
+      setToast({ msg: editItem ? 'Retirada atualizada!' : 'Retirada registrada!', type: 'success' })
+      setEditItem(null)
+    } catch (e) {
+      setToast({ msg: errMsgAcao(e), type: 'error' })
+    }
   }
 
-  const duplicar = item => {
-    onSave({ ...item, id: uid(), data: TODAY, desc: `${item.desc} (cópia)` }, false)
-    setToast({ msg: 'Retirada duplicada!', type: 'success' })
+  const duplicar = async item => {
+    try {
+      await onSave({ ...item, id: uid(), data: TODAY, desc: `${item.desc} (cópia)` }, false)
+      setToast({ msg: 'Retirada duplicada!', type: 'success' })
+    } catch (e) {
+      setToast({ msg: errMsgAcao(e), type: 'error' })
+    }
   }
 
   const exportExcel = () => {
@@ -236,16 +254,23 @@ export default function RetiradaSocios({ empresa, data, onSave, onDelete }) {
       key: 'id', label: 'Ações',
       render: (_, row) => (
         <div style={{ display: 'flex', gap: 2 }}>
-          <button onClick={e => { e.stopPropagation(); openEdit(row) }} title="Editar"
-            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px 6px', borderRadius: 6, color: T.primary, fontSize: 13 }}>✏️</button>
-          {row.status !== 'Pago' && (
+          {podeEditar && (
+            <button onClick={e => { e.stopPropagation(); openEdit(row) }} title="Editar"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px 6px', borderRadius: 6, color: T.primary, fontSize: 13 }}>✏️</button>
+          )}
+          {podeEditar && row.status !== 'Pago' && (
             <button onClick={e => { e.stopPropagation(); marcarPago(row) }} title="Marcar como pago"
               style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px 6px', borderRadius: 6, color: T.green, fontSize: 14, fontWeight: 700 }}>✓</button>
           )}
-          <button onClick={e => { e.stopPropagation(); duplicar(row) }} title="Duplicar"
-            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px 6px', borderRadius: 6, color: T.sub, fontSize: 13 }}>⧉</button>
-          <button onClick={e => { e.stopPropagation(); setConfirm(row) }} title="Excluir"
-            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px 6px', borderRadius: 6, color: T.red, fontSize: 13 }}>🗑</button>
+          {podeCriar && (
+            <button onClick={e => { e.stopPropagation(); duplicar(row) }} title="Duplicar"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px 6px', borderRadius: 6, color: T.sub, fontSize: 13 }}>⧉</button>
+          )}
+          {podeExcluir && (
+            <button onClick={e => { e.stopPropagation(); setConfirm(row) }} title="Excluir"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px 6px', borderRadius: 6, color: T.red, fontSize: 13 }}>🗑</button>
+          )}
+          {!podeCriar && !podeEditar && !podeExcluir && <span style={{ color: T.muted, fontSize: 13 }}>—</span>}
         </div>
       )
     },
@@ -257,7 +282,11 @@ export default function RetiradaSocios({ empresa, data, onSave, onDelete }) {
     <div style={{ fontFamily: "'Segoe UI', sans-serif", color: T.text }}>
       {toast && <Toast msg={toast.msg} type={toast.type} onDone={() => setToast(null)} />}
       {confirm && <Confirm msg={`Excluir "${confirm.desc}"?`}
-        onYes={() => { onDelete(confirm.id); setConfirm(null); setToast({ msg: 'Retirada excluída!', type: 'success' }) }}
+        onYes={async () => {
+          try { await onDelete(confirm.id); setToast({ msg: 'Retirada excluída!', type: 'success' }) }
+          catch (e) { setToast({ msg: errMsgAcao(e), type: 'error' }) }
+          setConfirm(null)
+        }}
         onNo={() => setConfirm(null)} />}
 
       {/* HEADER */}
@@ -270,8 +299,8 @@ export default function RetiradaSocios({ empresa, data, onSave, onDelete }) {
           </div>
         </div>
         <div className="page-actions">
-          <Btn variant="ghost" icon="📊" onClick={exportExcel}>Excel</Btn>
-          <Btn onClick={openNew}>+ Nova Retirada</Btn>
+          {podeExportar && <Btn variant="ghost" icon="📊" onClick={exportExcel}>Excel</Btn>}
+          {podeCriar && <Btn onClick={openNew}>+ Nova Retirada</Btn>}
         </div>
       </div>
 
@@ -314,7 +343,7 @@ export default function RetiradaSocios({ empresa, data, onSave, onDelete }) {
 
       {/* TABELA */}
       <Card>
-        <Table columns={columns} data={filtered} onRow={openEdit}
+        <Table columns={columns} data={filtered} onRow={podeEditar ? openEdit : undefined}
           emptyState={
             <div style={{ padding: 56, textAlign: 'center', color: T.muted, fontSize: 14 }}>
               <div style={{ fontSize: 32, marginBottom: 10 }}>💸</div>

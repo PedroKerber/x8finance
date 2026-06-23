@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { RadialBarChart, RadialBar, ResponsiveContainer, Tooltip } from 'recharts'
-import { T, fmtS, fmtPct, fd, uid } from '../theme'
-import { Card, Btn, KpiCard, Badge, Input, Modal } from '../components/ui'
+import { T, fmtS, fmtPct, fd, uid, errMsgAcao } from '../theme'
+import { Card, Btn, KpiCard, Badge, Input, Modal, Toast } from '../components/ui'
 
 const TIPOS = [
   { id: 'receita', nome: 'Receita', cor: T.green, icon: '↑' },
@@ -33,12 +33,18 @@ const CircleProgress = ({ pct, cor, size = 80 }) => {
 
 const EMPTY = { nome: '', tipo: 'receita', objetivo: '', acumulado: '', prazo: '2026-12-31', descricao: '' }
 
-export default function Metas({ empresa, data, onSave, onDelete }) {
+export default function Metas({ empresa, data, onSave, onDelete, can = () => false }) {
   const metas = useMemo(() => data.metas || [], [data.metas])
   const [modal, setModal] = useState(false)
   const [form, setForm] = useState(EMPTY)
   const [isEdit, setIsEdit] = useState(false)
   const [confirm, setConfirm] = useState(null)
+  const [toast, setToast] = useState(null)
+
+  // Gate de botões (Fase 4·E2) — módulo 'metas'
+  const podeCriar = can('metas', 'criar')
+  const podeEditar = can('metas', 'editar')
+  const podeExcluir = can('metas', 'excluir')
 
   const atingidas = metas.filter(m => m.acumulado >= m.objetivo).length
   const emAndamento = metas.filter(m => m.acumulado < m.objetivo).length
@@ -49,7 +55,7 @@ export default function Metas({ empresa, data, onSave, onDelete }) {
   const openAdd = () => { setForm(EMPTY); setIsEdit(false); setModal(true) }
   const openEdit = m => { setForm({ ...m }); setIsEdit(true); setModal(true) }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.nome.trim() || !form.objetivo) return
     const item = {
       ...form,
@@ -58,13 +64,23 @@ export default function Metas({ empresa, data, onSave, onDelete }) {
       acumulado: parseFloat(form.acumulado) || 0,
       empId: empresa.id,
     }
-    onSave(item, isEdit, 'meta')
-    setModal(false)
+    try {
+      await onSave(item, isEdit, 'meta')
+      setModal(false)
+      setToast({ msg: isEdit ? 'Meta atualizada!' : 'Meta criada!', type: 'success' })
+    } catch (e) {
+      setToast({ msg: errMsgAcao(e), type: 'error' })
+    }
   }
 
-  const handleDelete = id => {
-    onDelete(id, 'meta')
-    setConfirm(null)
+  const handleDelete = async id => {
+    try {
+      await onDelete(id, 'meta')
+      setConfirm(null)
+      setToast({ msg: 'Meta excluída!', type: 'success' })
+    } catch (e) {
+      setToast({ msg: errMsgAcao(e), type: 'error' })
+    }
   }
 
   const isMargem = form.tipo === 'margem'
@@ -77,13 +93,14 @@ export default function Metas({ empresa, data, onSave, onDelete }) {
 
   return (
     <div style={{ fontFamily: "'Segoe UI', sans-serif", color: T.text }}>
+      {toast && <Toast msg={toast.msg} type={toast.type} onDone={() => setToast(null)} />}
       {/* Header */}
       <div className="page-hd">
         <div>
           <h1 style={{ fontWeight: 800, fontSize: 26, margin: '0 0 4px' }}>Metas Financeiras</h1>
           <div style={{ color: T.sub, fontSize: 14 }}>Acompanhe e gerencie os objetivos da empresa.</div>
         </div>
-        <Btn onClick={openAdd} icon="＋">Nova Meta</Btn>
+        {podeCriar && <Btn onClick={openAdd} icon="＋">Nova Meta</Btn>}
       </div>
 
       {/* KPIs */}
@@ -102,7 +119,7 @@ export default function Metas({ empresa, data, onSave, onDelete }) {
               <div style={{ fontSize: 48, marginBottom: 12 }}>🎯</div>
               <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 8 }}>Nenhuma meta cadastrada</div>
               <div style={{ color: T.sub, fontSize: 14, marginBottom: 20 }}>Crie metas financeiras para acompanhar o desempenho da empresa.</div>
-              <Btn onClick={openAdd} icon="＋">Criar primeira meta</Btn>
+              {podeCriar && <Btn onClick={openAdd} icon="＋">Criar primeira meta</Btn>}
             </Card>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 14 }}>
@@ -168,8 +185,8 @@ export default function Metas({ empresa, data, onSave, onDelete }) {
                         )}
                       </div>
                       <div style={{ display: 'flex', gap: 6 }}>
-                        <Btn sm variant="ghost" onClick={() => openEdit(m)}>Editar</Btn>
-                        <Btn sm variant="danger" onClick={() => setConfirm(m.id)}>✕</Btn>
+                        {podeEditar && <Btn sm variant="ghost" onClick={() => openEdit(m)}>Editar</Btn>}
+                        {podeExcluir && <Btn sm variant="danger" onClick={() => setConfirm(m.id)}>✕</Btn>}
                       </div>
                     </div>
 

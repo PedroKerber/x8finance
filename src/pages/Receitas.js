@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef } from 'react'
 import RecorrenciaPanel from '../components/RecorrenciaPanel'
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
-import { T, fmt, fmtS, fd, uid } from '../theme'
+import { T, fmt, fmtS, fd, uid, errMsgAcao } from '../theme'
 import { CATS_RECEITA, CONTAS } from '../data'
 import { Card, Btn, Badge, StatusBadge, KpiCard, Toast, Confirm, SearchInput, Table, EmptyState } from '../components/ui'
 import AdvancedFilters, { defaultFilter, filterLancamentos, loadSavedFilter } from '../components/AdvancedFilters'
@@ -86,8 +86,14 @@ function newForm() {
   }
 }
 
-export default function Receitas({ empresa, data, onSave, onDelete, onSaveBatch, extraCats = [] }) {
+export default function Receitas({ empresa, data, onSave, onDelete, onSaveBatch, extraCats = [], can = () => false }) {
   const catsReceita = useMemo(() => extraCats.some(c => c.override) ? extraCats.filter(c => c.tipo === 'receita') : [...CATS_RECEITA, ...extraCats.filter(c => c.tipo === 'receita')], [extraCats])
+
+  // Gate de botões (Fase 4·E2) — módulo 'receitas'
+  const podeCriar = can('receitas', 'criar')
+  const podeEditar = can('receitas', 'editar')
+  const podeExcluir = can('receitas', 'excluir')
+  const podeExportar = can('receitas', 'exportar')
 
   // List state
   const [filter, setFilter] = useState(() => loadSavedFilter('x8_filter_receitas') || defaultFilter())
@@ -188,44 +194,56 @@ export default function Receitas({ empresa, data, onSave, onDelete, onSaveBatch,
     }
   }
 
-  const salvar = () => {
+  const salvar = async () => {
     const e = validar()
     if (Object.keys(e).length) { setErrors(e); return }
     const baseItem = buildItem()
-    if (!editItem && recorrenciaRef.current?.isActive()) {
-      const recLancs = recorrenciaRef.current.getLancamentos(baseItem)
-      if (recLancs.length > 0 && onSaveBatch) {
-        onSaveBatch([baseItem, ...recLancs])
-        setShowForm(false)
-        setToast({ msg: `${1 + recLancs.length} lançamentos gerados com sucesso!`, type: 'success' })
+    try {
+      if (!editItem && recorrenciaRef.current?.isActive()) {
+        const recLancs = recorrenciaRef.current.getLancamentos(baseItem)
+        if (recLancs.length > 0 && onSaveBatch) {
+          await onSaveBatch([baseItem, ...recLancs])
+          setShowForm(false)
+          setToast({ msg: `${1 + recLancs.length} lançamentos gerados com sucesso!`, type: 'success' })
+        } else {
+          await onSave(baseItem, false)
+          for (const l of recLancs) await onSave(l, false)
+          setShowForm(false)
+          setToast({ msg: `Receita criada + ${recLancs.length} lançamentos recorrentes!`, type: 'success' })
+        }
       } else {
-        onSave(baseItem, false)
-        recLancs.forEach(l => onSave(l, false))
+        await onSave(baseItem, !!editItem)
         setShowForm(false)
-        setToast({ msg: `Receita criada + ${recLancs.length} lançamentos recorrentes!`, type: 'success' })
+        setToast({ msg: editItem ? 'Receita atualizada!' : 'Receita cadastrada!', type: 'success' })
       }
-    } else {
-      onSave(baseItem, !!editItem)
-      setShowForm(false)
-      setToast({ msg: editItem ? 'Receita atualizada!' : 'Receita cadastrada!', type: 'success' })
+    } catch (err) {
+      setToast({ msg: errMsgAcao(err), type: 'error' })
     }
   }
 
-  const salvarRascunho = () => {
+  const salvarRascunho = async () => {
     if (!form.desc.trim()) { setErrors({ desc: 'Informe ao menos a descrição' }); return }
-    onSave(buildItem({ rascunho: true, valor: parseR(form.valorMasked) || 0 }), !!editItem)
-    setShowForm(false)
-    setToast({ msg: 'Rascunho salvo!', type: 'success' })
+    try {
+      await onSave(buildItem({ rascunho: true, valor: parseR(form.valorMasked) || 0 }), !!editItem)
+      setShowForm(false)
+      setToast({ msg: 'Rascunho salvo!', type: 'success' })
+    } catch (err) {
+      setToast({ msg: errMsgAcao(err), type: 'error' })
+    }
   }
 
-  const salvarENovo = () => {
+  const salvarENovo = async () => {
     const e = validar()
     if (Object.keys(e).length) { setErrors(e); return }
-    onSave(buildItem(), !!editItem)
-    setEditItem(null)
-    setForm(newForm())
-    setErrors({})
-    setToast({ msg: 'Receita cadastrada!', type: 'success' })
+    try {
+      await onSave(buildItem(), !!editItem)
+      setEditItem(null)
+      setForm(newForm())
+      setErrors({})
+      setToast({ msg: 'Receita cadastrada!', type: 'success' })
+    } catch (err) {
+      setToast({ msg: errMsgAcao(err), type: 'error' })
+    }
   }
 
   const duplicarItem = (item) => {
@@ -243,18 +261,22 @@ export default function Receitas({ empresa, data, onSave, onDelete, onSaveBatch,
     setRecForm({ dataRecebimento: TODAY, valorRecebido: masked, contaBancaria: CONTAS[0]?.nome || '', obsRec: '' })
   }
 
-  const confirmarRecebimento = () => {
+  const confirmarRecebimento = async () => {
     if (!recModal) return
-    onSave({
-      ...recModal,
-      status: 'Recebida',
-      dataRecebimento: recForm.dataRecebimento,
-      valorRecebido: parseR(recForm.valorRecebido),
-      contaBancariaRec: recForm.contaBancaria,
-      obsRec: recForm.obsRec,
-    }, true)
-    setRecModal(null)
-    setToast({ msg: 'Receita marcada como recebida!', type: 'success' })
+    try {
+      await onSave({
+        ...recModal,
+        status: 'Recebida',
+        dataRecebimento: recForm.dataRecebimento,
+        valorRecebido: parseR(recForm.valorRecebido),
+        contaBancariaRec: recForm.contaBancaria,
+        obsRec: recForm.obsRec,
+      }, true)
+      setRecModal(null)
+      setToast({ msg: 'Receita marcada como recebida!', type: 'success' })
+    } catch (err) {
+      setToast({ msg: errMsgAcao(err), type: 'error' })
+    }
   }
 
   // Novo Cliente
@@ -386,18 +408,25 @@ export default function Receitas({ empresa, data, onSave, onDelete, onSaveBatch,
     {
       key: 'id', label: 'Ações', render: (_, row) => (
         <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-          {row.status !== 'Recebida' && row.status !== 'Cancelada' && (
+          {podeEditar && row.status !== 'Recebida' && row.status !== 'Cancelada' && (
             <button onClick={e => { e.stopPropagation(); abrirReceber(row) }}
               style={{ background: 'none', border: `1px solid ${T.green}`, color: T.green, borderRadius: 6, padding: '3px 8px', cursor: 'pointer', fontSize: 11, fontWeight: 600, fontFamily: 'inherit' }}>
               Receber
             </button>
           )}
-          <button onClick={e => { e.stopPropagation(); duplicarItem(row) }} title="Duplicar"
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-sub)', fontSize: 14, padding: '2px 4px' }}>⧉</button>
-          <button onClick={e => { e.stopPropagation(); openEdit(row) }}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-sub)', fontSize: 14, padding: '2px 4px' }}>✏️</button>
-          <button onClick={e => { e.stopPropagation(); setConfirm(row) }}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.red, fontSize: 14, padding: '2px 4px' }}>🗑</button>
+          {podeCriar && (
+            <button onClick={e => { e.stopPropagation(); duplicarItem(row) }} title="Duplicar"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-sub)', fontSize: 14, padding: '2px 4px' }}>⧉</button>
+          )}
+          {podeEditar && (
+            <button onClick={e => { e.stopPropagation(); openEdit(row) }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-sub)', fontSize: 14, padding: '2px 4px' }}>✏️</button>
+          )}
+          {podeExcluir && (
+            <button onClick={e => { e.stopPropagation(); setConfirm(row) }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.red, fontSize: 14, padding: '2px 4px' }}>🗑</button>
+          )}
+          {!podeCriar && !podeEditar && !podeExcluir && <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>—</span>}
         </div>
       )
     },
@@ -413,7 +442,11 @@ export default function Receitas({ empresa, data, onSave, onDelete, onSaveBatch,
       {confirm && (
         <Confirm
           msg={`Excluir "${confirm.desc}"?`}
-          onYes={() => { onDelete(confirm.id); setConfirm(null); setToast({ msg: 'Receita excluída!', type: 'success' }) }}
+          onYes={async () => {
+            try { await onDelete(confirm.id); setToast({ msg: 'Receita excluída!', type: 'success' }) }
+            catch (err) { setToast({ msg: errMsgAcao(err), type: 'error' }) }
+            setConfirm(null)
+          }}
           onNo={() => setConfirm(null)}
         />
       )}
@@ -428,9 +461,9 @@ export default function Receitas({ empresa, data, onSave, onDelete, onSaveBatch,
           </div>
         </div>
         <div className="page-actions">
-          <Btn variant="ghost" icon="📊" onClick={exportExcel}>Excel</Btn>
-          <Btn variant="ghost" icon="📄" onClick={exportPDF}>PDF</Btn>
-          <Btn icon="+" onClick={openNew}>Nova receita</Btn>
+          {podeExportar && <Btn variant="ghost" icon="📊" onClick={exportExcel}>Excel</Btn>}
+          {podeExportar && <Btn variant="ghost" icon="📄" onClick={exportPDF}>PDF</Btn>}
+          {podeCriar && <Btn icon="+" onClick={openNew}>Nova receita</Btn>}
         </div>
       </div>
 
@@ -499,8 +532,8 @@ export default function Receitas({ empresa, data, onSave, onDelete, onSaveBatch,
           <div style={{ fontWeight: 700, fontSize: 15, flexShrink: 0 }}>Receitas lançadas</div>
           <SearchInput value={search} onChange={setSearch} placeholder="Buscar receita..." />
         </div>
-        <Table columns={columns} data={filtered} onRow={openEdit}
-          emptyState={<EmptyState icon="💰" title="Nenhuma receita" sub="Cadastre sua primeira receita" action={<Btn onClick={openNew}>+ Nova receita</Btn>} />} />
+        <Table columns={columns} data={filtered} onRow={podeEditar ? openEdit : undefined}
+          emptyState={<EmptyState icon="💰" title="Nenhuma receita" sub="Cadastre sua primeira receita" action={podeCriar ? <Btn onClick={openNew}>+ Nova receita</Btn> : null} />} />
         <div style={{ padding: '12px 18px', borderTop: `1px solid var(--border)`, fontSize: 13, color: 'var(--text-sub)' }}>
           Mostrando {filtered.length} receita{filtered.length !== 1 ? 's' : ''}
         </div>
@@ -930,7 +963,7 @@ export default function Receitas({ empresa, data, onSave, onDelete, onSaveBatch,
           {/* Footer fixo */}
           <div className="form-overlay-footer" style={{ position: 'sticky', bottom: 0, zIndex: 10 }}>
             <Btn variant="ghost" onClick={() => setShowForm(false)}>Cancelar</Btn>
-            {!recSummary?.active && editItem && <Btn variant="ghost" onClick={() => duplicarItem(editItem)}>⧉ Duplicar</Btn>}
+            {!recSummary?.active && editItem && podeCriar && <Btn variant="ghost" onClick={() => duplicarItem(editItem)}>⧉ Duplicar</Btn>}
             {recSummary?.active ? (
               <Btn variant="primary" style={{ marginLeft: 'auto' }} onClick={salvar}>
                 ✓ Gerar {recSummary.count} lançamento{recSummary.count !== 1 ? 's' : ''}
@@ -938,7 +971,7 @@ export default function Receitas({ empresa, data, onSave, onDelete, onSaveBatch,
             ) : (
               <>
                 <Btn variant="ghost" style={{ borderColor: T.yellow, color: T.yellow, marginLeft: 'auto' }} onClick={salvarRascunho}>💾 Rascunho</Btn>
-                <Btn variant="ghost" onClick={salvarENovo}>+ Salvar e Novo</Btn>
+                {podeCriar && <Btn variant="ghost" onClick={salvarENovo}>+ Salvar e Novo</Btn>}
                 <Btn variant="primary" onClick={salvar}>✓ Salvar</Btn>
               </>
             )}

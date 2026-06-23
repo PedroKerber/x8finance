@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts'
-import { T, uid, fmtS } from '../theme'
-import { Card, Btn, Input, Modal } from '../components/ui'
+import { T, uid, fmtS, errMsgAcao } from '../theme'
+import { Card, Btn, Input, Modal, Toast } from '../components/ui'
 import { getCentroCustos, saveCentroCusto, deleteCentroCusto } from '../supabase'
 
 // Centros demo — semeados no Supabase, por empresa, na 1ª carga (idempotente)
@@ -20,7 +20,7 @@ const PIE_COLORS = [T.orange, T.blue, T.red, T.green, T.purple, T.cyan, T.yellow
 
 const EMPTY = { nome: '', desc: '', responsavel: '', email: '', ativo: true }
 
-export default function CentroCusto({ empresa, data }) {
+export default function CentroCusto({ empresa, data, can = () => false }) {
   const lancamentos = useMemo(() => data.lancamentos || [], [data.lancamentos])
   const [centros, setCentros] = useState([])
   const [tab, setTab] = useState('Todos')
@@ -29,6 +29,12 @@ export default function CentroCusto({ empresa, data }) {
   const [form, setForm] = useState(EMPTY)
   const [isEdit, setIsEdit] = useState(false)
   const [confirm, setConfirm] = useState(null)
+  const [toast, setToast] = useState(null)
+
+  // Gate de botões (Fase 4·E2) — módulo 'centro_custo' (singular, como na matriz)
+  const podeCriar = can('centro_custo', 'criar')
+  const podeEditar = can('centro_custo', 'editar')
+  const podeExcluir = can('centro_custo', 'excluir')
 
   // Carrega os centros de custo da empresa (Fase 1 — Supabase, por empresa)
   useEffect(() => {
@@ -83,34 +89,49 @@ export default function CentroCusto({ empresa, data }) {
   const handleSave = useCallback(async () => {
     if (!form.nome.trim() || !empresa?.id) return
     const cc = isEdit ? form : { ...form, id: uid() }
-    try { await saveCentroCusto(cc, empresa.id) } catch {}
-    setCentros(prev => isEdit ? prev.map(c => c.id === cc.id ? cc : c) : [...prev, cc])
-    setModal(false)
+    try {
+      await saveCentroCusto(cc, empresa.id)
+      setCentros(prev => isEdit ? prev.map(c => c.id === cc.id ? cc : c) : [...prev, cc])
+      setModal(false)
+      setToast({ msg: isEdit ? 'Centro de custo atualizado!' : 'Centro de custo criado!', type: 'success' })
+    } catch (e) {
+      setToast({ msg: errMsgAcao(e), type: 'error' })
+    }
   }, [form, isEdit, empresa])
 
   const handleDelete = useCallback(async (id) => {
-    try { await deleteCentroCusto(id) } catch {}
-    setCentros(prev => prev.filter(c => c.id !== id))
-    setConfirm(null)
+    try {
+      await deleteCentroCusto(id)
+      setCentros(prev => prev.filter(c => c.id !== id))
+      setConfirm(null)
+      setToast({ msg: 'Centro de custo excluído!', type: 'success' })
+    } catch (e) {
+      setToast({ msg: errMsgAcao(e), type: 'error' })
+    }
   }, [])
 
   const toggleAtivo = useCallback(async (c) => {
     const cc = { ...c, ativo: !c.ativo }
-    try { await saveCentroCusto(cc, empresa?.id) } catch {}
-    setCentros(prev => prev.map(x => x.id === cc.id ? cc : x))
+    try {
+      await saveCentroCusto(cc, empresa?.id)
+      setCentros(prev => prev.map(x => x.id === cc.id ? cc : x))
+    } catch (e) {
+      setToast({ msg: errMsgAcao(e), type: 'error' })
+    }
   }, [empresa])
 
   const TABS = ['Todos', 'Ativos', 'Inativos']
 
   return (
     <div style={{ fontFamily: "'Segoe UI', sans-serif", color: T.text }}>
+      {toast && <Toast msg={toast.msg} type={toast.type} onDone={() => setToast(null)} />}
       {/* Header */}
       <div className="page-hd">
         <div>
           <h1 style={{ fontWeight: 800, fontSize: 26, margin: '0 0 4px' }}>Centro de Custo</h1>
           <div style={{ color: T.sub, fontSize: 14 }}>Organize e analise seus gastos por centro de custo.</div>
         </div>
-        <Btn onClick={openAdd} icon="＋">Novo Centro de Custo</Btn>
+        {podeCriar && <Btn onClick={openAdd} icon="＋">Novo Centro de Custo</Btn>}
       </div>
 
       {/* KPIs */}
@@ -201,12 +222,19 @@ export default function CentroCusto({ empresa, data }) {
                     </td>
                     <td style={{ padding: '12px 16px' }}>
                       <div style={{ display: 'flex', gap: 6 }}>
-                        <button onClick={() => openEdit(c)} title="Editar" style={{ background: 'none', border: `1px solid ${T.border}`, borderRadius: 6, padding: '5px 9px', cursor: 'pointer', fontSize: 14 }}>✏️</button>
-                        <button onClick={() => toggleAtivo(c)}
-                          style={{ background: 'none', border: `1px solid ${T.border}`, borderRadius: 6, padding: '5px 10px', cursor: 'pointer', fontSize: 12, color: c.ativo ? T.sub : T.green, fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
-                          {c.ativo ? 'Desativar' : 'Reativar'}
-                        </button>
-                        <button onClick={() => setConfirm(c.id)} title="Excluir" style={{ background: 'none', border: `1px solid ${T.redL}`, borderRadius: 6, padding: '5px 9px', cursor: 'pointer', fontSize: 14, color: T.red }}>🗑</button>
+                        {podeEditar && (
+                          <button onClick={() => openEdit(c)} title="Editar" style={{ background: 'none', border: `1px solid ${T.border}`, borderRadius: 6, padding: '5px 9px', cursor: 'pointer', fontSize: 14 }}>✏️</button>
+                        )}
+                        {podeEditar && (
+                          <button onClick={() => toggleAtivo(c)}
+                            style={{ background: 'none', border: `1px solid ${T.border}`, borderRadius: 6, padding: '5px 10px', cursor: 'pointer', fontSize: 12, color: c.ativo ? T.sub : T.green, fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
+                            {c.ativo ? 'Desativar' : 'Reativar'}
+                          </button>
+                        )}
+                        {podeExcluir && (
+                          <button onClick={() => setConfirm(c.id)} title="Excluir" style={{ background: 'none', border: `1px solid ${T.redL}`, borderRadius: 6, padding: '5px 9px', cursor: 'pointer', fontSize: 14, color: T.red }}>🗑</button>
+                        )}
+                        {!podeEditar && !podeExcluir && <span style={{ color: T.muted, fontSize: 13 }}>—</span>}
                       </div>
                     </td>
                   </tr>

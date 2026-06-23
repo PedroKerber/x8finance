@@ -45,3 +45,18 @@ export const fmtS = v => fmt(v)
 export const fmtPct = v => (v || 0).toFixed(1).replace('.', ',') + '%'
 export const fd = s => s ? s.split('-').reverse().join('/') : ''
 export const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
+
+// Mensagem amigável para falhas de escrita (rede / permissão RLS / trava de mês).
+// Reconhece os códigos do Postgres/PostgREST que passarão a aparecer na Etapa 2
+// (42501 = violação de RLS; P0001 = exceção da trava de mês fechado).
+export const errMsgAcao = (e, fallback = 'Não foi possível concluir a ação. Tente novamente.') => {
+  const code = (e && e.code) || ''
+  const msg = ((e && e.message) || '').toLowerCase()
+  if (code === '42501' || msg.includes('row-level security') || msg.includes('violates row-level') || msg.includes('permission denied')) {
+    return 'Você não tem permissão para esta ação.'
+  }
+  if (code === 'P0001' || msg.includes('fechad')) {
+    return (e && e.message) || 'Competência fechada — escrita bloqueada.'
+  }
+  return fallback
+}
