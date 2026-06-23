@@ -3,12 +3,20 @@ import emailjs from '@emailjs/browser'
 import { T } from '../theme'
 import { Card, Btn } from '../components/ui'
 import { EMPRESAS } from '../data'
-import { supabase, apiFetch } from '../supabase'
+import { supabase, apiFetch, getRolePermissions } from '../supabase'
 import { EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, EMAILJS_PUBLIC_KEY } from '../config/emailjs'
 import { useMobile } from '../context/MobileContext'
 
-const MODULOS = ['Dashboard', 'Transações', 'Receitas', 'Despesas', 'Fluxo de Caixa', 'Contas a Pagar', 'Contas a Receber', 'Relatórios', 'Fechamento Mensal', 'Empresas', 'Categorias', 'Centro de Custos', 'Metas Financeiras', 'Usuários', 'Configurações', 'Logs do Sistema']
-const ACOES = ['Visualizar', 'Criar', 'Editar', 'Excluir', 'Exportar']
+// Matriz read-only (Etapa 3): ids alinhados com role_permissions + rótulos
+const MODULOS_RP = [
+  ['dashboard', 'Dashboard'], ['receitas', 'Receitas'], ['despesas', 'Despesas'],
+  ['transacoes', 'Transações'], ['fluxo', 'Fluxo de Caixa'], ['retirada_socios', 'Retirada dos Sócios'],
+  ['metas', 'Metas'], ['mes_fechado', 'Fechamento Mensal'], ['comparativo_empresas', 'Comparativo'],
+  ['relatorios', 'Relatórios'], ['categorias', 'Categorias'], ['centro_custo', 'Centro de Custos'],
+  ['importar', 'Importar'], ['empresas', 'Empresas'], ['usuarios', 'Usuários'],
+  ['configuracoes', 'Configurações'], ['meu_plano', 'Meu Plano'], ['logs', 'Logs do Sistema'],
+]
+const ACOES_RP = [['visualizar', 'Visualizar'], ['criar', 'Criar'], ['editar', 'Editar'], ['excluir', 'Excluir'], ['exportar', 'Exportar']]
 const CARGOS = ['CEO / Administrador Master', 'Proprietário', 'Diretor', 'Gerente Financeiro', 'Contador', 'Analista Financeiro', 'Assistente Administrativo', 'Outro']
 
 const PERFIS = [
@@ -16,8 +24,11 @@ const PERFIS = [
   { id: 'admin', nome: 'Administrador', icon: '🛡', cor: '#2563eb', bg: '#2563eb18', nivel: 'Alto acesso', desc: 'Operações financeiras, usuários (exceto Masters) e relatórios.' },
   { id: 'gerente', nome: 'Gerente Financeiro', icon: '📊', cor: '#16a34a', bg: '#16a34a18', nivel: 'Acesso médio', desc: 'Receitas, despesas, fluxo de caixa e relatórios financeiros.' },
   { id: 'contador', nome: 'Contador', icon: '🧾', cor: '#ea580c', bg: '#ea580c18', nivel: 'Acesso restrito', desc: 'Visualizar e gerar relatórios contábeis, exportar dados.' },
-  { id: 'visualizador', nome: 'Visualizador', icon: '👁', cor: '#0891b2', bg: '#0891b218', nivel: 'Somente leitura', desc: 'Apenas visualização de dashboards e relatórios. Sem alterações.' },
+  { id: 'operacional', nome: 'Operacional', icon: '👤', cor: '#0891b2', bg: '#0891b218', nivel: 'Acesso operacional', desc: 'Insere dados autorizados e visualiza os módulos liberados.' },
 ]
+// Perfis atribuíveis POR EMPRESA (master é global, via user_roles — não atribuído aqui)
+const PERFIS_EMPRESA = PERFIS.filter(p => p.id !== 'master')
+const perfilNome = (id) => (PERFIS.find(p => p.id === id) || {}).nome || id || '—'
 
 const STATUS_INFO = {
   ativo: { label: 'Ativo', cor: T.green, bg: '#dcfce7' },
@@ -48,29 +59,11 @@ const getStatusConvite = (u) => {
   return u.status || 'ativo'
 }
 
-const defaultPerms = (perfil) => {
-  const full = Object.fromEntries(MODULOS.map(m => [m, Object.fromEntries(ACOES.map(a => [a, true]))]))
-  if (perfil === 'master' || perfil === 'admin') return full
-  if (perfil === 'gerente') {
-    const fin = new Set(['Dashboard', 'Receitas', 'Despesas', 'Fluxo de Caixa', 'Contas a Pagar', 'Contas a Receber', 'Relatórios', 'Categorias', 'Centro de Custos', 'Metas Financeiras'])
-    return Object.fromEntries(MODULOS.map(m => [m, Object.fromEntries(ACOES.map(a => [a, fin.has(m) && a !== 'Excluir']))]))
-  }
-  if (perfil === 'contador') {
-    const visExp = new Set(['Dashboard', 'Relatórios', 'Receitas', 'Despesas', 'Fluxo de Caixa'])
-    return Object.fromEntries(MODULOS.map(m => [m, Object.fromEntries(ACOES.map(a => [a, visExp.has(m) && (a === 'Visualizar' || a === 'Exportar')]))]))
-  }
-  // visualizador
-  const visOnly = new Set(['Dashboard', 'Relatórios'])
-  return Object.fromEntries(MODULOS.map(m => [m, Object.fromEntries(ACOES.map(a => [a, visOnly.has(m) && a === 'Visualizar']))]))
-}
-
 const initials = (nome) => (nome || 'U').split(' ').filter(Boolean).slice(0, 2).map(n => n[0]).join('').toUpperCase() || 'U'
 const CORES_AV = ['#16a34a', '#2563eb', '#7c3aed', '#ea580c', '#dc2626', '#0891b2', '#ca8a04']
 const avatarCor = (nome) => CORES_AV[(nome || 'U').charCodeAt(0) % CORES_AV.length]
 
-const EMPTY = { nome: '', email: '', telefone: '', empresaIds: ['kz'], cargo: 'Analista Financeiro', perfil: 'gerente', status: 'ativo', mustChangePassword: false, foto: '' }
-
-const getLocal = () => { try { return JSON.parse(localStorage.getItem('x8_usuarios_v2') || '[]') } catch { return [] } }
+const EMPTY = { nome: '', email: '', telefone: '', empresaIds: ['kz'], empresaRoles: { kz: 'gerente' }, cargo: 'Analista Financeiro', perfil: 'gerente', status: 'ativo', mustChangePassword: false, foto: '' }
 
 const Overlay = ({ children, onClose }) => (
   <div onClick={e => { if (e.target === e.currentTarget) onClose() }}
@@ -93,9 +86,10 @@ const StatusBdg = ({ status }) => {
   )
 }
 
-export default function Usuarios({ usuario }) {
+export default function Usuarios({ usuario, empresas = [] }) {
   const isMobile = useMobile()
   const fotoRef = useRef(null)
+  const empList = (empresas && empresas.length) ? empresas : EMPRESAS
 
   const [usuarios, setUsuarios] = useState([])
   const [supabaseLoading, setSupabaseLoading] = useState(true)
@@ -120,7 +114,8 @@ export default function Usuarios({ usuario }) {
   const [linkCopiado, setLinkCopiado] = useState(false)
 
   const [form, setForm] = useState(EMPTY)
-  const [formPerms, setFormPerms] = useState(() => defaultPerms('gerente'))
+  const [rolePerms, setRolePerms] = useState({})   // { perfil: { modulo: { acao: bool } } } — read-only
+  const [permPerfil, setPermPerfil] = useState('gerente')
   const [activeTab, setActiveTab] = useState('dados')
   const [erros, setErros] = useState({})
   const [saving, setSaving] = useState(false)
@@ -154,57 +149,53 @@ export default function Usuarios({ usuario }) {
       const res = await apiFetch('/api/list-users')
       if (!res.ok) throw new Error('API error')
       const { users } = await res.json()
-      const localMap = getLocal()
-      const merged = (users || []).map(su => {
-        const local = localMap.find(l => l.email === su.email) || {}
-        return {
-          id: su.id,
-          email: su.email,
-          nome: local.nome || su.nome,
-          telefone: local.telefone || '',
-          foto: local.foto || '',
-          // prefer local (editable by admin) → supabase metadata → default
-          cargo: local.cargo || su.cargo || 'Analista Financeiro',
-          perfil: local.perfil || su.perfil || (su.email === usuario?.email ? 'master' : 'gerente'),
-          status: local.status || 'ativo',
-          mustChangePassword: local.mustChangePassword || false,
-          ultimoAcesso: su.ultimoAcesso ? new Date(su.ultimoAcesso).toLocaleDateString('pt-BR') : '—',
-          criadoEm: su.criadoEm ? new Date(su.criadoEm).toLocaleDateString('pt-BR') : '—',
-          criadoEmRaw: su.criadoEm || null,
-          emailConfirmado: su.email === usuario?.email ? true : (su.emailConfirmado || false),
-          empresaIds: su.email === usuario?.email ? EMPRESAS.map(e => e.id) : (su.empresaIds || []),
-        }
-      })
+      const merged = (users || []).map(su => ({
+        id: su.id,
+        email: su.email,
+        nome: su.nome,
+        telefone: su.telefone || '',
+        foto: su.foto || '',
+        cargo: su.cargo || 'Analista Financeiro',
+        isMaster: !!su.isMaster,
+        perfil: su.isMaster ? 'master' : (su.vinculos?.[0]?.role || 'gerente'),
+        status: su.status || 'ativo',
+        mustChangePassword: !!su.mustChangePassword,
+        ultimoAcesso: su.ultimoAcesso ? new Date(su.ultimoAcesso).toLocaleDateString('pt-BR') : '—',
+        criadoEm: su.criadoEm ? new Date(su.criadoEm).toLocaleDateString('pt-BR') : '—',
+        criadoEmRaw: su.criadoEm || null,
+        emailConfirmado: su.email === usuario?.email ? true : (su.emailConfirmado || false),
+        vinculos: su.vinculos || [],                                      // [{ empresa_id, role }]
+        empresaIds: su.empresaIds || [],
+        empresaRoles: Object.fromEntries((su.vinculos || []).map(v => [v.empresa_id, v.role])),
+      }))
       setUsuarios(merged)
-      localStorage.setItem('x8_usuarios_v2', JSON.stringify(
-        merged.map(u => ({ id: u.id, email: u.email, nome: u.nome, telefone: u.telefone, foto: u.foto, cargo: u.cargo, perfil: u.perfil, status: u.status, mustChangePassword: u.mustChangePassword, empresaIds: u.empresaIds }))
-      ))
     } catch {
-      setUsuarios(getLocal())
+      /* sem fallback de localStorage (Etapa 3) — fonte é o Supabase */
     } finally {
       setSupabaseLoading(false)
     }
   }, [usuario])
 
-  const syncPermissions = useCallback(async (collaboratorUserId, empresaIds, perfil) => {
+  const syncPermissions = useCallback(async (collaboratorUserId, vinculos) => {
     if (!usuario?.id || !collaboratorUserId || collaboratorUserId === usuario.id) return
     try {
       await apiFetch('/api/set-permissions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ownerUserId: usuario.id, collaboratorUserId, empresaIds: empresaIds || [], role: perfil || 'viewer' }),
+        body: JSON.stringify({ collaboratorUserId, vinculos: vinculos || [] }),
       })
     } catch {}
   }, [usuario])
 
   useEffect(() => { if (usuario?.id) loadSupabaseUsers() }, [usuario, loadSupabaseUsers])
   useEffect(() => { if (pageTab === 'auditoria') loadAuditLog() }, [pageTab, loadAuditLog])
+  useEffect(() => { getRolePermissions().then(setRolePerms).catch(() => {}) }, [])
 
-  const openAdd = () => { setForm(EMPTY); setFormPerms(defaultPerms('gerente')); setActiveTab('dados'); setErros({}); setEditId(null); setTempSenha(''); setModalTipo('form') }
+  const openAdd = () => { setForm(EMPTY); setActiveTab('dados'); setErros({}); setEditId(null); setTempSenha(''); setModalTipo('form') }
 
   const openEdit = (u) => {
-    const saved = JSON.parse(localStorage.getItem(`x8_perms_${u.id}`) || 'null')
-    setForm({ ...u }); setFormPerms(saved || defaultPerms(u.perfil)); setActiveTab('dados'); setErros({}); setEditId(u.id); setModalTipo('form')
+    setForm({ ...u, empresaRoles: u.empresaRoles || Object.fromEntries((u.vinculos || []).map(v => [v.empresa_id, v.role])) })
+    setActiveTab('dados'); setErros({}); setEditId(u.id); setModalTipo('form')
   }
 
   const handleFotoChange = (e) => {
@@ -219,7 +210,7 @@ export default function Usuarios({ usuario }) {
     if (!form.nome.trim()) e.nome = 'Nome é obrigatório'
     if (!form.email.trim()) e.email = 'E-mail é obrigatório'
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'E-mail inválido'
-    if (form.perfil !== 'master' && (!form.empresaIds || form.empresaIds.length === 0)) e.empresaIds = 'Selecione ao menos uma empresa'
+    if (!form.empresaIds || form.empresaIds.length === 0) e.empresaIds = 'Selecione ao menos uma empresa'
     setErros(e)
     return Object.keys(e).length === 0
   }
@@ -230,23 +221,14 @@ export default function Usuarios({ usuario }) {
     try {
       if (editId) {
         const prev = usuarios.find(u => u.id === editId)
-        setUsuarios(p => p.map(u => u.id === editId ? { ...form, id: editId } : u))
-        try {
-          const saved = JSON.parse(localStorage.getItem('x8_usuarios_v2') || '[]')
-          localStorage.setItem('x8_usuarios_v2', JSON.stringify(
-            saved.map(u => u.id === editId
-              ? { ...u, nome: form.nome, cargo: form.cargo, perfil: form.perfil, status: form.status, empresaIds: form.empresaIds, telefone: form.telefone, foto: form.foto, mustChangePassword: form.mustChangePassword }
-              : u
-            )
-          ))
-          localStorage.setItem(`x8_perms_${editId}`, JSON.stringify(formPerms))
-        } catch {}
+        const vinculos = (form.empresaIds || []).map(id => ({ empresa_id: id, role: form.empresaRoles?.[id] || form.perfil || 'gerente' }))
+        setUsuarios(p => p.map(u => u.id === editId ? { ...u, ...form, id: editId, vinculos, empresaRoles: Object.fromEntries(vinculos.map(v => [v.empresa_id, v.role])) } : u))
         apiFetch('/api/update-user', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: editId, nome: form.nome, cargo: form.cargo, perfil: form.perfil }),
+          body: JSON.stringify({ userId: editId, nome: form.nome, cargo: form.cargo, perfil: form.perfil, telefone: form.telefone, foto: form.foto, status: form.status, mustChangePassword: form.mustChangePassword }),
         }).catch(() => {})
-        await syncPermissions(editId, form.empresaIds, form.perfil)
+        await syncPermissions(editId, vinculos)
         await logAudit('usuario_editado', { userId: editId, email: form.email, empresasAnteriores: prev?.empresaIds || [], empresasNovas: form.empresaIds, perfil: form.perfil })
         showToast('Usuário atualizado com sucesso!')
         setModalTipo(null)
@@ -255,7 +237,7 @@ export default function Usuarios({ usuario }) {
         const inviteRes = await apiFetch('/api/invite-user', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: form.email, nome: form.nome, perfil: form.perfil, cargo: form.cargo }),
+          body: JSON.stringify({ email: form.email, nome: form.nome, perfil: form.perfil, cargo: form.cargo, telefone: form.telefone }),
         })
         const inviteJson = await inviteRes.json()
         if (!inviteRes.ok) throw new Error(inviteJson.error || 'Erro ao criar usuário')
@@ -264,17 +246,17 @@ export default function Usuarios({ usuario }) {
         const inviteLink  = inviteJson.inviteLink
 
         if (newUserId) {
-          await syncPermissions(newUserId, form.empresaIds, form.perfil)
-          const newUser = { ...form, id: newUserId, emailConfirmado: false, ultimoAcesso: '—', criadoEm: new Date().toLocaleDateString('pt-BR') }
+          const vinculos = (form.empresaIds || []).map(id => ({ empresa_id: id, role: form.empresaRoles?.[id] || form.perfil || 'gerente' }))
+          await syncPermissions(newUserId, vinculos)
+          const newUser = { ...form, id: newUserId, isMaster: false, emailConfirmado: false, ultimoAcesso: '—', criadoEm: new Date().toLocaleDateString('pt-BR'), vinculos, empresaRoles: Object.fromEntries(vinculos.map(v => [v.empresa_id, v.role])) }
           setUsuarios(p => [...p.filter(u => u.email !== form.email), newUser])
-          localStorage.setItem(`x8_perms_${newUserId}`, JSON.stringify(formPerms))
         }
 
         await logAudit('usuario_criado', { email: form.email, perfil: form.perfil, empresas: form.empresaIds })
 
         // Try EmailJS with the real invite link
         if (EMAILJS_SERVICE_ID && inviteLink) {
-          const empresasNome = form.empresaIds.map(id => EMPRESAS.find(e => e.id === id)?.nome).filter(Boolean).join(', ')
+          const empresasNome = form.empresaIds.map(id => empList.find(e => e.id === id)?.nome).filter(Boolean).join(', ')
           emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
             to_name: form.nome, to_email: form.email,
             empresa: empresasNome || '', cargo: form.cargo,
@@ -299,8 +281,8 @@ export default function Usuarios({ usuario }) {
 
   const handleDelete = async (id) => {
     const u = usuarios.find(x => x.id === id)
-    const isMasterUser = u?.perfil === 'master'
-    const masterCount = usuarios.filter(x => x.perfil === 'master').length
+    const isMasterUser = !!u?.isMaster
+    const masterCount = usuarios.filter(x => x.isMaster).length
     if (isMasterUser && masterCount <= 1) {
       showToast('Não é possível excluir o único usuário Master.', false)
       setConfirmDeleteId(null); setModalTipo(null)
@@ -308,11 +290,6 @@ export default function Usuarios({ usuario }) {
     }
     setUsuarios(p => p.filter(x => x.id !== id))
     setConfirmDeleteId(null); setModalTipo(null)
-    try {
-      const saved = JSON.parse(localStorage.getItem('x8_usuarios_v2') || '[]')
-      localStorage.setItem('x8_usuarios_v2', JSON.stringify(saved.filter(x => x.id !== id)))
-      localStorage.removeItem(`x8_perms_${id}`)
-    } catch {}
     try {
       await apiFetch('/api/delete-user', {
         method: 'POST',
@@ -324,11 +301,16 @@ export default function Usuarios({ usuario }) {
     showToast('Usuário excluído permanentemente.')
   }
 
+  const persistStatus = async (id, status) => {
+    try { await apiFetch('/api/update-user', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: id, status }) }) } catch {}
+  }
+
   const handleBlock = async (id) => {
     const u = usuarios.find(x => x.id === id)
     const novo = u?.status === 'bloqueado' ? 'ativo' : 'bloqueado'
     setUsuarios(p => p.map(x => x.id === id ? { ...x, status: novo } : x))
     setActionMenu(null)
+    await persistStatus(id, novo)
     await logAudit(novo === 'bloqueado' ? 'usuario_bloqueado' : 'usuario_desbloqueado', { userId: id, email: u?.email })
     showToast(novo === 'bloqueado' ? 'Usuário bloqueado.' : 'Usuário desbloqueado.')
   }
@@ -337,6 +319,7 @@ export default function Usuarios({ usuario }) {
     const u = usuarios.find(x => x.id === id)
     setUsuarios(p => p.map(x => x.id === id ? { ...x, status: 'inativo' } : x))
     setActionMenu(null)
+    await persistStatus(id, 'inativo')
     await logAudit('usuario_desativado', { userId: id, email: u?.email })
     showToast('Usuário desativado.')
   }
@@ -345,6 +328,7 @@ export default function Usuarios({ usuario }) {
     const u = usuarios.find(x => x.id === id)
     setUsuarios(p => p.map(x => x.id === id ? { ...x, status: 'ativo' } : x))
     setActionMenu(null)
+    await persistStatus(id, 'ativo')
     await logAudit('usuario_reativado', { userId: id, email: u?.email })
     showToast('Usuário reativado.')
   }
@@ -425,10 +409,7 @@ export default function Usuarios({ usuario }) {
     }
   }
 
-  const togglePerm = (m, a) => setFormPerms(p => ({ ...p, [m]: { ...p[m], [a]: !p[m][a] } }))
-  const marcarTudo = () => setFormPerms(Object.fromEntries(MODULOS.map(m => [m, Object.fromEntries(ACOES.map(a => [a, true]))])))
-  const desmarcarTudo = () => setFormPerms(Object.fromEntries(MODULOS.map(m => [m, Object.fromEntries(ACOES.map(a => [a, false]))])))
-  const aplicarPadrao = () => setFormPerms(defaultPerms(form.perfil))
+  // (matriz de permissões agora é read-only — edição removida na Etapa 3)
 
   const filtered = usuarios.filter(u => {
     if (search && !u.nome?.toLowerCase().includes(search.toLowerCase()) && !u.email?.toLowerCase().includes(search.toLowerCase())) return false
@@ -438,12 +419,12 @@ export default function Usuarios({ usuario }) {
     return true
   })
 
-  const empNome = (id) => EMPRESAS.find(e => e.id === id)?.nome || id
+  const empNome = (id) => empList.find(e => e.id === id)?.nome || id
   const empNomes = (ids) => (ids || []).map(id => empNome(id)).filter(Boolean)
-  const masters = usuarios.filter(u => u.perfil === 'master').length
-  const admins = usuarios.filter(u => u.perfil === 'admin').length
+  const masters = usuarios.filter(u => u.isMaster).length
+  const admins = usuarios.filter(u => !u.isMaster && (u.vinculos || []).some(v => v.role === 'admin')).length
   const ativos = usuarios.filter(u => u.status === 'ativo').length
-  const outros = usuarios.filter(u => u.perfil !== 'master' && u.perfil !== 'admin').length
+  const outros = usuarios.length - masters - admins
 
   const selSt = { background: T.white, border: `1.5px solid ${T.border}`, borderRadius: 8, padding: '9px 12px', color: T.text, fontSize: 13, outline: 'none', fontFamily: 'inherit', width: '100%' }
   const lblSt = { display: 'block', fontWeight: 600, fontSize: 12, color: T.sub, marginBottom: 5, textTransform: 'uppercase', letterSpacing: .4 }
@@ -523,7 +504,7 @@ export default function Usuarios({ usuario }) {
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(3, 1fr)', gap: 8, marginTop: 10 }}>
               {[
-                { value: filtroEmp, set: setFiltroEmp, opts: [['Todas', 'Todas as empresas'], ...EMPRESAS.map(e => [e.id, e.nome])] },
+                { value: filtroEmp, set: setFiltroEmp, opts: [['Todas', 'Todas as empresas'], ...empList.map(e => [e.id, e.nome])] },
                 { value: filtroPerfil, set: setFiltroPerfil, opts: [['Todos', 'Todos os perfis'], ...PERFIS.map(p => [p.id, p.nome])] },
                 { value: filtroStatus, set: setFiltroStatus, opts: [['Todos', 'Todos os status'], ['ativo', 'Ativo'], ['inativo', 'Inativo'], ['bloqueado', 'Bloqueado'], ['pendente', 'Convite pendente'], ['expirado', 'Convite expirado']] },
               ].map((f, i) => (
@@ -880,28 +861,41 @@ export default function Usuarios({ usuario }) {
                         <span style={{ fontWeight: 400, color: T.green, fontSize: 11, marginLeft: 8 }}>→ sincroniza automaticamente com Supabase</span>
                       </label>
                       <div style={{ display: 'flex', gap: 6 }}>
-                        <button type="button" onClick={() => setForm(f => ({ ...f, empresaIds: EMPRESAS.map(e => e.id) }))}
+                        <button type="button" onClick={() => setForm(f => ({ ...f, empresaIds: empList.map(e => e.id), empresaRoles: Object.fromEntries(empList.map(e => [e.id, f.perfil || 'gerente'])) }))}
                           style={{ background: '#fff7ed', color: T.primary, border: `1px solid ${T.primary}44`, borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Todas</button>
-                        <button type="button" onClick={() => setForm(f => ({ ...f, empresaIds: [] }))}
+                        <button type="button" onClick={() => setForm(f => ({ ...f, empresaIds: [], empresaRoles: {} }))}
                           style={{ background: T.bg, color: T.sub, border: `1px solid ${T.border}`, borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Nenhuma</button>
                       </div>
                     </div>
                     <div style={{ border: `1.5px solid ${erros.empresaIds ? '#dc2626' : T.border}`, borderRadius: 10, overflow: 'hidden' }}>
-                      {EMPRESAS.map((emp, i) => {
+                      {empList.map((emp, i) => {
                         const checked = (form.empresaIds || []).includes(emp.id)
+                        const toggle = () => setForm(f => {
+                          const has = (f.empresaIds || []).includes(emp.id)
+                          const empresaIds = has ? f.empresaIds.filter(id => id !== emp.id) : [...(f.empresaIds || []), emp.id]
+                          const empresaRoles = { ...(f.empresaRoles || {}) }
+                          if (has) delete empresaRoles[emp.id]; else empresaRoles[emp.id] = f.perfil || 'gerente'
+                          return { ...f, empresaIds, empresaRoles }
+                        })
                         return (
-                          <div key={emp.id}
-                            onClick={() => setForm(f => ({ ...f, empresaIds: checked ? f.empresaIds.filter(id => id !== emp.id) : [...(f.empresaIds || []), emp.id] }))}
-                            style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', cursor: 'pointer', background: checked ? `${emp.cor}10` : T.white, borderBottom: i < EMPRESAS.length - 1 ? `1px solid ${T.borderLight}` : 'none', userSelect: 'none' }}>
+                          <div key={emp.id} onClick={toggle}
+                            style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', cursor: 'pointer', background: checked ? `${emp.cor}10` : T.white, borderBottom: i < empList.length - 1 ? `1px solid ${T.borderLight}` : 'none', userSelect: 'none' }}>
                             <div style={{ width: 18, height: 18, borderRadius: 4, flexShrink: 0, border: `2px solid ${checked ? emp.cor : T.border}`, background: checked ? emp.cor : T.white, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                               {checked && <span style={{ color: '#fff', fontSize: 10, fontWeight: 900, lineHeight: 1 }}>✓</span>}
                             </div>
                             <div style={{ width: 30, height: 30, borderRadius: 7, background: `${emp.cor}18`, border: `1px solid ${emp.cor}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, color: emp.cor, fontSize: 11, flexShrink: 0 }}>{emp.initials}</div>
-                            <div style={{ flex: 1 }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
                               <div style={{ fontWeight: 600, fontSize: 13, color: checked ? emp.cor : T.text }}>{emp.nome}</div>
-                              <div style={{ fontSize: 11, color: T.muted }}>{emp.setor}</div>
+                              <div style={{ fontSize: 11, color: T.muted }}>{emp.setor || emp.segmento || ''}</div>
                             </div>
-                            {checked && <span style={{ color: emp.cor, fontSize: 11, fontWeight: 700, flexShrink: 0 }}>✓ Acesso</span>}
+                            {checked && (
+                              <select value={form.empresaRoles?.[emp.id] || 'gerente'}
+                                onClick={e => e.stopPropagation()}
+                                onChange={e => { const role = e.target.value; setForm(f => ({ ...f, empresaRoles: { ...(f.empresaRoles || {}), [emp.id]: role } })) }}
+                                style={{ flexShrink: 0, background: T.white, border: `1.5px solid ${emp.cor}55`, borderRadius: 7, padding: '5px 8px', fontSize: 12, color: T.text, fontFamily: 'inherit', cursor: 'pointer' }}>
+                                {PERFIS_EMPRESA.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                              </select>
+                            )}
                           </div>
                         )
                       })}
@@ -912,7 +906,7 @@ export default function Usuarios({ usuario }) {
 
                   {/* Perfil */}
                   <div style={{ marginBottom: 20 }}>
-                    <label style={lblSt}>Perfil de Acesso</label>
+                    <label style={lblSt}>Perfil padrão (aplicado ao marcar empresas)</label>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                       {PERFIS.map(p => (
                         <div key={p.id} onClick={() => setForm(f => ({ ...f, perfil: p.id }))}
@@ -974,28 +968,34 @@ export default function Usuarios({ usuario }) {
                 </div>
               ) : (
                 <div>
-                  <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
-                    <button onClick={marcarTudo} style={{ background: '#fff7ed', color: T.primary, border: `1px solid ${T.primary}44`, borderRadius: 7, padding: '6px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>✓ Marcar tudo</button>
-                    <button onClick={desmarcarTudo} style={{ background: T.bg, color: T.sub, border: `1px solid ${T.border}`, borderRadius: 7, padding: '6px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>✕ Desmarcar tudo</button>
-                    <button onClick={aplicarPadrao} style={{ background: T.bg, color: T.sub, border: `1px solid ${T.border}`, borderRadius: 7, padding: '6px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>↺ Padrão do perfil ({PERFIS.find(p => p.id === form.perfil)?.nome})</button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 12, color: T.sub }}>Permissões do perfil:</span>
+                    <select value={permPerfil} onChange={e => setPermPerfil(e.target.value)}
+                      style={{ background: T.white, border: `1.5px solid ${T.border}`, borderRadius: 8, padding: '6px 10px', fontSize: 13, color: T.text, fontFamily: 'inherit', cursor: 'pointer' }}>
+                      {PERFIS_EMPRESA.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                    </select>
+                    <span style={{ marginLeft: 'auto', fontSize: 11, color: T.muted, background: T.bg, borderRadius: 6, padding: '4px 10px' }}>🔒 Somente leitura — definido pelo perfil</span>
                   </div>
                   <div style={{ overflowX: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                       <thead>
                         <tr style={{ background: T.bg }}>
                           <th style={{ padding: '9px 14px', textAlign: 'left', fontWeight: 700, color: T.text, borderBottom: `2px solid ${T.border}` }}>Módulo</th>
-                          {ACOES.map(a => <th key={a} style={{ padding: '9px 10px', textAlign: 'center', fontWeight: 700, color: T.sub, borderBottom: `2px solid ${T.border}` }}>{a}</th>)}
+                          {ACOES_RP.map(([aid, alabel]) => <th key={aid} style={{ padding: '9px 10px', textAlign: 'center', fontWeight: 700, color: T.sub, borderBottom: `2px solid ${T.border}` }}>{alabel}</th>)}
                         </tr>
                       </thead>
                       <tbody>
-                        {MODULOS.map((modulo, i) => (
-                          <tr key={modulo} style={{ background: i % 2 === 0 ? T.white : T.bg }}>
-                            <td style={{ padding: '10px 14px', fontWeight: 600, color: T.text, borderBottom: `1px solid ${T.borderLight}` }}>{modulo}</td>
-                            {ACOES.map(acao => (
-                              <td key={acao} style={{ padding: '10px', textAlign: 'center', borderBottom: `1px solid ${T.borderLight}` }}>
-                                <input type="checkbox" checked={formPerms[modulo]?.[acao] || false} onChange={() => togglePerm(modulo, acao)} style={{ width: 15, height: 15, cursor: 'pointer', accentColor: T.primary }} />
-                              </td>
-                            ))}
+                        {MODULOS_RP.map(([mid, mlabel], i) => (
+                          <tr key={mid} style={{ background: i % 2 === 0 ? T.white : T.bg }}>
+                            <td style={{ padding: '10px 14px', fontWeight: 600, color: T.text, borderBottom: `1px solid ${T.borderLight}` }}>{mlabel}</td>
+                            {ACOES_RP.map(([aid]) => {
+                              const ok = !!rolePerms?.[permPerfil]?.[mid]?.[aid]
+                              return (
+                                <td key={aid} style={{ padding: '10px', textAlign: 'center', borderBottom: `1px solid ${T.borderLight}`, color: ok ? T.green : T.muted, fontWeight: 800 }}>
+                                  {ok ? '✓' : '–'}
+                                </td>
+                              )
+                            })}
                           </tr>
                         ))}
                       </tbody>
@@ -1038,7 +1038,7 @@ export default function Usuarios({ usuario }) {
                 { icon: '✉', label: 'E-mail', val: viewUser.email },
                 { icon: '📱', label: 'Telefone', val: viewUser.telefone || '—' },
                 { icon: '💼', label: 'Cargo', val: viewUser.cargo },
-                { icon: '🏢', label: 'Empresas com Acesso', val: empNomes(viewUser.empresaIds).join(', ') || '—' },
+                { icon: '🏢', label: 'Empresas e perfil', val: viewUser.isMaster ? 'Todas as empresas (Master)' : ((viewUser.vinculos || []).map(v => `${empNome(v.empresa_id)} — ${perfilNome(v.role)}`).join(', ') || '—') },
                 { icon: '🕐', label: 'Último acesso', val: viewUser.ultimoAcesso },
                 { icon: '📅', label: 'Data de cadastro', val: viewUser.criadoEm },
               ].map(({ icon, label, val }) => (

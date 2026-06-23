@@ -327,3 +327,18 @@ export const getMyAccess = async () => {
   ;(vinc || []).forEach(v => { empresas[v.empresa_id] = v.role })
   return { isMaster: !!(roleRow && roleRow.is_master), empresas }
 }
+
+// ── Matriz de permissões por perfil (Fase 3 — exibição read-only) ──
+// Retorna { perfil: { modulo: { acao: bool } } } a partir de role_permissions.
+export const getRolePermissions = async () => {
+  const { data } = await supabase
+    .from('role_permissions')
+    .select('perfil, modulo, acao, permitido')
+  const map = {}
+  ;(data || []).forEach(r => {
+    if (!map[r.perfil]) map[r.perfil] = {}
+    if (!map[r.perfil][r.modulo]) map[r.perfil][r.modulo] = {}
+    map[r.perfil][r.modulo][r.acao] = !!r.permitido
+  })
+  return map
+}
