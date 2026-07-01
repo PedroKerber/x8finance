@@ -10,6 +10,11 @@ import {
   getPersonalGoals, savePersonalGoal, deletePersonalGoal,
   getPersonalCategories, savePersonalCategory, deletePersonalCategory,
   getNetWorthSnapshots, upsertNetWorthSnapshot,
+  savePersonalTransactions,
+  getPersonalRecurrences, savePersonalRecurrence, deletePersonalRecurrence, generateDueRecurrences,
+  getPersonalTransfers, savePersonalTransfer, deletePersonalTransfer,
+  getPersonalBudgets, savePersonalBudget, deletePersonalBudget,
+  getCardInvoices, payCardInvoice, getMonthlyClosings, savePersonalClosing,
 } from '../personalSupabase'
 import { CATS_RECEITA_PF, CATS_DESPESA_PF } from '../personalData'
 import PersonalSidebar from './PersonalSidebar'
@@ -24,6 +29,10 @@ import PersonalMetas from './pages/PersonalMetas'
 import PersonalRelatorios from './pages/PersonalRelatorios'
 import PersonalCategorias from './pages/PersonalCategorias'
 import PersonalPatrimonio from './pages/PersonalPatrimonio'
+import PersonalOrcamento from './pages/PersonalOrcamento'
+import PersonalFechamento from './pages/PersonalFechamento'
+import PersonalRecorrentes from './pages/PersonalRecorrentes'
+import PersonalImportar from './pages/PersonalImportar'
 
 export default function PersonalApp({ usuario, profile, perfilFoto, onLogout }) {
   const isMobile = useMobile()
@@ -36,6 +45,11 @@ export default function PersonalApp({ usuario, profile, perfilFoto, onLogout }) 
   const [goals, setGoals] = useState([])
   const [categories, setCategories] = useState([])
   const [snapshots, setSnapshots] = useState([])
+  const [recurrences, setRecurrences] = useState([])
+  const [transfers, setTransfers] = useState([])
+  const [budgets, setBudgets] = useState([])
+  const [cardInvoices, setCardInvoices] = useState([])
+  const [closings, setClosings] = useState([])
   const [loading, setLoading] = useState(true)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('norvo_pf_sidebar') === '1')
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -43,20 +57,26 @@ export default function PersonalApp({ usuario, profile, perfilFoto, onLogout }) 
 
   useEffect(() => { localStorage.setItem('norvo_pf_page', page) }, [page])
 
-  // Carrega dados pessoais (RLS já filtra por user_id)
+  // Carrega dados pessoais (RLS já filtra por user_id).
+  // Fetches F5 usam fallback vazio para não quebrar caso a migration 0013 ainda não
+  // esteja aplicada — o núcleo F1–F4 continua carregando normalmente.
   useEffect(() => {
     let alive = true
-    Promise.all([
-      getPersonalAccounts(), getPersonalTransactions(), getPersonalCards(),
-      getPersonalInvestments(), getPersonalDebts(), getPersonalGoals(),
-      getPersonalCategories(), getNetWorthSnapshots(),
-    ])
-      .then(async ([accs, txs, crds, invs, dbts, gls, cats, snaps]) => {
+    const safe = (p) => p.catch(() => [])
+    ;(async () => {
+      try {
+        try { await generateDueRecurrences(usuario.id) } catch (e) { /* recorrência é best-effort */ }
+        const [accs, txs, crds, invs, dbts, gls, cats, snaps, recs, trs, buds, cinv, clos] = await Promise.all([
+          getPersonalAccounts(), getPersonalTransactions(), getPersonalCards(),
+          getPersonalInvestments(), getPersonalDebts(), getPersonalGoals(),
+          getPersonalCategories(), getNetWorthSnapshots(),
+          safe(getPersonalRecurrences()), safe(getPersonalTransfers()), safe(getPersonalBudgets()),
+          safe(getCardInvoices()), safe(getMonthlyClosings()),
+        ])
         if (!alive) return
-        setAccounts(accs); setTransactions(txs); setCards(crds)
-        setInvestments(invs); setDebts(dbts); setGoals(gls); setCategories(cats)
-        setSnapshots(snaps)
-        // Registra/atualiza o snapshot do patrimônio do mês corrente (dado real, idempotente por mês)
+        setAccounts(accs); setTransactions(txs); setCards(crds); setInvestments(invs)
+        setDebts(dbts); setGoals(gls); setCategories(cats); setSnapshots(snaps)
+        setRecurrences(recs); setTransfers(trs); setBudgets(buds); setCardInvoices(cinv); setClosings(clos)
         try {
           const accountsTotal = accs.reduce((s, a) => s + (a.saldoAtual || 0), 0)
           const investTotal = invs.reduce((s, i) => s + (i.current || 0), 0)
@@ -64,10 +84,10 @@ export default function PersonalApp({ usuario, profile, perfilFoto, onLogout }) 
           await upsertNetWorthSnapshot(usuario.id, { accounts: accountsTotal, investments: investTotal, debts: debtsTotal })
           const fresh = await getNetWorthSnapshots()
           if (alive) setSnapshots(fresh)
-        } catch (e) { /* snapshot é best-effort; não bloqueia o app */ }
-      })
-      .catch(console.error)
-      .finally(() => { if (alive) setLoading(false) })
+        } catch (e) { /* snapshot é best-effort */ }
+      } catch (e) { console.error(e) }
+      finally { if (alive) setLoading(false) }
+    })()
     return () => { alive = false }
   }, [usuario])
 
@@ -131,6 +151,63 @@ export default function PersonalApp({ usuario, profile, perfilFoto, onLogout }) 
     await deletePersonalCategory(id); setCategories(prev => prev.filter(x => x.id !== id))
   }, [])
 
+  // ── F5: lote (parcelamento), recorrências, transferências, orçamento, fatura, fechamento ──
+  const onSaveTxBatch = useCallback(async (items) => {
+    await savePersonalTransactions(items, usuario.id)
+    setTransactions(prev => [...items, ...prev])
+  }, [usuario])
+
+  const onSaveRecurrence = useCallback(async (r) => {
+    const id = await savePersonalRecurrence(r, usuario.id)
+    // gera imediatamente os lançamentos vencidos e recarrega
+    try { await generateDueRecurrences(usuario.id) } catch (e) { /* best-effort */ }
+    const [recs, txs] = await Promise.all([getPersonalRecurrences(), getPersonalTransactions()])
+    setRecurrences(recs); setTransactions(txs)
+    return id
+  }, [usuario])
+  const onDeleteRecurrence = useCallback(async (id) => {
+    await deletePersonalRecurrence(id); setRecurrences(prev => prev.filter(x => x.id !== id))
+  }, [])
+
+  const onSaveTransfer = useCallback(async (t) => {
+    const saved = await savePersonalTransfer(t, usuario.id)
+    // movimentação interna: origem −valor, destino +valor
+    const from = accounts.find(a => a.id === t.fromId)
+    const to = accounts.find(a => a.id === t.toId)
+    if (from) { const upd = { ...from, saldoAtual: (from.saldoAtual || 0) - (t.valor || 0) }; await savePersonalAccount(upd, usuario.id); setAccounts(prev => prev.map(a => a.id === upd.id ? upd : a)) }
+    if (to) { const upd = { ...to, saldoAtual: (to.saldoAtual || 0) + (t.valor || 0) }; await savePersonalAccount(upd, usuario.id); setAccounts(prev => prev.map(a => a.id === upd.id ? upd : a)) }
+    setTransfers(prev => [saved, ...prev])
+  }, [usuario, accounts])
+  const onDeleteTransfer = useCallback(async (id) => {
+    const t = transfers.find(x => x.id === id)
+    if (t) { // reverte a movimentação
+      const from = accounts.find(a => a.id === t.fromId); const to = accounts.find(a => a.id === t.toId)
+      if (from) { const upd = { ...from, saldoAtual: (from.saldoAtual || 0) + (t.valor || 0) }; await savePersonalAccount(upd, usuario.id); setAccounts(prev => prev.map(a => a.id === upd.id ? upd : a)) }
+      if (to) { const upd = { ...to, saldoAtual: (to.saldoAtual || 0) - (t.valor || 0) }; await savePersonalAccount(upd, usuario.id); setAccounts(prev => prev.map(a => a.id === upd.id ? upd : a)) }
+    }
+    await deletePersonalTransfer(id); setTransfers(prev => prev.filter(x => x.id !== id))
+  }, [usuario, accounts, transfers])
+
+  const onSaveBudget = useCallback(async (b) => {
+    const saved = await savePersonalBudget(b, usuario.id)
+    setBudgets(prev => prev.some(x => x.id === saved.id) ? prev.map(x => x.id === saved.id ? saved : x) : [...prev, saved])
+  }, [usuario])
+  const onDeleteBudget = useCallback(async (id) => {
+    await deletePersonalBudget(id); setBudgets(prev => prev.filter(x => x.id !== id))
+  }, [])
+
+  const onPayInvoice = useCallback(async ({ cardId, competencia, amount, accountId }) => {
+    await payCardInvoice({ userId: usuario.id, cardId, competencia, amount, accountId })
+    const acc = accounts.find(a => a.id === accountId)
+    if (acc) { const upd = { ...acc, saldoAtual: (acc.saldoAtual || 0) - (amount || 0) }; await savePersonalAccount(upd, usuario.id); setAccounts(prev => prev.map(a => a.id === upd.id ? upd : a)) }
+    const cinv = await getCardInvoices(); setCardInvoices(cinv)
+  }, [usuario, accounts])
+
+  const onSaveClosing = useCallback(async (c) => {
+    await savePersonalClosing(c, usuario.id)
+    const clos = await getMonthlyClosings(); setClosings(clos)
+  }, [usuario])
+
   // Categorias efetivas = padrão (fixas) + personalizadas. `active` controla o dropdown;
   // a resolução de nome/cor usa todas (mantém registros antigos legíveis mesmo se inativadas).
   const catsReceita = useMemo(() => {
@@ -147,10 +224,13 @@ export default function PersonalApp({ usuario, profile, perfilFoto, onLogout }) 
   const shared = {
     usuario, profile, accounts, transactions, cards, investments, debts, goals,
     categories, snapshots, catsReceita, catsDespesa,
-    onSaveTx, onDeleteTx, onSaveAccount, onDeleteAccount,
+    recurrences, transfers, budgets, cardInvoices, closings,
+    onSaveTx, onSaveTxBatch, onDeleteTx, onSaveAccount, onDeleteAccount,
     onSaveCard, onDeleteCard, onSaveInvestment, onDeleteInvestment,
     onSaveDebt, onDeleteDebt, onSaveGoal, onDeleteGoal,
-    onSaveCategory, onDeleteCategory, setPage,
+    onSaveCategory, onDeleteCategory,
+    onSaveRecurrence, onDeleteRecurrence, onSaveTransfer, onDeleteTransfer,
+    onSaveBudget, onDeleteBudget, onPayInvoice, onSaveClosing, setPage,
   }
 
   const renderPage = () => {
@@ -167,6 +247,10 @@ export default function PersonalApp({ usuario, profile, perfilFoto, onLogout }) 
       case 'dividas':       return <PersonalDividas {...shared} />
       case 'metas':         return <PersonalMetas {...shared} />
       case 'patrimonio':    return <PersonalPatrimonio {...shared} />
+      case 'orcamento':     return <PersonalOrcamento {...shared} />
+      case 'fechamento':    return <PersonalFechamento {...shared} />
+      case 'recorrentes':   return <PersonalRecorrentes {...shared} />
+      case 'importar':      return <PersonalImportar {...shared} />
       case 'categorias':    return <PersonalCategorias {...shared} />
       case 'relatorios':    return <PersonalRelatorios {...shared} />
       default:              return <PersonalDashboard {...shared} />

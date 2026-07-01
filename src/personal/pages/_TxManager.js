@@ -1,11 +1,11 @@
 import { useState, useMemo } from 'react'
 import { T, fmt, fd, uid, errMsgAcao } from '../../theme'
 import { Card, Btn, Modal, Input, Select, Table, Toast, Confirm, EmptyState, StatusBadge } from '../../components/ui'
-import { FORMAS_PAGAMENTO_PF, RECORRENCIAS_PF } from '../../personalData'
+import { FORMAS_PAGAMENTO_PF, RECORRENCIAS_PF, FREQ_RECORRENCIA_PF } from '../../personalData'
 
 // Gerenciador genérico de transações pessoais (receita/despesa).
 // Reusado por PersonalReceitas e PersonalDespesas.
-export default function TxManager({ tipo, title, accent, cats, statusOptions, transactions, accounts, cards = [], onSaveTx, onDeleteTx }) {
+export default function TxManager({ tipo, title, accent, cats, statusOptions, transactions, accounts, cards = [], onSaveTx, onSaveTxBatch, onSaveRecurrence, onDeleteTx }) {
   const isReceita = tipo === 'receita'
   const hoje = new Date().toISOString().slice(0, 10)
   const mesAtual = hoje.slice(0, 7)
@@ -42,7 +42,8 @@ export default function TxManager({ tipo, title, accent, cats, statusOptions, tr
   const novo = () => {
     setForm({ id: uid(), tipo, data: hoje, valor: '', categoria: catsAtivas[0]?.id || '', desc: '',
       accountId: accounts[0]?.id || '', cartaoId: '', forma: isReceita ? '' : 'Pix',
-      recorrencia: isReceita ? '' : 'Único', status: statusOptions[0], anexoUrl: '', _edit: false })
+      recorrencia: isReceita ? '' : 'Único', status: statusOptions[0], anexoUrl: '',
+      recorrente: false, frequency: 'mensal', endDate: '', parcelar: false, parcelas: '', _edit: false })
     setModal(true)
   }
   const editar = (row) => { setForm({ ...row, valor: String(row.valor ?? ''), _edit: true }); setModal(true) }
@@ -50,9 +51,33 @@ export default function TxManager({ tipo, title, accent, cats, statusOptions, tr
   const salvar = async () => {
     const valorNum = parseFloat(String(form.valor).replace(',', '.')) || 0
     if (valorNum <= 0) { setToast({ msg: 'Informe um valor válido.', type: 'error' }); return }
-    const item = { ...form, valor: valorNum }
-    delete item._edit
     try {
+      // Parcelamento: gera N parcelas mensais (só na criação)
+      if (!form._edit && form.parcelar && parseInt(form.parcelas, 10) > 1) {
+        const n = Math.min(360, parseInt(form.parcelas, 10))
+        const groupId = uid()
+        const valorParcela = Math.round((valorNum / n) * 100) / 100
+        const items = []
+        for (let i = 0; i < n; i++) {
+          const d = new Date(form.data); d.setMonth(d.getMonth() + i)
+          items.push({ id: uid(), tipo, valor: valorParcela, data: d.toISOString().slice(0, 10), categoria: form.categoria,
+            desc: `${form.desc || catNome(form.categoria)} (${i + 1}/${n})`, accountId: form.accountId, cartaoId: form.cartaoId,
+            forma: form.forma, status: i === 0 ? form.status : 'A Pagar', installmentId: groupId, parcelaNum: i + 1, parcelaTotal: n })
+        }
+        await onSaveTxBatch(items)
+        setModal(false); setForm(null)
+        setToast({ msg: `${n} parcelas de ${fmt(valorParcela)} criadas!`, type: 'success' }); return
+      }
+      // Recorrência: cria o modelo (a geração dos lançamentos é automática)
+      if (!form._edit && form.recorrente) {
+        await onSaveRecurrence({ tipo, valor: valorNum, categoria: form.categoria, desc: form.desc, accountId: form.accountId,
+          cardId: form.cartaoId, frequency: form.frequency || 'mensal', startDate: form.data, endDate: form.endDate || null, status: 'ativo' })
+        setModal(false); setForm(null)
+        setToast({ msg: 'Recorrência criada! Os lançamentos são gerados automaticamente.', type: 'success' }); return
+      }
+      // Lançamento único
+      const item = { ...form, valor: valorNum }
+      delete item._edit; delete item.recorrente; delete item.frequency; delete item.endDate; delete item.parcelar; delete item.parcelas
       await onSaveTx(item, form._edit)
       setModal(false); setForm(null)
       setToast({ msg: form._edit ? 'Atualizado com sucesso!' : 'Lançamento salvo!', type: 'success' })
@@ -164,6 +189,35 @@ export default function TxManager({ tipo, title, accent, cats, statusOptions, tr
           )}
           <Select label="Status" value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))} options={statusOptions} />
           <Input label="Anexo (link, opcional)" value={form.anexoUrl} onChange={e => setForm(f => ({ ...f, anexoUrl: e.target.value }))} placeholder="https://..." />
+
+          {!form._edit && (
+            <div style={{ marginTop: 6, paddingTop: 12, borderTop: `1px solid ${T.borderLight}` }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: T.text, cursor: 'pointer', marginBottom: form.recorrente ? 10 : 0 }}>
+                <input type="checkbox" checked={form.recorrente} onChange={e => setForm(f => ({ ...f, recorrente: e.target.checked, parcelar: e.target.checked ? false : f.parcelar }))} />
+                🔁 Repetir automaticamente (recorrente)
+              </label>
+              {form.recorrente && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <Select label="Frequência" value={form.frequency} onChange={e => setForm(f => ({ ...f, frequency: e.target.value }))} options={FREQ_RECORRENCIA_PF.map(x => ({ value: x.id, label: x.label }))} style={{ marginBottom: 0 }} />
+                  <Input label="Repetir até (opcional)" type="date" value={form.endDate} onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))} style={{ marginBottom: 0 }} />
+                </div>
+              )}
+              {!isReceita && (
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: T.text, cursor: 'pointer', marginTop: 12, marginBottom: form.parcelar ? 10 : 0 }}>
+                  <input type="checkbox" checked={form.parcelar} onChange={e => setForm(f => ({ ...f, parcelar: e.target.checked, recorrente: e.target.checked ? false : f.recorrente }))} />
+                  💳 Parcelar esta despesa
+                </label>
+              )}
+              {!isReceita && form.parcelar && (
+                <>
+                  <Input label="Número de parcelas" type="number" value={form.parcelas} onChange={e => setForm(f => ({ ...f, parcelas: e.target.value }))} placeholder="Ex.: 12" style={{ marginBottom: 6 }} />
+                  {parseInt(form.parcelas, 10) > 1 && parseFloat(String(form.valor).replace(',', '.')) > 0 && (
+                    <div style={{ fontSize: 12, color: T.muted }}>{form.parcelas}× de {fmt((parseFloat(String(form.valor).replace(',', '.')) || 0) / parseInt(form.parcelas, 10))} · o valor informado acima é o total.</div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
         </Modal>
       )}
     </div>

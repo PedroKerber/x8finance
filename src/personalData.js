@@ -53,6 +53,11 @@ export const TIPOS_INVESTIMENTO_PF = [
 
 export const FORMAS_PAGAMENTO_PF = ['Pix', 'Dinheiro', 'Débito', 'Crédito', 'Boleto', 'Transferência']
 export const RECORRENCIAS_PF     = ['Único', 'Mensal', 'Semanal', 'Anual']
+export const FREQ_RECORRENCIA_PF = [
+  { id: 'mensal',  label: 'Mensal'  },
+  { id: 'semanal', label: 'Semanal' },
+  { id: 'anual',   label: 'Anual'   },
+]
 export const STATUS_RECEITA_PF   = ['Recebida', 'A receber']
 export const STATUS_DESPESA_PF   = ['Pago', 'A Pagar', 'Pendente', 'Atrasado']
 

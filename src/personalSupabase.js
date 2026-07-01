@@ -61,6 +61,7 @@ const mapTx = (r) => ({
   forma: r.forma_pagamento || '', recorrencia: r.recorrencia || '', status: r.status || '',
   cartaoId: r.credit_card_id || '', anexoUrl: r.anexo_url || '',
   parcelaNum: r.parcela_num || null, parcelaTotal: r.parcela_total || null,
+  recurrenceId: r.recurrence_id || '', installmentId: r.installment_id || '',
 })
 
 const toTxRow = (item, userId) => ({
@@ -70,6 +71,7 @@ const toTxRow = (item, userId) => ({
   recorrencia: item.recorrencia || null, status: item.status || null,
   credit_card_id: item.cartaoId || null, anexo_url: item.anexoUrl || null,
   parcela_num: item.parcelaNum || null, parcela_total: item.parcelaTotal || null,
+  recurrence_id: item.recurrenceId || null, installment_id: item.installmentId || null,
 })
 
 export const getPersonalTransactions = async () => {
@@ -247,5 +249,138 @@ export const upsertNetWorthSnapshot = async (userId, { accounts, investments, de
   }
   const { error } = await supabase.from('personal_net_worth_snapshots')
     .upsert(row, { onConflict: 'user_id,snapshot_date' })
+  if (error) throw error
+}
+
+// ── F5: helper de id client-side (para geração de lançamentos) ──────────────
+const genId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8)
+
+// ── Recorrências (F5) ───────────────────────────────────────────────────────
+const mapRecurrence = (r) => ({
+  id: r.id, tipo: r.tipo, valor: Number(r.valor) || 0, categoria: r.categoria || '', descricao: r.descricao || '',
+  accountId: r.account_id || '', cardId: r.credit_card_id || '', frequency: r.frequency || 'mensal',
+  startDate: r.start_date, endDate: r.end_date, status: r.status || 'ativo', lastGenerated: r.last_generated,
+})
+export const getPersonalRecurrences = async () => {
+  const { data, error } = await supabase.from('personal_recurrences').select('*').order('created_at', { ascending: true })
+  if (error) throw error
+  return (data || []).map(mapRecurrence)
+}
+export const savePersonalRecurrence = async (r, userId) => {
+  const row = {
+    id: r.id || genId(), user_id: userId, tipo: r.tipo, valor: r.valor || 0, categoria: r.categoria || null,
+    descricao: r.descricao || null, account_id: r.accountId || null, credit_card_id: r.cardId || null,
+    frequency: r.frequency || 'mensal', start_date: r.startDate || null, end_date: r.endDate || null,
+    status: r.status || 'ativo', last_generated: r.lastGenerated || null,
+  }
+  const { error } = await supabase.from('personal_recurrences').upsert(row)
+  if (error) throw error
+  return row.id
+}
+export const deletePersonalRecurrence = async (id) => {
+  const { error } = await supabase.from('personal_recurrences').delete().eq('id', id)
+  if (error) throw error
+}
+const addFreq = (d, freq) => {
+  const nd = new Date(d)
+  if (freq === 'semanal') nd.setDate(nd.getDate() + 7)
+  else if (freq === 'anual') nd.setFullYear(nd.getFullYear() + 1)
+  else nd.setMonth(nd.getMonth() + 1)
+  return nd
+}
+// Gera os lançamentos vencidos de recorrências ativas até hoje (idempotente via last_generated).
+export const generateDueRecurrences = async (userId) => {
+  const recs = await getPersonalRecurrences()
+  const today = new Date(); today.setHours(0, 0, 0, 0)
+  const rows = []
+  for (const r of recs) {
+    if (r.status !== 'ativo' || !r.startDate) continue
+    const end = r.endDate ? new Date(r.endDate) : null
+    let cur = r.lastGenerated ? addFreq(new Date(r.lastGenerated), r.frequency) : new Date(r.startDate)
+    let last = r.lastGenerated || null, guard = 0
+    while (cur <= today && (!end || cur <= end) && guard < 400) {
+      const dateStr = cur.toISOString().slice(0, 10)
+      rows.push(toTxRow({
+        id: genId(), tipo: r.tipo, valor: r.valor, data: dateStr, categoria: r.categoria,
+        desc: r.descricao, accountId: r.accountId, cartaoId: r.cardId,
+        status: r.tipo === 'receita' ? 'Recebida' : 'Pago', recurrenceId: r.id,
+      }, userId))
+      last = dateStr; cur = addFreq(cur, r.frequency); guard++
+    }
+    if (last && last !== r.lastGenerated) {
+      await supabase.from('personal_recurrences').update({ last_generated: last }).eq('id', r.id)
+    }
+  }
+  if (rows.length) { const { error } = await supabase.from('personal_transactions').insert(rows); if (error) throw error }
+  return rows.length
+}
+
+// ── Transferências entre contas (F5) ────────────────────────────────────────
+const mapTransfer = (r) => ({ id: r.id, fromId: r.from_account_id || '', toId: r.to_account_id || '', valor: Number(r.valor) || 0, data: r.data, obs: r.obs || '' })
+export const getPersonalTransfers = async () => {
+  const { data, error } = await supabase.from('personal_transfers').select('*').order('data', { ascending: false })
+  if (error) throw error
+  return (data || []).map(mapTransfer)
+}
+export const savePersonalTransfer = async (t, userId) => {
+  const row = { id: t.id || genId(), user_id: userId, from_account_id: t.fromId || null, to_account_id: t.toId || null, valor: t.valor || 0, data: t.data || null, obs: t.obs || null }
+  const { error } = await supabase.from('personal_transfers').upsert(row)
+  if (error) throw error
+  return { ...t, id: row.id }
+}
+export const deletePersonalTransfer = async (id) => {
+  const { error } = await supabase.from('personal_transfers').delete().eq('id', id)
+  if (error) throw error
+}
+
+// ── Orçamento mensal por categoria (F5) ─────────────────────────────────────
+const mapBudget = (r) => ({ id: r.id, categoria: r.categoria, amount: Number(r.amount) || 0 })
+export const getPersonalBudgets = async () => {
+  const { data, error } = await supabase.from('personal_budgets').select('*').order('created_at', { ascending: true })
+  if (error) throw error
+  return (data || []).map(mapBudget)
+}
+export const savePersonalBudget = async (b, userId) => {
+  const row = { id: b.id || genId(), user_id: userId, categoria: b.categoria, amount: b.amount || 0 }
+  const { error } = await supabase.from('personal_budgets').upsert(row)
+  if (error) throw error
+  return { ...b, id: row.id }
+}
+export const deletePersonalBudget = async (id) => {
+  const { error } = await supabase.from('personal_budgets').delete().eq('id', id)
+  if (error) throw error
+}
+
+// ── Faturas de cartão (F5) ──────────────────────────────────────────────────
+const mapInvoice = (r) => ({ id: r.id, cardId: r.card_id, competencia: r.competencia, amount: Number(r.amount) || 0, status: r.status || 'aberta', accountId: r.account_id || '', paidAt: r.paid_at })
+export const getCardInvoices = async () => {
+  const { data, error } = await supabase.from('personal_card_invoices').select('*')
+  if (error) throw error
+  return (data || []).map(mapInvoice)
+}
+export const payCardInvoice = async ({ userId, cardId, competencia, amount, accountId }) => {
+  const row = { user_id: userId, card_id: cardId, competencia, amount: amount || 0, status: 'paga', account_id: accountId || null, paid_at: new Date().toISOString() }
+  const { error } = await supabase.from('personal_card_invoices').upsert(row, { onConflict: 'user_id,card_id,competencia' })
+  if (error) throw error
+}
+
+// ── Fechamento mensal (F5) ──────────────────────────────────────────────────
+const mapClosing = (r) => ({
+  id: r.id, month: r.month, year: r.year, totalIncome: Number(r.total_income) || 0, totalExpenses: Number(r.total_expenses) || 0,
+  balance: Number(r.balance) || 0, accountsTotal: Number(r.accounts_total) || 0, investmentsTotal: Number(r.investments_total) || 0,
+  debtsTotal: Number(r.debts_total) || 0, netWorth: Number(r.net_worth) || 0, notes: r.notes || '', closedAt: r.closed_at,
+})
+export const getMonthlyClosings = async () => {
+  const { data, error } = await supabase.from('personal_monthly_closings').select('*').order('year', { ascending: false }).order('month', { ascending: false })
+  if (error) throw error
+  return (data || []).map(mapClosing)
+}
+export const savePersonalClosing = async (c, userId) => {
+  const row = {
+    user_id: userId, month: c.month, year: c.year, total_income: c.totalIncome || 0, total_expenses: c.totalExpenses || 0,
+    balance: c.balance || 0, accounts_total: c.accountsTotal || 0, investments_total: c.investmentsTotal || 0,
+    debts_total: c.debtsTotal || 0, net_worth: c.netWorth || 0, notes: c.notes || null, closed_at: new Date().toISOString(),
+  }
+  const { error } = await supabase.from('personal_monthly_closings').upsert(row, { onConflict: 'user_id,year,month' })
   if (error) throw error
 }

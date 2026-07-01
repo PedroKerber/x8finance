@@ -39,6 +39,14 @@ function Ico({ name, size = 18 }) {
     inner = <><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></>
   else if (name === 'patrimonio')
     inner = <><path d="M6 3h12l4 6-10 12L2 9z"/><path d="M11 3 8 9l4 12 4-12-3-6"/><path d="M2 9h20"/></>
+  else if (name === 'recorrentes')
+    inner = <><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></>
+  else if (name === 'orcamento')
+    inner = <><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></>
+  else if (name === 'fechamento')
+    inner = <><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M9 16l2 2 4-4"/></>
+  else if (name === 'importar')
+    inner = <><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></>
   else if (name === 'configuracoes')
     inner = <><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></>
   else if (name === 'chevron_left')  inner = <polyline points="15 18 9 12 15 6"/>
@@ -60,10 +68,11 @@ function Ico({ name, size = 18 }) {
 export const PF_NAV_GROUPS = [
   { label: null, items: [{ id: 'dashboard', label: 'Dashboard', icon: 'dashboard' }] },
   { label: 'Finanças', items: [
-    { id: 'receitas', label: 'Receitas', icon: 'receitas' },
-    { id: 'despesas', label: 'Despesas', icon: 'despesas' },
-    { id: 'contas',   label: 'Contas',   icon: 'contas'   },
-    { id: 'cartoes',  label: 'Cartões',  icon: 'cartoes'  },
+    { id: 'receitas',    label: 'Receitas',    icon: 'receitas'    },
+    { id: 'despesas',    label: 'Despesas',    icon: 'despesas'    },
+    { id: 'contas',      label: 'Contas',      icon: 'contas'      },
+    { id: 'cartoes',     label: 'Cartões',     icon: 'cartoes'     },
+    { id: 'recorrentes', label: 'Recorrentes', icon: 'recorrentes' },
   ]},
   { label: 'Patrimônio', items: [
     { id: 'patrimonio',    label: 'Patrimônio',    icon: 'patrimonio'    },
@@ -71,8 +80,13 @@ export const PF_NAV_GROUPS = [
     { id: 'dividas',       label: 'Dívidas',       icon: 'dividas'       },
     { id: 'metas',         label: 'Metas',         icon: 'metas'         },
   ]},
+  { label: 'Planejamento', items: [
+    { id: 'orcamento',  label: 'Orçamento',  icon: 'orcamento'  },
+    { id: 'fechamento', label: 'Fechamento', icon: 'fechamento' },
+  ]},
   { label: 'Gestão', items: [
     { id: 'categorias', label: 'Categorias', icon: 'categorias' },
+    { id: 'importar',   label: 'Importar',   icon: 'importar'   },
   ]},
   { label: 'Análise', items: [
     { id: 'relatorios', label: 'Relatórios', icon: 'relatorios' },

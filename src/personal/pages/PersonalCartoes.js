@@ -1,19 +1,32 @@
 import { useState, useMemo } from 'react'
-import { T, fmt, uid, errMsgAcao } from '../../theme'
+import { T, fmt, fd, uid, errMsgAcao } from '../../theme'
 import { Card, Btn, Modal, Input, Select, Toast, Confirm, EmptyState, Badge } from '../../components/ui'
 import { BANDEIRAS_CARTAO_PF, CORES_CARTAO_PF } from '../../personalData'
 
 const MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
 const ABERTO = ['A Pagar', 'Pendente', 'Atrasado']
 
-export default function PersonalCartoes({ cards, transactions, onSaveCard, onDeleteCard }) {
+export default function PersonalCartoes({ cards, transactions, accounts = [], cardInvoices = [], onSaveCard, onDeleteCard, onPayInvoice }) {
   const [modal, setModal] = useState(false)
   const [confirmId, setConfirmId] = useState(null)
   const [toast, setToast] = useState(null)
   const [form, setForm] = useState(null)
+  const [payForm, setPayForm] = useState(null)
+  const [detail, setDetail] = useState(null)
 
   const hoje = new Date()
   const mesAtual = hoje.toISOString().slice(0, 7)
+  const invoiceFor = (cardId) => cardInvoices.find(i => i.cardId === cardId && i.competencia === mesAtual)
+  const txDoCartao = (cardId) => transactions.filter(t => t.tipo === 'despesa' && t.cartaoId === cardId && (t.data || '').slice(0, 7) === mesAtual)
+
+  const abrirPagar = (c, fatura) => { setPayForm({ card: c, competencia: mesAtual, amount: fatura, accountId: accounts[0]?.id || '' }); }
+  const confirmarPagar = async () => {
+    if (!payForm.accountId) { setToast({ msg: 'Escolha a conta de pagamento.', type: 'error' }); return }
+    try {
+      await onPayInvoice({ cardId: payForm.card.id, competencia: payForm.competencia, amount: payForm.amount, accountId: payForm.accountId })
+      setPayForm(null); setToast({ msg: 'Fatura marcada como paga! Saída registrada na conta.', type: 'success' })
+    } catch (e) { setToast({ msg: errMsgAcao(e), type: 'error' }) }
+  }
 
   // Métricas por cartão a partir das transações reais (despesas com credit_card_id)
   const metrics = useMemo(() => {
@@ -128,6 +141,21 @@ export default function PersonalCartoes({ cards, transactions, onSaveCard, onDel
                       })}
                     </div>
                   )}
+                  {mt.fatura > 0 && (() => {
+                    const inv = invoiceFor(c.id)
+                    const paga = inv && inv.status === 'paga'
+                    return (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, padding: '8px 10px', background: T.bg, borderRadius: 8 }}>
+                        <span style={{ fontSize: 12, color: T.sub }}>Fatura de {MESES[hoje.getMonth()]}</span>
+                        {paga
+                          ? <Badge label="✓ Paga" color={T.green} bg={T.greenL} />
+                          : <button onClick={() => abrirPagar(c, mt.fatura)} style={{ background: T.primary, color: '#fff', border: 'none', borderRadius: 6, padding: '5px 12px', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Marcar como paga</button>}
+                      </div>
+                    )
+                  })()}
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 6 }}>
+                    <Btn sm full variant="ghost" onClick={() => setDetail(c)}>Ver despesas</Btn>
+                  </div>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <Btn sm full variant="ghost" onClick={() => editar(c)}>Editar</Btn>
                     <Btn sm full variant="ghost" onClick={() => setConfirmId(c.id)} style={{ color: T.red, borderColor: T.red }}>Excluir</Btn>
@@ -137,6 +165,35 @@ export default function PersonalCartoes({ cards, transactions, onSaveCard, onDel
             )
           })}
         </div>
+      )}
+
+      {payForm && (
+        <Modal title={`Pagar fatura — ${payForm.card.name}`} onClose={() => setPayForm(null)}
+          footer={<div style={{ display: 'flex', gap: 10, padding: 16 }}>
+            <Btn full variant="ghost" onClick={() => setPayForm(null)}>Cancelar</Btn>
+            <Btn full onClick={confirmarPagar}>Confirmar pagamento</Btn>
+          </div>}>
+          <div style={{ background: T.bg, borderRadius: 10, padding: '14px 16px', marginBottom: 14, textAlign: 'center' }}>
+            <div style={{ fontSize: 12, color: T.sub }}>Valor da fatura ({MESES[hoje.getMonth()]})</div>
+            <div style={{ fontWeight: 800, fontSize: 24, color: T.text }}>{fmt(payForm.amount)}</div>
+          </div>
+          <Select label="Pagar com a conta" value={payForm.accountId} onChange={e => setPayForm(f => ({ ...f, accountId: e.target.value }))}
+            placeholder={accounts.length ? 'Selecione' : 'Cadastre uma conta primeiro'} options={accounts.map(a => ({ value: a.id, label: `${a.nome} (${fmt(a.saldoAtual)})` }))} />
+          <div style={{ fontSize: 12, color: T.muted }}>Ao confirmar, o valor é debitado do saldo da conta escolhida.</div>
+        </Modal>
+      )}
+
+      {detail && (
+        <Modal title={`Despesas — ${detail.name} (${MESES[hoje.getMonth()]})`} onClose={() => setDetail(null)}>
+          {txDoCartao(detail.id).length === 0
+            ? <EmptyState icon="🧾" title="Sem despesas neste cartão no mês" />
+            : txDoCartao(detail.id).map(t => (
+              <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: `1px solid ${T.borderLight}`, fontSize: 13 }}>
+                <span>{t.desc || '—'} <span style={{ color: T.muted, fontSize: 12 }}>· {fd(t.data)}</span></span>
+                <span style={{ fontWeight: 700, color: T.red }}>{fmt(t.valor)}</span>
+              </div>
+            ))}
+        </Modal>
       )}
 
       {modal && form && (
