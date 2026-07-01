@@ -9,8 +9,11 @@ module.exports = async (req, res) => {
   const caller = await requireMaster(req, res, supabaseAdmin)
   if (!caller) return
 
-  const { email, nome, perfil, cargo, telefone } = req.body || {}
+  const { email, nome, perfil, cargo, telefone, account_type } = req.body || {}
   if (!email) return res.status(400).json({ error: 'Email obrigatório' })
+
+  // Fase 6: conta Pessoa Física é um ambiente independente (sem perfil empresarial).
+  const isPF = account_type === 'pf'
 
   // Step 1: Create user with confirmed email so recovery link works immediately.
   // If user already exists, find their ID from the list.
@@ -20,10 +23,11 @@ module.exports = async (req, res) => {
     email_confirm: true,
     user_metadata: {
       nome:     nome   || email,
-      perfil:   perfil || 'gerente',
+      perfil:   isPF ? null : (perfil || 'gerente'),
       cargo:    cargo  || '',
       telefone: telefone || '',
       status:   'ativo',
+      account_type: isPF ? 'pf' : 'empresarial',
       mustChangePassword: false,
     },
   })
@@ -38,6 +42,15 @@ module.exports = async (req, res) => {
     userId = existing?.id || null
   } else {
     userId = createData.user?.id || null
+  }
+
+  // Fase 6: para conta PF, cria o perfil pessoal (fonte da verdade do tipo de
+  // conta). Idempotente — não sobrescreve um perfil já existente.
+  if (isPF && userId) {
+    const { error: pfErr } = await supabaseAdmin
+      .from('personal_profiles')
+      .upsert({ user_id: userId, nome: nome || email }, { onConflict: 'user_id', ignoreDuplicates: true })
+    if (pfErr) return res.status(400).json({ error: pfErr.message })
   }
 
   // Step 2: Generate a password-setup link using recovery type.

@@ -32,6 +32,10 @@ import Placeholder from './pages/Placeholder'
 import ViabilidadeIncorporacao from './pages/ViabilidadeIncorporacao'
 import MeuPlano from './pages/MeuPlano'
 
+// Fase 6 — Plano Pessoa Física (ambiente independente)
+import { getAccountContext } from './personalSupabase'
+import PersonalApp from './personal/PersonalApp'
+
 const PLACEHOLDER_PAGES = ['fornecedores', 'clientes', 'scanner', 'contas_pagar', 'contas_receber']
 
 export default function App() {
@@ -54,6 +58,7 @@ export default function App() {
   const [loading, setLoading] = useState(true)
   const [perfilFoto, setPerfilFoto] = useState('')
   const [acesso, setAcesso] = useState(null) // { isMaster, empresas } — verdade do servidor (Fase 2)
+  const [accountCtx, setAccountCtx] = useState(null) // Fase 6 — { type: 'pf'|'empresarial', profile }
   const [rolePerms, setRolePerms] = useState({}) // matriz { perfil: { modulo: { acao: bool } } } (Fase 4·E2 — gate do front)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('x8_sidebar') === '1')
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -88,10 +93,20 @@ export default function App() {
   useEffect(() => { localStorage.setItem('x8_last_page', page) }, [page])
   useEffect(() => { if (empresa) localStorage.setItem('x8_last_empresa', empresa.id) }, [empresa])
 
+  // Fase 6: decide o ambiente (Pessoa Física × empresarial) logo após autenticar.
+  // Fonte da verdade = presença de linha em personal_profiles (getAccountContext).
+  useEffect(() => {
+    if (!usuario) { setAccountCtx(null); return }
+    getAccountContext()
+      .then(setAccountCtx)
+      .catch(() => setAccountCtx({ type: 'empresarial', profile: null }))
+  }, [usuario])
+
   // Carrega empresas do Supabase (com seed na 1ª carga) e restaura última empresa.
   // Fallback para localStorage/EMPRESAS durante a transição (Fase 4).
+  // Fase 6: só roda para conta empresarial (conta PF não toca no multiempresas).
   useEffect(() => {
-    if (!usuario) return
+    if (!usuario || !accountCtx || accountCtx.type !== 'empresarial') return
 
     const customLS = (() => {
       try { return JSON.parse(localStorage.getItem(`x8_empresas_${usuario.id}`) || '[]') } catch { return [] }
@@ -161,7 +176,7 @@ export default function App() {
         return next
       })
     }).catch(console.error)
-  }, [usuario])
+  }, [usuario, accountCtx])
 
   // Carrega dados da empresa selecionada do banco
   useEffect(() => {
@@ -225,6 +240,7 @@ export default function App() {
       .forEach(k => localStorage.removeItem(k))
     setPerfilFoto('')
     setAcesso(null)
+    setAccountCtx(null)
     setUsuario(null)
     setEmpresas(EMPRESAS)
     setEmpresa(null)
@@ -394,6 +410,23 @@ export default function App() {
 
   if (!usuario) {
     return <Login onLogin={handleLogin} />
+  }
+
+  // Fase 6: aguarda a definição do ambiente (evita piscar a seleção de empresa)
+  if (!accountCtx) {
+    return (
+      <div style={{ minHeight: '100vh', background: T.sidebar, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ color: '#fff', fontFamily: "'Segoe UI', sans-serif", textAlign: 'center' }}>
+          <div style={{ fontSize: 32, fontWeight: 900, marginBottom: 12 }}><span style={{ color: T.primary }}>Norvo</span></div>
+          <div style={{ color: T.sidebarText, fontSize: 14 }}>Carregando...</div>
+        </div>
+      </div>
+    )
+  }
+
+  // Fase 6: conta Pessoa Física → ambiente pessoal independente (sem empresas/menus corporativos)
+  if (accountCtx.type === 'pf') {
+    return <PersonalApp usuario={usuario} profile={accountCtx.profile} perfilFoto={perfilFoto} onLogout={handleLogout} />
   }
 
   if (!empresa) {
