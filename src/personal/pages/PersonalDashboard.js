@@ -86,7 +86,9 @@ export default function PersonalDashboard({ usuario, profile, accounts, transact
   const dividaMesReducao = prevSnap && curSnap ? (prevSnap.debts - curSnap.debts) : null
 
   const temDados = transactions.length > 0 || accounts.length > 0
-  const primeiroNome = (profile?.nome || usuario?.nome || '').split(' ')[0]
+  // Nome real do usuário logado (fonte de auth), consistente com a Sidebar.
+  // profile.nome (personal_profiles) fica só como fallback secundário.
+  const primeiroNome = (usuario?.nome || profile?.nome || '').split(' ')[0]
   const tooltipStyle = { background: T.white, border: `1px solid ${T.border}`, borderRadius: 10, fontSize: 12, boxShadow: T.shadowMd }
 
   const monthChip = (
