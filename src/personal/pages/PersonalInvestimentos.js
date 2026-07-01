@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { T, fmt, fmtPct, fd, uid, errMsgAcao } from '../../theme'
-import { Card, Btn, Modal, Input, Select, Table, Toast, Confirm, EmptyState, FilterBar, SearchInput } from '../../components/ui'
-import { PageHeader } from '../pfui'
+import { Card, Btn, Modal, Input, Select, Table, Toast, Confirm, EmptyState } from '../../components/ui'
+import { PageHeader, PfFilterBar, PfSelect } from '../pfui'
 import { TIPOS_INVESTIMENTO_PF, LIQUIDEZ_PF, investTypeLabel } from '../../personalData'
 
 export default function PersonalInvestimentos({ investments, onSaveInvestment, onDeleteInvestment }) {
@@ -12,16 +12,19 @@ export default function PersonalInvestimentos({ investments, onSaveInvestment, o
   const [busca, setBusca] = useState('')
   const [fTipo, setFTipo] = useState('')
   const [fInst, setFInst] = useState('')
+  const [fPerf, setFPerf] = useState('')
 
   const totalInvestido = useMemo(() => investments.reduce((s, i) => s + (i.invested || 0), 0), [investments])
   const totalAtual = useMemo(() => investments.reduce((s, i) => s + (i.current || 0), 0), [investments])
   const variacao = totalAtual - totalInvestido
   const variacaoPct = totalInvestido > 0 ? (variacao / totalInvestido) * 100 : 0
   const instituicoes = useMemo(() => [...new Set(investments.map(i => i.institution).filter(Boolean))].sort(), [investments])
-  const filtered = useMemo(() => investments.filter(i =>
-    (!fTipo || i.type === fTipo) && (!fInst || i.institution === fInst) &&
-    (!busca.trim() || (i.name || '').toLowerCase().includes(busca.trim().toLowerCase()))
-  ), [investments, fTipo, fInst, busca])
+  const filtered = useMemo(() => investments.filter(i => {
+    const dif = (i.current || 0) - (i.invested || 0)
+    return (!fTipo || i.type === fTipo) && (!fInst || i.institution === fInst) &&
+      (!fPerf || (fPerf === 'pos' ? dif >= 0 : dif < 0)) &&
+      (!busca.trim() || (i.name || '').toLowerCase().includes(busca.trim().toLowerCase()))
+  }), [investments, fTipo, fInst, fPerf, busca])
 
   const novo = () => { setForm({ id: uid(), name: '', type: TIPOS_INVESTIMENTO_PF[0].id, institution: '', invested: '', current: '', profitability: '', date: new Date().toISOString().slice(0, 10), liquidity: LIQUIDEZ_PF[0], notes: '', _edit: false }); setModal(true) }
   const editar = (i) => { setForm({ ...i, invested: String(i.invested ?? ''), current: String(i.current ?? ''), profitability: i.profitability != null ? String(i.profitability) : '', _edit: true }); setModal(true) }
@@ -83,11 +86,20 @@ export default function PersonalInvestimentos({ investments, onSaveInvestment, o
       </div>
 
       {investments.length > 0 && (
-        <FilterBar>
-          <SearchInput value={busca} onChange={setBusca} placeholder="Buscar investimento…" />
-          <Select value={fTipo} onChange={e => setFTipo(e.target.value)} placeholder="Todos os tipos" options={TIPOS_INVESTIMENTO_PF.map(t => ({ value: t.id, label: t.label }))} style={{ marginBottom: 0, minWidth: 150 }} />
-          {instituicoes.length > 0 && <Select value={fInst} onChange={e => setFInst(e.target.value)} placeholder="Todas instituições" options={instituicoes} style={{ marginBottom: 0, minWidth: 150 }} />}
-        </FilterBar>
+        <PfFilterBar
+          search={busca} onSearch={setBusca} searchPlaceholder="Buscar por nome do investimento…"
+          segments={{ value: fPerf, onChange: setFPerf, options: [{ value: '', label: 'Todos' }, { value: 'pos', label: 'Positivos' }, { value: 'neg', label: 'Negativos' }] }}
+          more={<>
+            <PfSelect value={fTipo} onChange={e => setFTipo(e.target.value)} placeholder="Todos os tipos" options={TIPOS_INVESTIMENTO_PF.map(t => ({ value: t.id, label: t.label }))} />
+            {instituicoes.length > 0 && <PfSelect value={fInst} onChange={e => setFInst(e.target.value)} placeholder="Todas as instituições" options={instituicoes} />}
+          </>}
+          chips={[
+            fPerf && { label: fPerf === 'pos' ? 'Performance: positivos' : 'Performance: negativos', onRemove: () => setFPerf('') },
+            fTipo && { label: `Tipo: ${TIPOS_INVESTIMENTO_PF.find(t => t.id === fTipo)?.label || fTipo}`, onRemove: () => setFTipo('') },
+            fInst && { label: `Instituição: ${fInst}`, onRemove: () => setFInst('') },
+          ]}
+          onClear={(busca || fTipo || fInst || fPerf) ? () => { setBusca(''); setFTipo(''); setFInst(''); setFPerf('') } : null}
+        />
       )}
 
       <Card style={{ padding: 4 }}>

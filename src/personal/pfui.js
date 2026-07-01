@@ -1,6 +1,7 @@
 // ── NORVO · Plano Pessoa Física — componentes visuais premium ───────────────
 // Reutilizáveis, alinhados à referência (laranja, cards suaves, valores grandes).
 // Presentational only — não contêm regra de negócio.
+import { useState } from 'react'
 
 export const PT = {
   orange: '#FF6A00',
@@ -60,6 +61,118 @@ export const MetricCard = ({ icon, label, value, delta, deltaLabel, sub, gradien
           <span style={{ color: isPos ? PT.green : PT.red, fontWeight: 700 }}>{isPos ? '↑' : '↓'} {Math.abs(delta).toFixed(1).replace('.', ',')}%</span> {deltaLabel || ''}
         </div>
       ) : (sub && <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 5 }}>{sub}</div>)}
+    </div>
+  )
+}
+
+// ── Kit de filtros premium (reutilizável em todas as telas PF) ───────────────
+// Componentes presentational; a lógica de filtro continua em cada tela.
+
+// Busca destacada com ícone de lupa.
+export const PfSearch = ({ value, onChange, placeholder = 'Buscar…' }) => (
+  <div className="pf-search">
+    <span className="pf-search-ico" aria-hidden>🔍</span>
+    <input value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} />
+    {value && <button type="button" className="pf-search-clear" onClick={() => onChange('')} aria-label="Limpar busca">✕</button>}
+  </div>
+)
+
+// Select estilizado (pílula) — mesma API leve dos selects do app.
+export const PfSelect = ({ value, onChange, options = [], placeholder, ariaLabel }) => (
+  <div className="pf-fselect">
+    <select value={value} onChange={onChange} aria-label={ariaLabel || placeholder}>
+      {placeholder && <option value="">{placeholder}</option>}
+      {options.map(o => typeof o === 'string'
+        ? <option key={o} value={o}>{o}</option>
+        : <option key={o.value} value={o.value}>{o.label}</option>)}
+    </select>
+    <span className="pf-fselect-caret" aria-hidden>▾</span>
+  </div>
+)
+
+// Chips rápidos (segmented control) — ex.: status.
+export const PfSegment = ({ value, onChange, options = [] }) => (
+  <div className="pf-seg">
+    {options.map(o => (
+      <button key={o.value} type="button"
+        className={'pf-seg-chip' + (value === o.value ? ' active' : '')}
+        onClick={() => onChange(o.value)}>{o.label}</button>
+    ))}
+  </div>
+)
+
+// Atalhos de período por MÊS (retorna 'YYYY-MM'). Presets + input de mês.
+export const PfMonthPeriod = ({ value, onChange, extra = [] }) => {
+  const now = new Date()
+  const thisMonth = now.toISOString().slice(0, 7)
+  const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+  const lastMonth = `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}`
+  const presets = [{ label: 'Este mês', v: thisMonth }, { label: 'Mês passado', v: lastMonth }, ...extra]
+  return (
+    <div className="pf-period">
+      {presets.map(p => (
+        <button key={p.v} type="button"
+          className={'pf-seg-chip' + (value === p.v ? ' active' : '')}
+          onClick={() => onChange(p.v)}>{p.label}</button>
+      ))}
+      <input type="month" className="pf-period-input" value={value} onChange={e => onChange(e.target.value)} aria-label="Mês" />
+    </div>
+  )
+}
+
+// Atalhos de período por INTERVALO de meses (de/até 'YYYY-MM').
+export const PfRangePeriod = ({ de, ate, onChange }) => {
+  const now = new Date()
+  const ym = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+  const thisM = ym(now)
+  const presets = [
+    { label: 'Este mês', d: thisM, a: thisM },
+    { label: 'Mês passado', ...(() => { const p = new Date(now.getFullYear(), now.getMonth() - 1, 1); return { d: ym(p), a: ym(p) } })() },
+    { label: 'Últimos 3 meses', d: ym(new Date(now.getFullYear(), now.getMonth() - 2, 1)), a: thisM },
+    { label: 'Este ano', d: `${now.getFullYear()}-01`, a: thisM },
+  ]
+  return (
+    <div className="pf-period">
+      {presets.map(p => (
+        <button key={p.label} type="button"
+          className={'pf-seg-chip' + (de === p.d && ate === p.a ? ' active' : '')}
+          onClick={() => onChange(p.d, p.a)}>{p.label}</button>
+      ))}
+      <input type="month" className="pf-period-input" value={de} onChange={e => onChange(e.target.value, ate)} aria-label="De" />
+      <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>até</span>
+      <input type="month" className="pf-period-input" value={ate} onChange={e => onChange(de, e.target.value)} aria-label="Até" />
+    </div>
+  )
+}
+
+// Barra de filtros premium: busca + segmentos + controles (inline / "Mais filtros") + chips ativos.
+export const PfFilterBar = ({ search, onSearch, searchPlaceholder, segments, inline, more, chips, onClear, defaultOpen = false }) => {
+  const [open, setOpen] = useState(defaultOpen)
+  const active = (chips || []).filter(Boolean)
+  return (
+    <div className="pf-filter">
+      <div className="pf-filter-top">
+        {onSearch && <PfSearch value={search} onChange={onSearch} placeholder={searchPlaceholder} />}
+        {inline}
+        {more && (
+          <button type="button" className={'pf-more-btn' + (open ? ' active' : '')} onClick={() => setOpen(o => !o)}>
+            <span aria-hidden>⚙</span> Filtros{active.length ? ` · ${active.length}` : ''}
+          </button>
+        )}
+      </div>
+      {segments && <PfSegment value={segments.value} onChange={segments.onChange} options={segments.options} />}
+      {more && open && <div className="pf-filter-more">{more}</div>}
+      {active.length > 0 && (
+        <div className="pf-active-chips">
+          {active.map((c, i) => (
+            <span key={i} className="pf-chip">
+              {c.label}
+              <button type="button" className="pf-chip-x" onClick={c.onRemove} aria-label={`Remover ${c.label}`}>✕</button>
+            </span>
+          ))}
+          {onClear && <button type="button" className="pf-clear" onClick={onClear}>Limpar filtros</button>}
+        </div>
+      )}
     </div>
   )
 }

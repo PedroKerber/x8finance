@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { T, uid, errMsgAcao } from '../../theme'
-import { Card, Btn, Modal, Input, Select, Toast, Confirm, EmptyState, Badge, FilterBar, SearchInput } from '../../components/ui'
-import { PageHeader } from '../pfui'
+import { Card, Btn, Modal, Input, Select, Toast, Confirm, EmptyState, Badge } from '../../components/ui'
+import { PageHeader, PfFilterBar, PfSelect } from '../pfui'
 import { TIPOS_CATEGORIA_PF, CORES_CATEGORIA_PF } from '../../personalData'
 
 const tipoLabel = (t) => TIPOS_CATEGORIA_PF.find(x => x.id === t)?.label || t
@@ -55,11 +55,16 @@ export default function PersonalCategorias({ categories, onSaveCategory, onDelet
         actionLabel="Nova categoria" actionIcon="+" onAction={novo} />
 
       {categories.length > 0 && (
-        <FilterBar>
-          <SearchInput value={busca} onChange={setBusca} placeholder="Buscar categoria…" />
-          <Select value={fTipo} onChange={e => setFTipo(e.target.value)} placeholder="Todos os tipos" options={TIPOS_CATEGORIA_PF.map(t => ({ value: t.id, label: t.label }))} style={{ marginBottom: 0, minWidth: 150 }} />
-          <Select value={fAtivo} onChange={e => setFAtivo(e.target.value)} placeholder="Ativas e inativas" options={[{ value: 'ativa', label: 'Só ativas' }, { value: 'inativa', label: 'Só inativas' }]} style={{ marginBottom: 0, minWidth: 150 }} />
-        </FilterBar>
+        <PfFilterBar
+          search={busca} onSearch={setBusca} searchPlaceholder="Buscar categoria…"
+          segments={{ value: fTipo, onChange: setFTipo, options: [{ value: '', label: 'Todas' }, ...TIPOS_CATEGORIA_PF.map(t => ({ value: t.id, label: t.label }))] }}
+          more={<PfSelect value={fAtivo} onChange={e => setFAtivo(e.target.value)} placeholder="Ativas e inativas" options={[{ value: 'ativa', label: 'Só ativas' }, { value: 'inativa', label: 'Só inativas' }]} />}
+          chips={[
+            fTipo && { label: `Tipo: ${TIPOS_CATEGORIA_PF.find(t => t.id === fTipo)?.label || fTipo}`, onRemove: () => setFTipo('') },
+            fAtivo && { label: fAtivo === 'ativa' ? 'Só ativas' : 'Só inativas', onRemove: () => setFAtivo('') },
+          ]}
+          onClear={(busca || fTipo || fAtivo) ? () => { setBusca(''); setFTipo(''); setFAtivo('') } : null}
+        />
       )}
 
       {categories.length === 0 ? (

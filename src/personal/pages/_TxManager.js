@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { T, fmt, fd, uid, errMsgAcao } from '../../theme'
 import { Card, Btn, Modal, Input, Select, Table, Toast, Confirm, EmptyState, StatusBadge } from '../../components/ui'
-import { PageHeader } from '../pfui'
+import { PageHeader, PfFilterBar, PfMonthPeriod, PfSelect } from '../pfui'
 import { FORMAS_PAGAMENTO_PF, RECORRENCIAS_PF, FREQ_RECORRENCIA_PF } from '../../personalData'
 
 // Gerenciador genérico de transações pessoais (receita/despesa).
@@ -16,6 +16,7 @@ export default function TxManager({ tipo, title, accent, cats, statusOptions, tr
   const [busca, setBusca] = useState('')
   const [fConta, setFConta] = useState('')
   const [fCartao, setFCartao] = useState('')
+  const [fStatus, setFStatus] = useState('')
   const [modal, setModal] = useState(false)
   const [confirmId, setConfirmId] = useState(null)
   const [toast, setToast] = useState(null)
@@ -27,6 +28,12 @@ export default function TxManager({ tipo, title, accent, cats, statusOptions, tr
   const catNome = (id) => cats.find(c => c.id === id)?.nome || id || '—'
   const catCor  = (id) => cats.find(c => c.id === id)?.cor || T.muted
   const contaNome = (id) => accounts.find(a => a.id === id)?.nome || '—'
+  const mesLabel = (m) => { const [y, mo] = (m || '').split('-'); return mo ? `${mo}/${y}` : m }
+
+  // Chips rápidos de status (data-driven). Tokens especiais: __rec (recorrentes), __card (via cartão).
+  const statusChips = isReceita
+    ? [{ value: '', label: 'Todas' }, { value: 'Recebida', label: 'Recebidas' }, { value: 'A receber', label: 'A receber' }, { value: '__rec', label: 'Recorrentes' }]
+    : [{ value: '', label: 'Todas' }, { value: 'Pago', label: 'Pago' }, { value: 'A Pagar', label: 'A pagar' }, { value: 'Atrasado', label: 'Vencidas' }, { value: '__card', label: 'Cartão' }]
 
   const lista = useMemo(() => {
     let l = transactions.filter(t => t.tipo === tipo)
@@ -34,9 +41,12 @@ export default function TxManager({ tipo, title, accent, cats, statusOptions, tr
     if (fCat) l = l.filter(t => t.categoria === fCat)
     if (fConta) l = l.filter(t => t.accountId === fConta)
     if (fCartao) l = l.filter(t => t.cartaoId === fCartao)
+    if (fStatus === '__rec') l = l.filter(t => t.recurrenceId)
+    else if (fStatus === '__card') l = l.filter(t => t.cartaoId)
+    else if (fStatus) l = l.filter(t => t.status === fStatus)
     if (busca.trim()) { const q = busca.trim().toLowerCase(); l = l.filter(t => (t.desc || '').toLowerCase().includes(q) || catNome(t.categoria).toLowerCase().includes(q)) }
     return l
-  }, [transactions, tipo, mes, fCat, fConta, fCartao, busca]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [transactions, tipo, mes, fCat, fConta, fCartao, fStatus, busca]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const total = useMemo(() => lista.reduce((s, t) => s + (t.valor || 0), 0), [lista])
 
@@ -118,34 +128,36 @@ export default function TxManager({ tipo, title, accent, cats, statusOptions, tr
       <PageHeader title={title} subtitle={`Controle suas ${title.toLowerCase()} pessoais.`}
         actionLabel={`Nova ${isReceita ? 'receita' : 'despesa'}`} actionIcon="+" onAction={novo} />
 
-      {/* Resumo + filtros */}
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'stretch', marginBottom: 18 }}>
-        <Card style={{ padding: '14px 20px', flex: '1 1 200px' }}>
-          <div style={{ fontSize: 12, color: T.sub }}>Total no período</div>
-          <div style={{ fontWeight: 800, fontSize: 24, color: accent, marginTop: 4 }}>{fmt(total)}</div>
-          <div style={{ fontSize: 12, color: T.muted, marginTop: 2 }}>{lista.length} lançamento(s)</div>
-        </Card>
-        <Card style={{ padding: '14px 16px', flex: '3 1 420px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10 }}>
-            <div style={{ gridColumn: '1 / -1', position: 'relative' }}>
-              <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: T.muted, fontSize: 14 }}>🔍</span>
-              <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar por descrição ou categoria…"
-                style={{ width: '100%', background: 'var(--card)', border: `1.5px solid var(--border)`, borderRadius: 8, padding: '9px 12px 9px 32px', color: 'var(--text)', fontSize: 14, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }} />
-            </div>
-            <input type="month" value={mes} onChange={e => setMes(e.target.value)}
-              style={{ background: 'var(--card)', border: `1.5px solid var(--border)`, borderRadius: 8, padding: '9px 12px', color: 'var(--text)', fontSize: 14, outline: 'none', fontFamily: 'inherit', minWidth: 0 }} />
-            <Select value={fCat} onChange={e => setFCat(e.target.value)} placeholder="Categoria" options={catsAtivas.map(c => ({ value: c.id, label: c.nome }))} style={{ marginBottom: 0 }} />
-            <Select value={fConta} onChange={e => setFConta(e.target.value)} placeholder="Conta" options={accounts.map(a => ({ value: a.id, label: a.nome }))} style={{ marginBottom: 0 }} />
-            {!isReceita && cards.length > 0 && (
-              <Select value={fCartao} onChange={e => setFCartao(e.target.value)} placeholder="Cartão" options={cards.map(c => ({ value: c.id, label: c.name }))} style={{ marginBottom: 0 }} />
-            )}
-          </div>
-          {(busca || fCat || fConta || fCartao || mes !== mesAtual) && (
-            <button onClick={() => { setBusca(''); setFCat(''); setFConta(''); setFCartao(''); setMes(mesAtual) }}
-              style={{ marginTop: 10, background: 'none', border: 'none', color: T.primary, cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit' }}>Limpar filtros</button>
+      {/* Resumo do período */}
+      <Card style={{ padding: '14px 20px', marginBottom: 14, display: 'inline-block' }}>
+        <div style={{ fontSize: 12, color: T.sub }}>Total no período</div>
+        <div style={{ fontWeight: 800, fontSize: 24, color: accent, marginTop: 4 }}>{fmt(total)}</div>
+        <div style={{ fontSize: 12, color: T.muted, marginTop: 2 }}>{lista.length} lançamento(s)</div>
+      </Card>
+
+      {/* Filtros premium */}
+      <PfFilterBar
+        search={busca} onSearch={setBusca} searchPlaceholder="Buscar por descrição ou categoria…"
+        segments={{ value: fStatus, onChange: setFStatus, options: statusChips }}
+        inline={<PfMonthPeriod value={mes} onChange={setMes} />}
+        more={<>
+          <PfSelect value={fCat} onChange={e => setFCat(e.target.value)} placeholder="Todas as categorias" options={catsAtivas.map(c => ({ value: c.id, label: c.nome }))} />
+          <PfSelect value={fConta} onChange={e => setFConta(e.target.value)} placeholder="Todas as contas" options={accounts.map(a => ({ value: a.id, label: a.nome }))} />
+          {!isReceita && cards.length > 0 && (
+            <PfSelect value={fCartao} onChange={e => setFCartao(e.target.value)} placeholder="Todos os cartões" options={cards.map(c => ({ value: c.id, label: c.name }))} />
           )}
-        </Card>
-      </div>
+        </>}
+        chips={[
+          fCat && { label: `Categoria: ${catNome(fCat)}`, onRemove: () => setFCat('') },
+          fConta && { label: `Conta: ${contaNome(fConta)}`, onRemove: () => setFConta('') },
+          fCartao && { label: `Cartão: ${cards.find(c => c.id === fCartao)?.name || ''}`, onRemove: () => setFCartao('') },
+          (mes && mes !== mesAtual) && { label: `Período: ${mesLabel(mes)}`, onRemove: () => setMes(mesAtual) },
+          fStatus && { label: `Status: ${statusChips.find(s => s.value === fStatus)?.label || fStatus}`, onRemove: () => setFStatus('') },
+        ]}
+        onClear={(busca || fCat || fConta || fCartao || fStatus || mes !== mesAtual)
+          ? () => { setBusca(''); setFCat(''); setFConta(''); setFCartao(''); setFStatus(''); setMes(mesAtual) }
+          : null}
+      />
 
       {/* Tabela */}
       <Card style={{ padding: 4 }}>

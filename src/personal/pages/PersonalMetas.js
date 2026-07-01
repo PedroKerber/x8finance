@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { T, fmt, fd, uid, errMsgAcao } from '../../theme'
-import { Card, Btn, Modal, Input, Select, Toast, Confirm, EmptyState, Badge, FilterBar, SearchInput } from '../../components/ui'
-import { PageHeader } from '../pfui'
+import { Card, Btn, Modal, Input, Select, Toast, Confirm, EmptyState, Badge } from '../../components/ui'
+import { PageHeader, PfFilterBar, PfSelect } from '../pfui'
 import { CATS_META_PF, STATUS_META_PF, statusMetaInfo } from '../../personalData'
 
 export default function PersonalMetas({ goals, onSaveGoal, onDeleteGoal }) {
@@ -62,11 +62,16 @@ export default function PersonalMetas({ goals, onSaveGoal, onDeleteGoal }) {
       </div>
 
       {goals.length > 0 && (
-        <FilterBar>
-          <SearchInput value={busca} onChange={setBusca} placeholder="Buscar meta…" />
-          <Select value={fStatus} onChange={e => setFStatus(e.target.value)} placeholder="Todos os status" options={STATUS_META_PF.map(s => ({ value: s.id, label: s.label }))} style={{ marginBottom: 0, minWidth: 150 }} />
-          <Select value={fCat} onChange={e => setFCat(e.target.value)} placeholder="Todas categorias" options={CATS_META_PF} style={{ marginBottom: 0, minWidth: 150 }} />
-        </FilterBar>
+        <PfFilterBar
+          search={busca} onSearch={setBusca} searchPlaceholder="Buscar meta…"
+          segments={{ value: fStatus, onChange: setFStatus, options: [{ value: '', label: 'Todas' }, ...STATUS_META_PF.map(s => ({ value: s.id, label: s.label }))] }}
+          more={<PfSelect value={fCat} onChange={e => setFCat(e.target.value)} placeholder="Todas as categorias" options={CATS_META_PF} />}
+          chips={[
+            fStatus && { label: `Status: ${STATUS_META_PF.find(s => s.id === fStatus)?.label || fStatus}`, onRemove: () => setFStatus('') },
+            fCat && { label: `Categoria: ${fCat}`, onRemove: () => setFCat('') },
+          ]}
+          onClear={(busca || fStatus || fCat) ? () => { setBusca(''); setFStatus(''); setFCat('') } : null}
+        />
       )}
 
       {goals.length === 0 ? (

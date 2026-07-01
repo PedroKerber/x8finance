@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { T, fmt, fd, uid, errMsgAcao } from '../../theme'
 import { Card, Btn, Modal, Input, Select, Toast, Confirm, EmptyState, Badge } from '../../components/ui'
-import { PageHeader } from '../pfui'
+import { PageHeader, PfFilterBar } from '../pfui'
 import { BANDEIRAS_CARTAO_PF, CORES_CARTAO_PF } from '../../personalData'
 
 const MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
@@ -14,6 +14,8 @@ export default function PersonalCartoes({ cards, transactions, accounts = [], ca
   const [form, setForm] = useState(null)
   const [payForm, setPayForm] = useState(null)
   const [detail, setDetail] = useState(null)
+  const [busca, setBusca] = useState('')
+  const [fStatus, setFStatus] = useState('')
 
   const hoje = new Date()
   const mesAtual = hoje.toISOString().slice(0, 7)
@@ -45,6 +47,10 @@ export default function PersonalCartoes({ cards, transactions, accounts = [], ca
 
   const totalLimite = useMemo(() => cards.reduce((s, c) => s + (c.limit || 0), 0), [cards])
   const totalUsado  = useMemo(() => cards.reduce((s, c) => s + (metrics[c.id]?.usado || 0), 0), [cards, metrics])
+  const filteredCards = useMemo(() => cards.filter(c =>
+    (!fStatus || (fStatus === 'ativo' ? c.isActive : !c.isActive)) &&
+    (!busca.trim() || `${c.name} ${c.institution || ''} ${c.brand || ''}`.toLowerCase().includes(busca.trim().toLowerCase()))
+  ), [cards, fStatus, busca])
 
   const novo = () => { setForm({ id: uid(), name: '', institution: '', brand: 'Visa', limit: '', closingDay: '', dueDay: '', color: CORES_CARTAO_PF[0], isActive: true, _edit: false }); setModal(true) }
   const editar = (c) => { setForm({ ...c, limit: String(c.limit ?? ''), closingDay: String(c.closingDay ?? ''), dueDay: String(c.dueDay ?? ''), _edit: true }); setModal(true) }
@@ -85,14 +91,27 @@ export default function PersonalCartoes({ cards, transactions, accounts = [], ca
         <Card style={{ padding: '16px 20px' }}><div style={{ fontSize: 12, color: T.sub }}>Limite disponível</div><div style={{ fontWeight: 800, fontSize: 22, color: T.green, marginTop: 4 }}>{fmt(Math.max(0, totalLimite - totalUsado))}</div></Card>
       </div>
 
+      {cards.length > 0 && (
+        <PfFilterBar
+          search={busca} onSearch={setBusca} searchPlaceholder="Buscar por nome, instituição ou bandeira…"
+          segments={{ value: fStatus, onChange: setFStatus, options: [{ value: '', label: 'Todos' }, { value: 'ativo', label: 'Ativos' }, { value: 'inativo', label: 'Inativos' }] }}
+          chips={[fStatus && { label: fStatus === 'ativo' ? 'Status: ativos' : 'Status: inativos', onRemove: () => setFStatus('') }]}
+          onClear={(busca || fStatus) ? () => { setBusca(''); setFStatus('') } : null}
+        />
+      )}
+
       {cards.length === 0 ? (
         <Card style={{ padding: 0 }}>
           <EmptyState icon="💳" title="Nenhum cartão cadastrado" sub="Cadastre um cartão para acompanhar limite e faturas."
             action={<Btn onClick={novo} icon="+">Novo cartão</Btn>} />
         </Card>
+      ) : filteredCards.length === 0 ? (
+        <Card style={{ padding: 0 }}>
+          <EmptyState icon="🔍" title="Nenhum resultado para o filtro" sub="Ajuste a busca ou o status." />
+        </Card>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
-          {cards.map(c => {
+          {filteredCards.map(c => {
             const mt = metrics[c.id] || { usado: 0, fatura: 0, futuras: {} }
             const disp = Math.max(0, (c.limit || 0) - mt.usado)
             const pctUso = c.limit > 0 ? Math.min(100, Math.round(mt.usado / c.limit * 100)) : 0

@@ -99,6 +99,109 @@ body.dark .pf-scope {
 .pf-cfg-group { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--pf-orange); margin: 18px 0 9px; }
 .pf-cfg-group:first-child { margin-top: 0; }
 
+/* ── Kit de filtros premium ────────────────────────────────────────────────── */
+.pf-filter {
+  background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+  box-shadow: var(--shadow); padding: 14px; margin-bottom: 18px;
+}
+.pf-filter-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+/* Busca destacada */
+.pf-search { position: relative; flex: 1 1 240px; min-width: 0; }
+.pf-search-ico { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 14px; pointer-events: none; opacity: .7; }
+.pf-search input {
+  width: 100%; box-sizing: border-box; font-family: inherit;
+  background: var(--bg); border: 1.5px solid var(--border); border-radius: 11px;
+  padding: 11px 34px 11px 36px; color: var(--text); font-size: 14px; outline: none;
+  min-height: 44px; transition: border-color .15s, box-shadow .15s, background .15s;
+}
+.pf-search input::placeholder { color: var(--text-muted); }
+.pf-search input:focus { border-color: var(--pf-orange); background: var(--card); box-shadow: 0 0 0 3px rgba(255,106,0,0.12); }
+.pf-search-clear {
+  position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+  background: var(--border); color: var(--text-sub); border: none; cursor: pointer;
+  width: 20px; height: 20px; border-radius: 50%; font-size: 10px; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+}
+.pf-search-clear:hover { background: var(--pf-orange); color: #fff; }
+
+/* Select pílula */
+.pf-fselect { position: relative; flex: 0 0 auto; }
+.pf-fselect select {
+  appearance: none; font-family: inherit; cursor: pointer;
+  background: var(--bg); border: 1.5px solid var(--border); border-radius: 10px;
+  padding: 10px 30px 10px 13px; color: var(--text); font-size: 13.5px; outline: none;
+  min-height: 42px; min-width: 140px; transition: border-color .15s;
+}
+.pf-fselect select:focus { border-color: var(--pf-orange); }
+.pf-fselect-caret { position: absolute; right: 11px; top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none; font-size: 11px; }
+
+/* Chips rápidos (segmented) */
+.pf-seg { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 12px; }
+.pf-seg-chip {
+  font-family: inherit; cursor: pointer; white-space: nowrap;
+  background: var(--bg); color: var(--text-sub); border: 1.5px solid var(--border);
+  border-radius: 999px; padding: 7px 14px; font-size: 13px; font-weight: 600;
+  transition: all .15s ease;
+}
+.pf-seg-chip:hover { border-color: var(--pf-orange); color: var(--pf-orange); }
+.pf-seg-chip.active { background: var(--pf-orange); color: #fff; border-color: var(--pf-orange); box-shadow: 0 3px 10px rgba(255,106,0,0.28); }
+
+/* Atalhos de período */
+.pf-period { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; }
+.pf-period-input {
+  font-family: inherit; background: var(--bg); border: 1.5px solid var(--border);
+  border-radius: 10px; padding: 9px 12px; color: var(--text); font-size: 13.5px; outline: none;
+  min-height: 42px; color-scheme: light;
+}
+body.dark .pf-period-input { color-scheme: dark; }
+.pf-period-input:focus { border-color: var(--pf-orange); }
+
+/* Botão "Mais filtros" */
+.pf-more-btn {
+  display: inline-flex; align-items: center; gap: 7px; flex-shrink: 0;
+  font-family: inherit; cursor: pointer; white-space: nowrap;
+  background: var(--card); color: var(--pf-orange); border: 1.5px solid var(--pf-orange);
+  border-radius: 10px; padding: 10px 16px; font-size: 13.5px; font-weight: 700; min-height: 42px;
+  transition: background .15s;
+}
+.pf-more-btn:hover, .pf-more-btn.active { background: var(--pf-orange-soft); }
+
+/* Painel "Mais filtros" (colapsável) */
+.pf-filter-more {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px;
+  margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border);
+}
+.pf-filter-more .pf-fselect,
+.pf-filter-more .pf-fselect select { width: 100%; }
+
+/* Chips de filtros ativos */
+.pf-active-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
+.pf-chip {
+  display: inline-flex; align-items: center; gap: 7px;
+  background: var(--pf-orange-soft); color: var(--pf-orange);
+  border-radius: 999px; padding: 5px 6px 5px 12px; font-size: 12.5px; font-weight: 600;
+}
+.pf-chip-x {
+  background: rgba(255,106,0,0.18); color: var(--pf-orange); border: none; cursor: pointer;
+  width: 18px; height: 18px; border-radius: 50%; font-size: 9px; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+}
+.pf-chip-x:hover { background: var(--pf-orange); color: #fff; }
+.pf-clear {
+  background: none; border: none; color: var(--text-sub); cursor: pointer;
+  font-family: inherit; font-size: 12.5px; font-weight: 700; padding: 5px 8px;
+  text-decoration: underline; text-underline-offset: 2px;
+}
+.pf-clear:hover { color: var(--pf-orange); }
+
+/* Responsivo: filtros empilham no mobile */
 @media (max-width: 768px) {
   .pf-h1 { font-size: 22px !important; }
+  .pf-search { flex: 1 1 100%; }
+  .pf-fselect, .pf-fselect select { width: 100%; }
+  .pf-more-btn { width: 100%; justify-content: center; }
+  .pf-period { width: 100%; }
+  .pf-period-input { flex: 1 1 auto; }
+  .pf-seg { overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; padding-bottom: 2px; }
 }

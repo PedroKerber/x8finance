@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { T, fmt, fd, uid, errMsgAcao } from '../../theme'
-import { Card, Btn, Modal, Input, Select, Table, Toast, Confirm, EmptyState, Badge, FilterBar, SearchInput } from '../../components/ui'
-import { PageHeader } from '../pfui'
+import { Card, Btn, Modal, Input, Select, Table, Toast, Confirm, EmptyState, Badge } from '../../components/ui'
+import { PageHeader, PfFilterBar, PfSelect } from '../pfui'
 import { STATUS_DIVIDA_PF, statusDividaInfo } from '../../personalData'
 
 const parcelaMensal = (d) => (d.installmentsTotal ? (d.total || 0) / d.installmentsTotal : 0)
@@ -85,11 +85,16 @@ export default function PersonalDividas({ debts, onSaveDebt, onDeleteDebt }) {
       </div>
 
       {debts.length > 0 && (
-        <FilterBar>
-          <SearchInput value={busca} onChange={setBusca} placeholder="Buscar por credor ou descrição…" />
-          <Select value={fStatus} onChange={e => setFStatus(e.target.value)} placeholder="Todos os status" options={STATUS_DIVIDA_PF.map(s => ({ value: s.id, label: s.label }))} style={{ marginBottom: 0, minWidth: 150 }} />
-          <Select value={fVenc} onChange={e => setFVenc(e.target.value)} placeholder="Vencimento" options={[{ value: 'proximas', label: 'A vencer (30 dias)' }, { value: 'vencidas', label: 'Vencidas' }]} style={{ marginBottom: 0, minWidth: 150 }} />
-        </FilterBar>
+        <PfFilterBar
+          search={busca} onSearch={setBusca} searchPlaceholder="Buscar por credor ou descrição…"
+          segments={{ value: fStatus, onChange: setFStatus, options: [{ value: '', label: 'Todas' }, ...STATUS_DIVIDA_PF.map(s => ({ value: s.id, label: s.label }))] }}
+          more={<PfSelect value={fVenc} onChange={e => setFVenc(e.target.value)} placeholder="Vencimento" options={[{ value: 'proximas', label: 'A vencer (30 dias)' }, { value: 'vencidas', label: 'Vencidas' }]} />}
+          chips={[
+            fStatus && { label: `Status: ${STATUS_DIVIDA_PF.find(s => s.id === fStatus)?.label || fStatus}`, onRemove: () => setFStatus('') },
+            fVenc && { label: `Vencimento: ${fVenc === 'vencidas' ? 'Vencidas' : 'A vencer (30 dias)'}`, onRemove: () => setFVenc('') },
+          ]}
+          onClear={(busca || fStatus || fVenc) ? () => { setBusca(''); setFStatus(''); setFVenc('') } : null}
+        />
       )}
 
       <Card style={{ padding: 4 }}>

@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { T, fmt, fd, uid, errMsgAcao } from '../../theme'
 import { Card, Btn, Modal, Input, Select, Toast, Confirm, EmptyState } from '../../components/ui'
-import { PageHeader, PfBtn } from '../pfui'
+import { PageHeader, PfBtn, PfFilterBar } from '../pfui'
 import { TIPOS_CONTA_PF, tipoContaLabel } from '../../personalData'
 
 export default function PersonalContas({ accounts, transfers = [], onSaveAccount, onDeleteAccount, onSaveTransfer, onDeleteTransfer }) {
@@ -12,9 +12,15 @@ export default function PersonalContas({ accounts, transfers = [], onSaveAccount
   const [transfModal, setTransfModal] = useState(false)
   const [transfForm, setTransfForm] = useState(null)
   const [transfDelId, setTransfDelId] = useState(null)
+  const [busca, setBusca] = useState('')
+  const [fTipo, setFTipo] = useState('')
 
   const saldoTotal = useMemo(() => accounts.reduce((s, a) => s + (a.saldoAtual || 0), 0), [accounts])
   const contaNome = (id) => accounts.find(a => a.id === id)?.nome || '—'
+  const filteredAccounts = useMemo(() => accounts.filter(a =>
+    (!fTipo || a.tipo === fTipo) &&
+    (!busca.trim() || `${a.nome} ${a.banco || ''}`.toLowerCase().includes(busca.trim().toLowerCase()))
+  ), [accounts, fTipo, busca])
 
   const novaTransf = () => { setTransfForm({ fromId: accounts[0]?.id || '', toId: accounts[1]?.id || '', valor: '', data: new Date().toISOString().slice(0, 10), obs: '' }); setTransfModal(true) }
   const salvarTransf = async () => {
@@ -73,14 +79,27 @@ export default function PersonalContas({ accounts, transfers = [], onSaveAccount
         <div style={{ fontWeight: 800, fontSize: 26, color: saldoTotal >= 0 ? T.green : T.red, marginTop: 4 }}>{fmt(saldoTotal)}</div>
       </Card>
 
+      {accounts.length > 0 && (
+        <PfFilterBar
+          search={busca} onSearch={setBusca} searchPlaceholder="Buscar por nome ou banco…"
+          segments={{ value: fTipo, onChange: setFTipo, options: [{ value: '', label: 'Todas' }, ...TIPOS_CONTA_PF.map(t => ({ value: t.id, label: t.label }))] }}
+          chips={[fTipo && { label: `Tipo: ${tipoContaLabel(fTipo)}`, onRemove: () => setFTipo('') }]}
+          onClear={(busca || fTipo) ? () => { setBusca(''); setFTipo('') } : null}
+        />
+      )}
+
       {accounts.length === 0 ? (
         <Card style={{ padding: 0 }}>
           <EmptyState icon="🏦" title="Nenhuma conta cadastrada" sub="Cadastre uma conta para organizar seus lançamentos."
             action={<Btn onClick={novo} icon="+">Nova conta</Btn>} />
         </Card>
+      ) : filteredAccounts.length === 0 ? (
+        <Card style={{ padding: 0 }}>
+          <EmptyState icon="🔍" title="Nenhum resultado para o filtro" sub="Ajuste a busca ou o tipo de conta." />
+        </Card>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 14 }}>
-          {accounts.map(a => (
+          {filteredAccounts.map(a => (
             <Card key={a.id} style={{ padding: 18 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
                 <div style={{ minWidth: 0 }}>

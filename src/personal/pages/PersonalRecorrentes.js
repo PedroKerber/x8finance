@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { T, fmt, fd, errMsgAcao } from '../../theme'
 import { Card, Btn, Toast, Confirm, EmptyState, Badge } from '../../components/ui'
-import { PageHeader } from '../pfui'
+import { PageHeader, PfFilterBar, PfSelect } from '../pfui'
 import { FREQ_RECORRENCIA_PF } from '../../personalData'
 
 const freqLabel = (id) => FREQ_RECORRENCIA_PF.find(f => f.id === id)?.label || id
@@ -9,11 +9,22 @@ const freqLabel = (id) => FREQ_RECORRENCIA_PF.find(f => f.id === id)?.label || i
 export default function PersonalRecorrentes({ recurrences = [], catsReceita = [], catsDespesa = [], onSaveRecurrence, onDeleteRecurrence, setPage }) {
   const [toast, setToast] = useState(null)
   const [confirmId, setConfirmId] = useState(null)
+  const [busca, setBusca] = useState('')
+  const [fTipo, setFTipo] = useState('')
+  const [fStatus, setFStatus] = useState('')
+  const [fFreq, setFFreq] = useState('')
 
   const catNome = (r) => {
     const list = r.tipo === 'receita' ? catsReceita : catsDespesa
     return list.find(c => c.id === r.categoria)?.nome || r.categoria || '—'
   }
+
+  const filtered = useMemo(() => recurrences.filter(r =>
+    (!fTipo || r.tipo === fTipo) &&
+    (!fStatus || (fStatus === 'ativo' ? r.status === 'ativo' : r.status !== 'ativo')) &&
+    (!fFreq || r.frequency === fFreq) &&
+    (!busca.trim() || `${r.descricao || ''} ${catNome(r)}`.toLowerCase().includes(busca.trim().toLowerCase()))
+  ), [recurrences, fTipo, fStatus, fFreq, busca]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const togglePausar = async (r) => {
     try { await onSaveRecurrence({ ...r, status: r.status === 'ativo' ? 'inativo' : 'ativo' }, true); setToast({ msg: r.status === 'ativo' ? 'Recorrência pausada.' : 'Recorrência reativada.', type: 'success' }) }
@@ -32,14 +43,35 @@ export default function PersonalRecorrentes({ recurrences = [], catsReceita = []
 
       <PageHeader title="Recorrentes" subtitle="Modelos de receitas/despesas que se repetem. Crie marcando “Repetir” ao lançar em Receitas ou Despesas." />
 
+      {recurrences.length > 0 && (
+        <PfFilterBar
+          search={busca} onSearch={setBusca} searchPlaceholder="Buscar por descrição ou categoria…"
+          segments={{ value: fStatus, onChange: setFStatus, options: [{ value: '', label: 'Todas' }, { value: 'ativo', label: 'Ativas' }, { value: 'inativo', label: 'Pausadas' }] }}
+          more={<>
+            <PfSelect value={fTipo} onChange={e => setFTipo(e.target.value)} placeholder="Todos os tipos" options={[{ value: 'receita', label: 'Receita' }, { value: 'despesa', label: 'Despesa' }]} />
+            <PfSelect value={fFreq} onChange={e => setFFreq(e.target.value)} placeholder="Todas as frequências" options={FREQ_RECORRENCIA_PF.map(f => ({ value: f.id, label: f.label }))} />
+          </>}
+          chips={[
+            fStatus && { label: fStatus === 'ativo' ? 'Ativas' : 'Pausadas', onRemove: () => setFStatus('') },
+            fTipo && { label: `Tipo: ${fTipo === 'receita' ? 'Receita' : 'Despesa'}`, onRemove: () => setFTipo('') },
+            fFreq && { label: `Frequência: ${FREQ_RECORRENCIA_PF.find(f => f.id === fFreq)?.label || fFreq}`, onRemove: () => setFFreq('') },
+          ]}
+          onClear={(busca || fTipo || fStatus || fFreq) ? () => { setBusca(''); setFTipo(''); setFStatus(''); setFFreq('') } : null}
+        />
+      )}
+
       {recurrences.length === 0 ? (
         <Card style={{ padding: 0 }}>
           <EmptyState icon="🔁" title="Nenhuma recorrência" sub="Ao criar uma receita ou despesa, marque “Repetir automaticamente” para gerar os lançamentos sozinho."
             action={<Btn onClick={() => setPage('despesas')}>Ir para Despesas</Btn>} />
         </Card>
+      ) : filtered.length === 0 ? (
+        <Card style={{ padding: 0 }}>
+          <EmptyState icon="🔍" title="Nenhum resultado para o filtro" sub="Ajuste a busca ou os filtros." />
+        </Card>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 14 }}>
-          {recurrences.map(r => (
+          {filtered.map(r => (
             <Card key={r.id} style={{ padding: 18, opacity: r.status === 'ativo' ? 1 : 0.6 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 8 }}>
                 <div style={{ minWidth: 0 }}>
