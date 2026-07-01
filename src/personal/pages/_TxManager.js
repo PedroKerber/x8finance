@@ -17,6 +17,9 @@ export default function TxManager({ tipo, title, accent, cats, statusOptions, tr
   const [toast, setToast] = useState(null)
   const [form, setForm] = useState(null)
 
+  // cats = todas (para RESOLVER nome/cor, inclusive inativas/removidas dos registros antigos)
+  // catsAtivas = só as ativas (para os DROPDOWNS de seleção)
+  const catsAtivas = useMemo(() => cats.filter(c => c.active !== false), [cats])
   const catNome = (id) => cats.find(c => c.id === id)?.nome || id || '—'
   const catCor  = (id) => cats.find(c => c.id === id)?.cor || T.muted
   const contaNome = (id) => accounts.find(a => a.id === id)?.nome || '—'
@@ -31,7 +34,7 @@ export default function TxManager({ tipo, title, accent, cats, statusOptions, tr
   const total = useMemo(() => lista.reduce((s, t) => s + (t.valor || 0), 0), [lista])
 
   const novo = () => {
-    setForm({ id: uid(), tipo, data: hoje, valor: '', categoria: cats[0]?.id || '', desc: '',
+    setForm({ id: uid(), tipo, data: hoje, valor: '', categoria: catsAtivas[0]?.id || '', desc: '',
       accountId: accounts[0]?.id || '', forma: isReceita ? '' : 'Pix',
       recorrencia: isReceita ? '' : 'Único', status: statusOptions[0], anexoUrl: '', _edit: false })
     setModal(true)
@@ -104,7 +107,7 @@ export default function TxManager({ tipo, title, accent, cats, statusOptions, tr
           </div>
           <div style={{ flex: '1 1 140px' }}>
             <Select label="Categoria" value={fCat} onChange={e => setFCat(e.target.value)} placeholder="Todas"
-              options={cats.map(c => ({ value: c.id, label: c.nome }))} style={{ marginBottom: 0 }} />
+              options={catsAtivas.map(c => ({ value: c.id, label: c.nome }))} style={{ marginBottom: 0 }} />
           </div>
         </Card>
       </div>
@@ -129,7 +132,7 @@ export default function TxManager({ tipo, title, accent, cats, statusOptions, tr
             <Input label="Valor (R$)" type="text" value={form.valor} onChange={e => setForm(f => ({ ...f, valor: e.target.value }))} placeholder="0,00" style={{ marginBottom: 0 }} />
           </div>
           <Select label="Categoria" value={form.categoria} onChange={e => setForm(f => ({ ...f, categoria: e.target.value }))}
-            options={cats.map(c => ({ value: c.id, label: `${c.icon || ''} ${c.nome}`.trim() }))} />
+            options={catsAtivas.map(c => ({ value: c.id, label: `${c.icon || ''} ${c.nome}`.trim() }))} />
           <Input label="Descrição" value={form.desc} onChange={e => setForm(f => ({ ...f, desc: e.target.value }))} placeholder="Opcional" />
           <Select label="Conta" value={form.accountId} onChange={e => setForm(f => ({ ...f, accountId: e.target.value }))}
             placeholder={accounts.length ? 'Selecione' : 'Cadastre uma conta em Contas'}

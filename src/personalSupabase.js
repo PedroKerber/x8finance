@@ -201,3 +201,51 @@ export const deletePersonalGoal = async (id) => {
   const { error } = await supabase.from('personal_goals').delete().eq('id', id)
   if (error) throw error
 }
+
+// ── Categorias personalizadas (F3) ──────────────────────────────────────────
+const mapCategory = (r) => ({
+  id: r.id, name: r.name, type: r.type || 'despesa', color: r.color || '#6b7280',
+  isActive: r.is_active !== false,
+})
+export const getPersonalCategories = async () => {
+  const { data, error } = await supabase.from('personal_categories').select('*').order('created_at', { ascending: true })
+  if (error) throw error
+  return (data || []).map(mapCategory)
+}
+export const savePersonalCategory = async (c, userId) => {
+  const row = {
+    id: c.id, user_id: userId, name: c.name, type: c.type || 'despesa',
+    color: c.color || null, is_active: c.isActive !== false,
+  }
+  const { error } = await supabase.from('personal_categories').upsert(row)
+  if (error) throw error
+}
+export const deletePersonalCategory = async (id) => {
+  const { error } = await supabase.from('personal_categories').delete().eq('id', id)
+  if (error) throw error
+}
+
+// ── Snapshots de patrimônio líquido (F3) ────────────────────────────────────
+const mapSnapshot = (r) => ({
+  id: r.id, date: r.snapshot_date, accounts: Number(r.accounts_total) || 0,
+  investments: Number(r.investments_total) || 0, debts: Number(r.debts_total) || 0,
+  netWorth: Number(r.net_worth) || 0,
+})
+export const getNetWorthSnapshots = async () => {
+  const { data, error } = await supabase.from('personal_net_worth_snapshots').select('*').order('snapshot_date', { ascending: true })
+  if (error) throw error
+  return (data || []).map(mapSnapshot)
+}
+// Upsert do snapshot do mês corrente (snapshot_date = 1º dia do mês).
+export const upsertNetWorthSnapshot = async (userId, { accounts, investments, debts }) => {
+  const now = new Date()
+  const snapshotDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
+  const row = {
+    user_id: userId, snapshot_date: snapshotDate,
+    accounts_total: accounts || 0, investments_total: investments || 0,
+    debts_total: debts || 0, net_worth: (accounts || 0) + (investments || 0) - (debts || 0),
+  }
+  const { error } = await supabase.from('personal_net_worth_snapshots')
+    .upsert(row, { onConflict: 'user_id,snapshot_date' })
+  if (error) throw error
+}

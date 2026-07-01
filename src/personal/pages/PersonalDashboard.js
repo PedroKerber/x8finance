@@ -1,14 +1,13 @@
 import { useMemo } from 'react'
 import { ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, PieChart, Pie, Cell, Legend } from 'recharts'
-import { T, fmt, fmtS } from '../../theme'
+import { T, fmt, fmtS, fmtPct } from '../../theme'
 import { Card, KpiCard, EmptyState } from '../../components/ui'
-import { CATS_DESPESA_PF } from '../../personalData'
 
 const MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
 
 const somaMes = (txs, mes, tipo) => txs.filter(t => t.tipo === tipo && (t.data || '').startsWith(mes)).reduce((s, t) => s + (t.valor || 0), 0)
 
-export default function PersonalDashboard({ usuario, profile, accounts, transactions, investments = [], debts = [] }) {
+export default function PersonalDashboard({ usuario, profile, accounts, transactions, investments = [], debts = [], catsDespesa = [], snapshots = [] }) {
   const hoje = new Date()
   const mesAtual = hoje.toISOString().slice(0, 7)
   const prevDate = new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1)
@@ -48,10 +47,21 @@ export default function PersonalDashboard({ usuario, profile, accounts, transact
     transactions.filter(t => t.tipo === 'despesa' && (t.data || '').startsWith(mesAtual))
       .forEach(t => { map[t.categoria] = (map[t.categoria] || 0) + (t.valor || 0) })
     return Object.entries(map).map(([id, v]) => ({
-      nome: CATS_DESPESA_PF.find(c => c.id === id)?.nome || id,
-      cor: CATS_DESPESA_PF.find(c => c.id === id)?.cor || T.muted, valor: v,
+      nome: catsDespesa.find(c => c.id === id)?.nome || id,
+      cor: catsDespesa.find(c => c.id === id)?.cor || T.muted, valor: v,
     })).sort((a, b) => b.valor - a.valor)
-  }, [transactions, mesAtual])
+  }, [transactions, mesAtual, catsDespesa])
+
+  // Evolução patrimonial (F3) — a partir dos snapshots mensais reais
+  const evoPat = useMemo(() => snapshots.map(s => {
+    const [y, mo] = (s.date || '').split('-')
+    return { mes: `${MESES[+mo - 1]}/${(y || '').slice(2)}`, patrimonio: s.netWorth }
+  }), [snapshots])
+  const maiorPat = snapshots.length ? Math.max(...snapshots.map(s => s.netWorth)) : patrimonio
+  const menorPat = snapshots.length ? Math.min(...snapshots.map(s => s.netWorth)) : patrimonio
+  const patPrev = snapshots.length >= 2 ? snapshots[snapshots.length - 2].netWorth : null
+  const varPat = patPrev != null ? patrimonio - patPrev : 0
+  const varPatPct = patPrev ? (varPat / Math.abs(patPrev)) * 100 : 0
 
   const temDados = transactions.length > 0 || accounts.length > 0
   const primeiroNome = (profile?.nome || usuario?.nome || '').split(' ')[0]
@@ -126,6 +136,38 @@ export default function PersonalDashboard({ usuario, profile, accounts, transact
               )}
             </Card>
           </div>
+
+          {/* Evolução Patrimonial (F3) — snapshots mensais reais */}
+          <Card style={{ padding: 20, marginTop: 14 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
+              <div style={{ fontWeight: 700, fontSize: 15, color: T.text }}>Evolução Patrimonial</div>
+              <div style={{ fontSize: 12, color: T.muted }}>Patrimônio = contas + investimentos − dívidas</div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 16 }}>
+              <div><div style={{ fontSize: 12, color: T.sub }}>Atual</div><div style={{ fontWeight: 800, fontSize: 20, color: patrimonio >= 0 ? T.green : T.red }}>{fmt(patrimonio)}</div></div>
+              <div><div style={{ fontSize: 12, color: T.sub }}>Maior registrado</div><div style={{ fontWeight: 800, fontSize: 20, color: T.text }}>{fmt(maiorPat)}</div></div>
+              <div><div style={{ fontSize: 12, color: T.sub }}>Menor registrado</div><div style={{ fontWeight: 800, fontSize: 20, color: T.text }}>{fmt(menorPat)}</div></div>
+              <div>
+                <div style={{ fontSize: 12, color: T.sub }}>Variação (mês ant.)</div>
+                <div style={{ fontWeight: 800, fontSize: 20, color: varPat >= 0 ? T.green : T.red }}>{patPrev == null ? '—' : `${varPat >= 0 ? '↑' : '↓'} ${fmt(Math.abs(varPat))}`}</div>
+                {patPrev != null && <div style={{ fontSize: 12, color: varPat >= 0 ? T.green : T.red }}>{fmtPct(varPatPct)}</div>}
+              </div>
+            </div>
+            {evoPat.length < 2 ? (
+              <div style={{ background: T.bg, borderRadius: 8, padding: '12px 14px', fontSize: 13, color: T.muted }}>
+                O histórico do patrimônio começou a ser registrado agora. Volte nos próximos meses para acompanhar a curva de evolução.
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={220}>
+                <ComposedChart data={evoPat} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
+                  <XAxis dataKey="mes" tick={{ fill: T.muted, fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fill: T.muted, fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => Math.abs(v) >= 1000 ? (v / 1000).toFixed(0) + 'k' : v} />
+                  <Tooltip formatter={v => fmt(v)} contentStyle={{ background: T.white, border: `1px solid ${T.border}`, borderRadius: 8, fontSize: 12 }} />
+                  <Line type="monotone" dataKey="patrimonio" name="Patrimônio" stroke={T.primary} strokeWidth={2.5} dot={{ r: 3 }} />
+                </ComposedChart>
+              </ResponsiveContainer>
+            )}
+          </Card>
         </>
       )}
     </div>

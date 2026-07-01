@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { T } from '../theme'
 import { useMobile } from '../context/MobileContext'
 import {
@@ -8,7 +8,10 @@ import {
   getPersonalInvestments, savePersonalInvestment, deletePersonalInvestment,
   getPersonalDebts, savePersonalDebt, deletePersonalDebt,
   getPersonalGoals, savePersonalGoal, deletePersonalGoal,
+  getPersonalCategories, savePersonalCategory, deletePersonalCategory,
+  getNetWorthSnapshots, upsertNetWorthSnapshot,
 } from '../personalSupabase'
+import { CATS_RECEITA_PF, CATS_DESPESA_PF } from '../personalData'
 import PersonalSidebar from './PersonalSidebar'
 import PersonalDashboard from './pages/PersonalDashboard'
 import PersonalReceitas from './pages/PersonalReceitas'
@@ -19,6 +22,7 @@ import PersonalInvestimentos from './pages/PersonalInvestimentos'
 import PersonalDividas from './pages/PersonalDividas'
 import PersonalMetas from './pages/PersonalMetas'
 import PersonalRelatorios from './pages/PersonalRelatorios'
+import PersonalCategorias from './pages/PersonalCategorias'
 
 export default function PersonalApp({ usuario, profile, perfilFoto, onLogout }) {
   const isMobile = useMobile()
@@ -29,6 +33,8 @@ export default function PersonalApp({ usuario, profile, perfilFoto, onLogout }) 
   const [investments, setInvestments] = useState([])
   const [debts, setDebts] = useState([])
   const [goals, setGoals] = useState([])
+  const [categories, setCategories] = useState([])
+  const [snapshots, setSnapshots] = useState([])
   const [loading, setLoading] = useState(true)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('norvo_pf_sidebar') === '1')
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -42,16 +48,27 @@ export default function PersonalApp({ usuario, profile, perfilFoto, onLogout }) 
     Promise.all([
       getPersonalAccounts(), getPersonalTransactions(), getPersonalCards(),
       getPersonalInvestments(), getPersonalDebts(), getPersonalGoals(),
+      getPersonalCategories(), getNetWorthSnapshots(),
     ])
-      .then(([accs, txs, crds, invs, dbts, gls]) => {
+      .then(async ([accs, txs, crds, invs, dbts, gls, cats, snaps]) => {
         if (!alive) return
         setAccounts(accs); setTransactions(txs); setCards(crds)
-        setInvestments(invs); setDebts(dbts); setGoals(gls)
+        setInvestments(invs); setDebts(dbts); setGoals(gls); setCategories(cats)
+        setSnapshots(snaps)
+        // Registra/atualiza o snapshot do patrimônio do mês corrente (dado real, idempotente por mês)
+        try {
+          const accountsTotal = accs.reduce((s, a) => s + (a.saldoAtual || 0), 0)
+          const investTotal = invs.reduce((s, i) => s + (i.current || 0), 0)
+          const debtsTotal = dbts.filter(d => d.status !== 'quitada').reduce((s, d) => s + (d.remaining || 0), 0)
+          await upsertNetWorthSnapshot(usuario.id, { accounts: accountsTotal, investments: investTotal, debts: debtsTotal })
+          const fresh = await getNetWorthSnapshots()
+          if (alive) setSnapshots(fresh)
+        } catch (e) { /* snapshot é best-effort; não bloqueia o app */ }
       })
       .catch(console.error)
       .finally(() => { if (alive) setLoading(false) })
     return () => { alive = false }
-  }, [])
+  }, [usuario])
 
   const onSaveTx = useCallback(async (item, isEdit) => {
     await savePersonalTransaction(item, usuario.id)
@@ -105,11 +122,34 @@ export default function PersonalApp({ usuario, profile, perfilFoto, onLogout }) 
     await deletePersonalGoal(id); setGoals(prev => prev.filter(x => x.id !== id))
   }, [])
 
+  const onSaveCategory = useCallback(async (c, isEdit) => {
+    await savePersonalCategory(c, usuario.id)
+    setCategories(prev => isEdit ? prev.map(x => x.id === c.id ? c : x) : [...prev, c])
+  }, [usuario])
+  const onDeleteCategory = useCallback(async (id) => {
+    await deletePersonalCategory(id); setCategories(prev => prev.filter(x => x.id !== id))
+  }, [])
+
+  // Categorias efetivas = padrão (fixas) + personalizadas. `active` controla o dropdown;
+  // a resolução de nome/cor usa todas (mantém registros antigos legíveis mesmo se inativadas).
+  const catsReceita = useMemo(() => {
+    const custom = categories.filter(c => c.type === 'receita' || c.type === 'ambos')
+      .map(c => ({ id: c.id, nome: c.name, cor: c.color, active: c.isActive, custom: true }))
+    return [...CATS_RECEITA_PF.map(c => ({ ...c, active: true })), ...custom]
+  }, [categories])
+  const catsDespesa = useMemo(() => {
+    const custom = categories.filter(c => c.type === 'despesa' || c.type === 'ambos')
+      .map(c => ({ id: c.id, nome: c.name, cor: c.color, active: c.isActive, custom: true }))
+    return [...CATS_DESPESA_PF.map(c => ({ ...c, active: true })), ...custom]
+  }, [categories])
+
   const shared = {
     usuario, profile, accounts, transactions, cards, investments, debts, goals,
+    categories, snapshots, catsReceita, catsDespesa,
     onSaveTx, onDeleteTx, onSaveAccount, onDeleteAccount,
     onSaveCard, onDeleteCard, onSaveInvestment, onDeleteInvestment,
-    onSaveDebt, onDeleteDebt, onSaveGoal, onDeleteGoal, setPage,
+    onSaveDebt, onDeleteDebt, onSaveGoal, onDeleteGoal,
+    onSaveCategory, onDeleteCategory, setPage,
   }
 
   const renderPage = () => {
@@ -125,6 +165,7 @@ export default function PersonalApp({ usuario, profile, perfilFoto, onLogout }) 
       case 'investimentos': return <PersonalInvestimentos {...shared} />
       case 'dividas':       return <PersonalDividas {...shared} />
       case 'metas':         return <PersonalMetas {...shared} />
+      case 'categorias':    return <PersonalCategorias {...shared} />
       case 'relatorios':    return <PersonalRelatorios {...shared} />
       default:              return <PersonalDashboard {...shared} />
     }

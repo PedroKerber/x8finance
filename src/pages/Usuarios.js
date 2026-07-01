@@ -63,7 +63,7 @@ const initials = (nome) => (nome || 'U').split(' ').filter(Boolean).slice(0, 2).
 const CORES_AV = ['#16a34a', '#2563eb', '#7c3aed', '#ea580c', '#dc2626', '#0891b2', '#ca8a04']
 const avatarCor = (nome) => CORES_AV[(nome || 'U').charCodeAt(0) % CORES_AV.length]
 
-const EMPTY = { nome: '', email: '', telefone: '', empresaIds: ['kz'], empresaRoles: { kz: 'gerente' }, cargo: 'Analista Financeiro', perfil: 'gerente', status: 'ativo', mustChangePassword: false, foto: '' }
+const EMPTY = { nome: '', email: '', telefone: '', empresaIds: ['kz'], empresaRoles: { kz: 'gerente' }, cargo: 'Analista Financeiro', perfil: 'gerente', status: 'ativo', mustChangePassword: false, foto: '', accountType: 'empresarial' }
 
 const Overlay = ({ children, onClose }) => (
   <div onClick={e => { if (e.target === e.currentTarget) onClose() }}
@@ -210,7 +210,8 @@ export default function Usuarios({ usuario, empresas = [] }) {
     if (!form.nome.trim()) e.nome = 'Nome é obrigatório'
     if (!form.email.trim()) e.email = 'E-mail é obrigatório'
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'E-mail inválido'
-    if (!form.empresaIds || form.empresaIds.length === 0) e.empresaIds = 'Selecione ao menos uma empresa'
+    // Conta Pessoa Física não exige empresa (ambiente independente)
+    if (form.accountType !== 'pf' && (!form.empresaIds || form.empresaIds.length === 0)) e.empresaIds = 'Selecione ao menos uma empresa'
     setErros(e)
     return Object.keys(e).length === 0
   }
@@ -234,10 +235,11 @@ export default function Usuarios({ usuario, empresas = [] }) {
         setModalTipo(null)
       } else {
         setModalTipo(null)
+        const isPF = form.accountType === 'pf'   // Fase 6: conta Pessoa Física (sem empresa/multiempresas)
         const inviteRes = await apiFetch('/api/invite-user', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: form.email, nome: form.nome, perfil: form.perfil, cargo: form.cargo, telefone: form.telefone }),
+          body: JSON.stringify({ email: form.email, nome: form.nome, perfil: isPF ? null : form.perfil, cargo: form.cargo, telefone: form.telefone, account_type: isPF ? 'pf' : 'empresarial' }),
         })
         const inviteJson = await inviteRes.json()
         if (!inviteRes.ok) throw new Error(inviteJson.error || 'Erro ao criar usuário')
@@ -246,13 +248,19 @@ export default function Usuarios({ usuario, empresas = [] }) {
         const inviteLink  = inviteJson.inviteLink
 
         if (newUserId) {
-          const vinculos = (form.empresaIds || []).map(id => ({ empresa_id: id, role: form.empresaRoles?.[id] || form.perfil || 'gerente' }))
-          await syncPermissions(newUserId, vinculos)
-          const newUser = { ...form, id: newUserId, isMaster: false, emailConfirmado: false, ultimoAcesso: '—', criadoEm: new Date().toLocaleDateString('pt-BR'), vinculos, empresaRoles: Object.fromEntries(vinculos.map(v => [v.empresa_id, v.role])) }
-          setUsuarios(p => [...p.filter(u => u.email !== form.email), newUser])
+          if (isPF) {
+            // Conta PF: nenhum vínculo de empresa; entra direto no ambiente pessoal.
+            const newUser = { ...form, id: newUserId, isMaster: false, emailConfirmado: false, ultimoAcesso: '—', criadoEm: new Date().toLocaleDateString('pt-BR'), vinculos: [], empresaIds: [], empresaRoles: {} }
+            setUsuarios(p => [...p.filter(u => u.email !== form.email), newUser])
+          } else {
+            const vinculos = (form.empresaIds || []).map(id => ({ empresa_id: id, role: form.empresaRoles?.[id] || form.perfil || 'gerente' }))
+            await syncPermissions(newUserId, vinculos)
+            const newUser = { ...form, id: newUserId, isMaster: false, emailConfirmado: false, ultimoAcesso: '—', criadoEm: new Date().toLocaleDateString('pt-BR'), vinculos, empresaRoles: Object.fromEntries(vinculos.map(v => [v.empresa_id, v.role])) }
+            setUsuarios(p => [...p.filter(u => u.email !== form.email), newUser])
+          }
         }
 
-        await logAudit('usuario_criado', { email: form.email, perfil: form.perfil, empresas: form.empresaIds })
+        await logAudit('usuario_criado', { email: form.email, perfil: isPF ? 'pf' : form.perfil, empresas: isPF ? [] : form.empresaIds })
 
         // Try EmailJS with the real invite link
         if (EMAILJS_SERVICE_ID && inviteLink) {
@@ -806,7 +814,9 @@ export default function Usuarios({ usuario, empresas = [] }) {
                 <div>
                   <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>{form.nome || 'Nome do usuário'}</div>
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    <PerfilBadge perfil={form.perfil} />
+                    {form.accountType === 'pf'
+                      ? <span style={{ background: '#F47B2018', color: T.primary, fontSize: 11, fontWeight: 700, borderRadius: 4, padding: '3px 10px' }}>👤 Pessoa Física</span>
+                      : <PerfilBadge perfil={form.perfil} />}
                     <StatusBdg status={form.status} />
                   </div>
                   {form.email && <div style={{ color: T.muted, fontSize: 12, marginTop: 4 }}>{form.email}</div>}
@@ -824,6 +834,21 @@ export default function Usuarios({ usuario, empresas = [] }) {
             <div style={{ padding: '24px 32px', overflowY: 'auto', flex: 1 }}>
               {activeTab === 'dados' ? (
                 <div>
+                  {/* Fase 6 — Tipo de conta (só no cadastro). PF = ambiente pessoal independente. */}
+                  {!editId && (
+                    <div style={{ marginBottom: 20 }}>
+                      <label style={lblSt}>Tipo de conta</label>
+                      <div style={{ display: 'flex', gap: 10 }}>
+                        {[['empresarial', '🏢 Empresa', 'Acesso ao ambiente multiempresas e permissões'], ['pf', '👤 Pessoa Física', 'Ambiente financeiro pessoal, sem empresas']].map(([id, label, desc]) => (
+                          <div key={id} onClick={() => setForm(f => ({ ...f, accountType: id }))}
+                            style={{ flex: 1, border: `2px solid ${form.accountType === id ? T.primary : T.border}`, borderRadius: 10, padding: '12px 14px', cursor: 'pointer', background: form.accountType === id ? '#fff7ed' : T.white }}>
+                            <div style={{ fontWeight: 700, fontSize: 13, color: form.accountType === id ? T.primary : T.text }}>{label}</div>
+                            <div style={{ fontSize: 11, color: T.muted, marginTop: 3, lineHeight: 1.4 }}>{desc}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
                     <div>
                       <label style={lblSt}>Nome Completo *</label>
@@ -853,8 +878,8 @@ export default function Usuarios({ usuario, empresas = [] }) {
                     </div>
                   </div>
 
-                  {/* Empresas */}
-                  <div style={{ marginBottom: 20 }}>
+                  {/* Empresas (oculto para conta Pessoa Física) */}
+                  <div style={{ marginBottom: 20, display: form.accountType === 'pf' ? 'none' : 'block' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                       <label style={{ ...lblSt, marginBottom: 0 }}>
                         Empresas com Acesso{form.perfil !== 'master' ? ' *' : ''}
@@ -904,8 +929,8 @@ export default function Usuarios({ usuario, empresas = [] }) {
                     {(form.empresaIds || []).length > 0 && <div style={{ fontSize: 11, color: T.sub, marginTop: 5 }}>{form.empresaIds.length} empresa{form.empresaIds.length !== 1 ? 's' : ''} selecionada{form.empresaIds.length !== 1 ? 's' : ''}</div>}
                   </div>
 
-                  {/* Perfil */}
-                  <div style={{ marginBottom: 20 }}>
+                  {/* Perfil (oculto para conta Pessoa Física) */}
+                  <div style={{ marginBottom: 20, display: form.accountType === 'pf' ? 'none' : 'block' }}>
                     <label style={lblSt}>Perfil padrão (aplicado ao marcar empresas)</label>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                       {PERFIS.map(p => (

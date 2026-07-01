@@ -78,6 +78,17 @@ export const CATS_META_PF = [
   'Aposentadoria', 'Educação', 'Investir', 'Outros',
 ]
 
+// F3 — categorias personalizadas
+export const TIPOS_CATEGORIA_PF = [
+  { id: 'receita', label: 'Receita' },
+  { id: 'despesa', label: 'Despesa' },
+  { id: 'ambos',   label: 'Ambos'   },
+]
+export const CORES_CATEGORIA_PF = [
+  '#16a34a', '#22c55e', '#2563eb', '#0891b2', '#7c3aed', '#8b5cf6',
+  '#ec4899', '#ea580c', '#f59e0b', '#dc2626', '#78716c', '#6366f1',
+]
+
 // Helpers de lookup
 export const catReceitaNome = (id) => CATS_RECEITA_PF.find(c => c.id === id)?.nome || id || '—'
 export const catDespesaNome = (id) => CATS_DESPESA_PF.find(c => c.id === id)?.nome || id || '—'
