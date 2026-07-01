@@ -37,6 +37,8 @@ function Ico({ name, size = 18 }) {
     inner = <><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></>
   else if (name === 'categorias')
     inner = <><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></>
+  else if (name === 'patrimonio')
+    inner = <><path d="M6 3h12l4 6-10 12L2 9z"/><path d="M11 3 8 9l4 12 4-12-3-6"/><path d="M2 9h20"/></>
   else if (name === 'configuracoes')
     inner = <><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></>
   else if (name === 'chevron_left')  inner = <polyline points="15 18 9 12 15 6"/>
@@ -64,6 +66,7 @@ export const PF_NAV_GROUPS = [
     { id: 'cartoes',  label: 'Cartões',  icon: 'cartoes'  },
   ]},
   { label: 'Patrimônio', items: [
+    { id: 'patrimonio',    label: 'Patrimônio',    icon: 'patrimonio'    },
     { id: 'investimentos', label: 'Investimentos', icon: 'investimentos' },
     { id: 'dividas',       label: 'Dívidas',       icon: 'dividas'       },
     { id: 'metas',         label: 'Metas',         icon: 'metas'         },

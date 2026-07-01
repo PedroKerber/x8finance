@@ -23,6 +23,7 @@ import PersonalDividas from './pages/PersonalDividas'
 import PersonalMetas from './pages/PersonalMetas'
 import PersonalRelatorios from './pages/PersonalRelatorios'
 import PersonalCategorias from './pages/PersonalCategorias'
+import PersonalPatrimonio from './pages/PersonalPatrimonio'
 
 export default function PersonalApp({ usuario, profile, perfilFoto, onLogout }) {
   const isMobile = useMobile()
@@ -165,6 +166,7 @@ export default function PersonalApp({ usuario, profile, perfilFoto, onLogout }) 
       case 'investimentos': return <PersonalInvestimentos {...shared} />
       case 'dividas':       return <PersonalDividas {...shared} />
       case 'metas':         return <PersonalMetas {...shared} />
+      case 'patrimonio':    return <PersonalPatrimonio {...shared} />
       case 'categorias':    return <PersonalCategorias {...shared} />
       case 'relatorios':    return <PersonalRelatorios {...shared} />
       default:              return <PersonalDashboard {...shared} />

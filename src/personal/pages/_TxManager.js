@@ -5,13 +5,16 @@ import { FORMAS_PAGAMENTO_PF, RECORRENCIAS_PF } from '../../personalData'
 
 // Gerenciador genérico de transações pessoais (receita/despesa).
 // Reusado por PersonalReceitas e PersonalDespesas.
-export default function TxManager({ tipo, title, accent, cats, statusOptions, transactions, accounts, onSaveTx, onDeleteTx }) {
+export default function TxManager({ tipo, title, accent, cats, statusOptions, transactions, accounts, cards = [], onSaveTx, onDeleteTx }) {
   const isReceita = tipo === 'receita'
   const hoje = new Date().toISOString().slice(0, 10)
   const mesAtual = hoje.slice(0, 7)
 
   const [mes, setMes] = useState(mesAtual)
   const [fCat, setFCat] = useState('')
+  const [busca, setBusca] = useState('')
+  const [fConta, setFConta] = useState('')
+  const [fCartao, setFCartao] = useState('')
   const [modal, setModal] = useState(false)
   const [confirmId, setConfirmId] = useState(null)
   const [toast, setToast] = useState(null)
@@ -28,14 +31,17 @@ export default function TxManager({ tipo, title, accent, cats, statusOptions, tr
     let l = transactions.filter(t => t.tipo === tipo)
     if (mes) l = l.filter(t => (t.data || '').startsWith(mes))
     if (fCat) l = l.filter(t => t.categoria === fCat)
+    if (fConta) l = l.filter(t => t.accountId === fConta)
+    if (fCartao) l = l.filter(t => t.cartaoId === fCartao)
+    if (busca.trim()) { const q = busca.trim().toLowerCase(); l = l.filter(t => (t.desc || '').toLowerCase().includes(q) || catNome(t.categoria).toLowerCase().includes(q)) }
     return l
-  }, [transactions, tipo, mes, fCat])
+  }, [transactions, tipo, mes, fCat, fConta, fCartao, busca]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const total = useMemo(() => lista.reduce((s, t) => s + (t.valor || 0), 0), [lista])
 
   const novo = () => {
     setForm({ id: uid(), tipo, data: hoje, valor: '', categoria: catsAtivas[0]?.id || '', desc: '',
-      accountId: accounts[0]?.id || '', forma: isReceita ? '' : 'Pix',
+      accountId: accounts[0]?.id || '', cartaoId: '', forma: isReceita ? '' : 'Pix',
       recorrencia: isReceita ? '' : 'Único', status: statusOptions[0], anexoUrl: '', _edit: false })
     setModal(true)
   }
@@ -94,21 +100,30 @@ export default function TxManager({ tipo, title, accent, cats, statusOptions, tr
 
       {/* Resumo + filtros */}
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'stretch', marginBottom: 18 }}>
-        <Card style={{ padding: '14px 20px', flex: '1 1 220px' }}>
+        <Card style={{ padding: '14px 20px', flex: '1 1 200px' }}>
           <div style={{ fontSize: 12, color: T.sub }}>Total no período</div>
           <div style={{ fontWeight: 800, fontSize: 24, color: accent, marginTop: 4 }}>{fmt(total)}</div>
           <div style={{ fontSize: 12, color: T.muted, marginTop: 2 }}>{lista.length} lançamento(s)</div>
         </Card>
-        <Card style={{ padding: '14px 16px', flex: '2 1 320px', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-          <div style={{ flex: '1 1 140px' }}>
-            <label style={{ display: 'block', fontSize: 12, color: T.sub, fontWeight: 600, marginBottom: 4 }}>Mês</label>
+        <Card style={{ padding: '14px 16px', flex: '3 1 420px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10 }}>
+            <div style={{ gridColumn: '1 / -1', position: 'relative' }}>
+              <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: T.muted, fontSize: 14 }}>🔍</span>
+              <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar por descrição ou categoria…"
+                style={{ width: '100%', background: 'var(--card)', border: `1.5px solid var(--border)`, borderRadius: 8, padding: '9px 12px 9px 32px', color: 'var(--text)', fontSize: 14, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }} />
+            </div>
             <input type="month" value={mes} onChange={e => setMes(e.target.value)}
-              style={{ width: '100%', background: 'var(--card)', border: `1.5px solid var(--border)`, borderRadius: 8, padding: '9px 12px', color: 'var(--text)', fontSize: 14, outline: 'none', fontFamily: 'inherit' }} />
+              style={{ background: 'var(--card)', border: `1.5px solid var(--border)`, borderRadius: 8, padding: '9px 12px', color: 'var(--text)', fontSize: 14, outline: 'none', fontFamily: 'inherit', minWidth: 0 }} />
+            <Select value={fCat} onChange={e => setFCat(e.target.value)} placeholder="Categoria" options={catsAtivas.map(c => ({ value: c.id, label: c.nome }))} style={{ marginBottom: 0 }} />
+            <Select value={fConta} onChange={e => setFConta(e.target.value)} placeholder="Conta" options={accounts.map(a => ({ value: a.id, label: a.nome }))} style={{ marginBottom: 0 }} />
+            {!isReceita && cards.length > 0 && (
+              <Select value={fCartao} onChange={e => setFCartao(e.target.value)} placeholder="Cartão" options={cards.map(c => ({ value: c.id, label: c.name }))} style={{ marginBottom: 0 }} />
+            )}
           </div>
-          <div style={{ flex: '1 1 140px' }}>
-            <Select label="Categoria" value={fCat} onChange={e => setFCat(e.target.value)} placeholder="Todas"
-              options={catsAtivas.map(c => ({ value: c.id, label: c.nome }))} style={{ marginBottom: 0 }} />
-          </div>
+          {(busca || fCat || fConta || fCartao || mes !== mesAtual) && (
+            <button onClick={() => { setBusca(''); setFCat(''); setFConta(''); setFCartao(''); setMes(mesAtual) }}
+              style={{ marginTop: 10, background: 'none', border: 'none', color: T.primary, cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit' }}>Limpar filtros</button>
+          )}
         </Card>
       </div>
 
@@ -137,6 +152,10 @@ export default function TxManager({ tipo, title, accent, cats, statusOptions, tr
           <Select label="Conta" value={form.accountId} onChange={e => setForm(f => ({ ...f, accountId: e.target.value }))}
             placeholder={accounts.length ? 'Selecione' : 'Cadastre uma conta em Contas'}
             options={accounts.map(a => ({ value: a.id, label: a.nome }))} />
+          {!isReceita && cards.length > 0 && (
+            <Select label="Cartão de crédito (opcional)" value={form.cartaoId || ''} onChange={e => setForm(f => ({ ...f, cartaoId: e.target.value }))}
+              placeholder="Nenhum" options={cards.map(c => ({ value: c.id, label: c.name }))} />
+          )}
           {!isReceita && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <Select label="Forma de pagamento" value={form.forma} onChange={e => setForm(f => ({ ...f, forma: e.target.value }))} options={FORMAS_PAGAMENTO_PF} style={{ marginBottom: 0 }} />

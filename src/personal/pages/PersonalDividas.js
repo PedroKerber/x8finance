@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { T, fmt, fd, uid, errMsgAcao } from '../../theme'
-import { Card, Btn, Modal, Input, Select, Table, Toast, Confirm, EmptyState, Badge } from '../../components/ui'
+import { Card, Btn, Modal, Input, Select, Table, Toast, Confirm, EmptyState, Badge, FilterBar, SearchInput } from '../../components/ui'
 import { STATUS_DIVIDA_PF, statusDividaInfo } from '../../personalData'
 
 const parcelaMensal = (d) => (d.installmentsTotal ? (d.total || 0) / d.installmentsTotal : 0)
@@ -10,9 +10,19 @@ export default function PersonalDividas({ debts, onSaveDebt, onDeleteDebt }) {
   const [confirmId, setConfirmId] = useState(null)
   const [toast, setToast] = useState(null)
   const [form, setForm] = useState(null)
+  const [busca, setBusca] = useState('')
+  const [fStatus, setFStatus] = useState('')
+  const [fVenc, setFVenc] = useState('')
 
   const totalDevedor = useMemo(() => debts.filter(d => d.status !== 'quitada').reduce((s, d) => s + (d.remaining || 0), 0), [debts])
   const parcelasMes = useMemo(() => debts.filter(d => d.status !== 'quitada').reduce((s, d) => s + parcelaMensal(d), 0), [debts])
+  const hojeStr = new Date().toISOString().slice(0, 10)
+  const em30 = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10)
+  const filtered = useMemo(() => debts.filter(d =>
+    (!fStatus || d.status === fStatus) &&
+    (!fVenc || (fVenc === 'vencidas' ? (d.dueDate && d.dueDate < hojeStr && d.status !== 'quitada') : (d.dueDate && d.dueDate >= hojeStr && d.dueDate <= em30))) &&
+    (!busca.trim() || `${d.creditor} ${d.description}`.toLowerCase().includes(busca.trim().toLowerCase()))
+  ), [debts, fStatus, fVenc, busca, hojeStr, em30])
 
   const novo = () => { setForm({ id: uid(), creditor: '', description: '', total: '', remaining: '', installmentsTotal: '', installmentsPaid: '', dueDate: '', interestRate: '', status: 'em_aberto', notes: '', _edit: false }); setModal(true) }
   const editar = (d) => { setForm({ ...d, total: String(d.total ?? ''), remaining: String(d.remaining ?? ''), installmentsTotal: String(d.installmentsTotal ?? ''), installmentsPaid: String(d.installmentsPaid ?? ''), interestRate: d.interestRate != null ? String(d.interestRate) : '', _edit: true }); setModal(true) }
@@ -78,10 +88,18 @@ export default function PersonalDividas({ debts, onSaveDebt, onDeleteDebt }) {
         <Card style={{ padding: '16px 20px' }}><div style={{ fontSize: 12, color: T.sub }}>Dívidas ativas</div><div style={{ fontWeight: 800, fontSize: 22, color: T.text, marginTop: 4 }}>{debts.filter(d => d.status !== 'quitada').length}</div></Card>
       </div>
 
+      {debts.length > 0 && (
+        <FilterBar>
+          <SearchInput value={busca} onChange={setBusca} placeholder="Buscar por credor ou descrição…" />
+          <Select value={fStatus} onChange={e => setFStatus(e.target.value)} placeholder="Todos os status" options={STATUS_DIVIDA_PF.map(s => ({ value: s.id, label: s.label }))} style={{ marginBottom: 0, minWidth: 150 }} />
+          <Select value={fVenc} onChange={e => setFVenc(e.target.value)} placeholder="Vencimento" options={[{ value: 'proximas', label: 'A vencer (30 dias)' }, { value: 'vencidas', label: 'Vencidas' }]} style={{ marginBottom: 0, minWidth: 150 }} />
+        </FilterBar>
+      )}
+
       <Card style={{ padding: 4 }}>
-        <Table columns={columns} data={debts} emptyState={
-          <EmptyState icon="📉" title="Nenhuma dívida cadastrada" sub="Cadastre empréstimos e parcelamentos para controlar."
-            action={<Btn onClick={novo} icon="+">Nova dívida</Btn>} />
+        <Table columns={columns} data={filtered} emptyState={
+          <EmptyState icon="📉" title={debts.length ? 'Nenhum resultado para o filtro' : 'Nenhuma dívida cadastrada'} sub={debts.length ? 'Ajuste a busca ou os filtros.' : 'Cadastre empréstimos e parcelamentos para controlar.'}
+            action={debts.length ? null : <Btn onClick={novo} icon="+">Nova dívida</Btn>} />
         } />
       </Card>
 

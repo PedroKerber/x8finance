@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { T, uid, errMsgAcao } from '../../theme'
-import { Card, Btn, Modal, Input, Select, Toast, Confirm, EmptyState, Badge } from '../../components/ui'
+import { Card, Btn, Modal, Input, Select, Toast, Confirm, EmptyState, Badge, FilterBar, SearchInput } from '../../components/ui'
 import { TIPOS_CATEGORIA_PF, CORES_CATEGORIA_PF } from '../../personalData'
 
 const tipoLabel = (t) => TIPOS_CATEGORIA_PF.find(x => x.id === t)?.label || t
@@ -10,6 +10,15 @@ export default function PersonalCategorias({ categories, onSaveCategory, onDelet
   const [confirmId, setConfirmId] = useState(null)
   const [toast, setToast] = useState(null)
   const [form, setForm] = useState(null)
+  const [busca, setBusca] = useState('')
+  const [fTipo, setFTipo] = useState('')
+  const [fAtivo, setFAtivo] = useState('')
+
+  const filtered = categories.filter(c =>
+    (!fTipo || c.type === fTipo) &&
+    (!fAtivo || (fAtivo === 'ativa' ? c.isActive : !c.isActive)) &&
+    (!busca.trim() || (c.name || '').toLowerCase().includes(busca.trim().toLowerCase()))
+  )
 
   const novo = () => { setForm({ id: uid(), name: '', type: 'despesa', color: CORES_CATEGORIA_PF[0], isActive: true, _edit: false }); setModal(true) }
   const editar = (c) => { setForm({ ...c, _edit: true }); setModal(true) }
@@ -49,14 +58,26 @@ export default function PersonalCategorias({ categories, onSaveCategory, onDelet
         <Btn onClick={novo} icon="+">Nova categoria</Btn>
       </div>
 
+      {categories.length > 0 && (
+        <FilterBar>
+          <SearchInput value={busca} onChange={setBusca} placeholder="Buscar categoria…" />
+          <Select value={fTipo} onChange={e => setFTipo(e.target.value)} placeholder="Todos os tipos" options={TIPOS_CATEGORIA_PF.map(t => ({ value: t.id, label: t.label }))} style={{ marginBottom: 0, minWidth: 150 }} />
+          <Select value={fAtivo} onChange={e => setFAtivo(e.target.value)} placeholder="Ativas e inativas" options={[{ value: 'ativa', label: 'Só ativas' }, { value: 'inativa', label: 'Só inativas' }]} style={{ marginBottom: 0, minWidth: 150 }} />
+        </FilterBar>
+      )}
+
       {categories.length === 0 ? (
         <Card style={{ padding: 0 }}>
           <EmptyState icon="🏷️" title="Nenhuma categoria personalizada" sub="As categorias padrão continuam disponíveis. Crie as suas para complementar."
             action={<Btn onClick={novo} icon="+">Nova categoria</Btn>} />
         </Card>
+      ) : filtered.length === 0 ? (
+        <Card style={{ padding: 0 }}>
+          <EmptyState icon="🔍" title="Nenhum resultado para o filtro" sub="Ajuste a busca ou os filtros." />
+        </Card>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 14 }}>
-          {categories.map(c => (
+          {filtered.map(c => (
             <Card key={c.id} style={{ padding: 16, opacity: c.isActive ? 1 : 0.6 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
                 <span style={{ width: 14, height: 14, borderRadius: '50%', background: c.color, flexShrink: 0 }} />

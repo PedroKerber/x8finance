@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { T, fmt, fmtPct, fd, uid, errMsgAcao } from '../../theme'
-import { Card, Btn, Modal, Input, Select, Table, Toast, Confirm, EmptyState } from '../../components/ui'
+import { Card, Btn, Modal, Input, Select, Table, Toast, Confirm, EmptyState, FilterBar, SearchInput } from '../../components/ui'
 import { TIPOS_INVESTIMENTO_PF, LIQUIDEZ_PF, investTypeLabel } from '../../personalData'
 
 export default function PersonalInvestimentos({ investments, onSaveInvestment, onDeleteInvestment }) {
@@ -8,11 +8,19 @@ export default function PersonalInvestimentos({ investments, onSaveInvestment, o
   const [confirmId, setConfirmId] = useState(null)
   const [toast, setToast] = useState(null)
   const [form, setForm] = useState(null)
+  const [busca, setBusca] = useState('')
+  const [fTipo, setFTipo] = useState('')
+  const [fInst, setFInst] = useState('')
 
   const totalInvestido = useMemo(() => investments.reduce((s, i) => s + (i.invested || 0), 0), [investments])
   const totalAtual = useMemo(() => investments.reduce((s, i) => s + (i.current || 0), 0), [investments])
   const variacao = totalAtual - totalInvestido
   const variacaoPct = totalInvestido > 0 ? (variacao / totalInvestido) * 100 : 0
+  const instituicoes = useMemo(() => [...new Set(investments.map(i => i.institution).filter(Boolean))].sort(), [investments])
+  const filtered = useMemo(() => investments.filter(i =>
+    (!fTipo || i.type === fTipo) && (!fInst || i.institution === fInst) &&
+    (!busca.trim() || (i.name || '').toLowerCase().includes(busca.trim().toLowerCase()))
+  ), [investments, fTipo, fInst, busca])
 
   const novo = () => { setForm({ id: uid(), name: '', type: TIPOS_INVESTIMENTO_PF[0].id, institution: '', invested: '', current: '', profitability: '', date: new Date().toISOString().slice(0, 10), liquidity: LIQUIDEZ_PF[0], notes: '', _edit: false }); setModal(true) }
   const editar = (i) => { setForm({ ...i, invested: String(i.invested ?? ''), current: String(i.current ?? ''), profitability: i.profitability != null ? String(i.profitability) : '', _edit: true }); setModal(true) }
@@ -79,10 +87,18 @@ export default function PersonalInvestimentos({ investments, onSaveInvestment, o
         <Card style={{ padding: '16px 20px' }}><div style={{ fontSize: 12, color: T.sub }}>Variação</div><div style={{ fontWeight: 800, fontSize: 22, color: variacao >= 0 ? T.green : T.red, marginTop: 4 }}>{variacao >= 0 ? '↑' : '↓'} {fmt(Math.abs(variacao))}</div><div style={{ fontSize: 12, color: variacao >= 0 ? T.green : T.red }}>{fmtPct(variacaoPct)}</div></Card>
       </div>
 
+      {investments.length > 0 && (
+        <FilterBar>
+          <SearchInput value={busca} onChange={setBusca} placeholder="Buscar investimento…" />
+          <Select value={fTipo} onChange={e => setFTipo(e.target.value)} placeholder="Todos os tipos" options={TIPOS_INVESTIMENTO_PF.map(t => ({ value: t.id, label: t.label }))} style={{ marginBottom: 0, minWidth: 150 }} />
+          {instituicoes.length > 0 && <Select value={fInst} onChange={e => setFInst(e.target.value)} placeholder="Todas instituições" options={instituicoes} style={{ marginBottom: 0, minWidth: 150 }} />}
+        </FilterBar>
+      )}
+
       <Card style={{ padding: 4 }}>
-        <Table columns={columns} data={investments} emptyState={
-          <EmptyState icon="💹" title="Nenhum investimento cadastrado" sub="Adicione seus ativos para acompanhar a rentabilidade."
-            action={<Btn onClick={novo} icon="+">Novo investimento</Btn>} />
+        <Table columns={columns} data={filtered} emptyState={
+          <EmptyState icon="💹" title={investments.length ? 'Nenhum resultado para o filtro' : 'Nenhum investimento cadastrado'} sub={investments.length ? 'Ajuste a busca ou os filtros.' : 'Adicione seus ativos para acompanhar a rentabilidade.'}
+            action={investments.length ? null : <Btn onClick={novo} icon="+">Novo investimento</Btn>} />
         } />
       </Card>
 

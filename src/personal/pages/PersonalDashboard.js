@@ -1,13 +1,13 @@
 import { useMemo } from 'react'
 import { ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, PieChart, Pie, Cell, Legend } from 'recharts'
-import { T, fmt, fmtS, fmtPct } from '../../theme'
+import { T, fmt, fmtS, fmtPct, fd } from '../../theme'
 import { Card, KpiCard, EmptyState } from '../../components/ui'
 
 const MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
 
 const somaMes = (txs, mes, tipo) => txs.filter(t => t.tipo === tipo && (t.data || '').startsWith(mes)).reduce((s, t) => s + (t.valor || 0), 0)
 
-export default function PersonalDashboard({ usuario, profile, accounts, transactions, investments = [], debts = [], catsDespesa = [], snapshots = [] }) {
+export default function PersonalDashboard({ usuario, profile, accounts, transactions, cards = [], investments = [], debts = [], goals = [], catsDespesa = [], snapshots = [] }) {
   const hoje = new Date()
   const mesAtual = hoje.toISOString().slice(0, 7)
   const prevDate = new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1)
@@ -63,6 +63,35 @@ export default function PersonalDashboard({ usuario, profile, accounts, transact
   const varPat = patPrev != null ? patrimonio - patPrev : 0
   const varPatPct = patPrev ? (varPat / Math.abs(patPrev)) * 100 : 0
 
+  // Alertas inteligentes (regras simples, dados reais)
+  const hojeStr = hoje.toISOString().slice(0, 10)
+  const alertas = []
+  accounts.filter(a => (a.saldoAtual || 0) < 0).forEach(a => alertas.push({ tipo: 'danger', icon: '🏦', msg: `Conta "${a.nome}" com saldo negativo (${fmt(a.saldoAtual)}).` }))
+  debts.filter(d => d.status !== 'quitada' && (d.status === 'atrasada' || (d.dueDate && d.dueDate < hojeStr)))
+    .forEach(d => alertas.push({ tipo: 'danger', icon: '⚠️', msg: `Dívida com ${d.creditor} atrasada${d.dueDate ? ` (venceu ${fd(d.dueDate)})` : ''}.` }))
+  debts.filter(d => d.status !== 'quitada' && d.dueDate && d.dueDate >= hojeStr && (new Date(d.dueDate) - hoje) / 86400000 <= 7)
+    .forEach(d => alertas.push({ tipo: 'warn', icon: '📅', msg: `Dívida com ${d.creditor} vence em ${fd(d.dueDate)}.` }))
+  cards.filter(c => c.isActive && c.dueDay).forEach(c => {
+    let diff = c.dueDay - hoje.getDate(); if (diff < 0) diff += 30
+    if (diff <= 5) alertas.push({ tipo: 'warn', icon: '💳', msg: `Fatura do cartão "${c.name}" vence dia ${c.dueDay}.` })
+  })
+  if (recMes > 0 && despMes > recMes) alertas.push({ tipo: 'warn', icon: '📉', msg: `Despesas do mês (${fmtS(despMes)}) acima das receitas (${fmtS(recMes)}).` })
+  goals.filter(g => g.status === 'ativa' && g.target > 0).forEach(g => {
+    const p = g.current / g.target * 100
+    if (p >= 80 && p < 100) alertas.push({ tipo: 'info', icon: '🎯', msg: `Meta "${g.name}" está a ${Math.round(100 - p)}% de ser concluída.` })
+  })
+  if (patrimonio < 0) alertas.push({ tipo: 'danger', icon: '💎', msg: `Seu patrimônio líquido está negativo (${fmtS(patrimonio)}).` })
+  const alertaBg = { danger: T.redL, warn: T.orangeL, info: T.blueL }
+  const alertaCor = { danger: T.red, warn: T.orange, info: T.blue }
+
+  // Resumo do mês
+  const maiorCatDesp = catDesp[0] || null
+  const temPrev = recPrev > 0 || despPrev > 0
+  const curSnap = snapshots[snapshots.length - 1] || null
+  const prevSnap = snapshots.length >= 2 ? snapshots[snapshots.length - 2] : null
+  const investMesDelta = prevSnap && curSnap ? (curSnap.investments - prevSnap.investments) : null
+  const dividaMesReducao = prevSnap && curSnap ? (prevSnap.debts - curSnap.debts) : null
+
   const temDados = transactions.length > 0 || accounts.length > 0
   const primeiroNome = (profile?.nome || usuario?.nome || '').split(' ')[0]
 
@@ -72,6 +101,18 @@ export default function PersonalDashboard({ usuario, profile, accounts, transact
         <h1 style={{ fontWeight: 800, fontSize: 26, margin: 0, color: T.text }}>Olá{primeiroNome ? `, ${primeiroNome}` : ''} 👋</h1>
         <div style={{ color: T.sub, fontSize: 14, marginTop: 2 }}>Sua visão financeira pessoal — {MESES[hoje.getMonth()]}/{hoje.getFullYear()}.</div>
       </div>
+
+      {/* Alertas inteligentes */}
+      {alertas.length > 0 && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10, marginBottom: 18 }}>
+          {alertas.slice(0, 6).map((a, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, background: alertaBg[a.tipo], border: `1px solid ${alertaCor[a.tipo]}33`, borderRadius: 10, padding: '10px 14px' }}>
+              <span style={{ fontSize: 16, flexShrink: 0 }}>{a.icon}</span>
+              <span style={{ fontSize: 13, color: T.text, lineHeight: 1.4 }}>{a.msg}</span>
+            </div>
+          ))}
+        </div>
+      )}
 
       {!temDados ? (
         <Card style={{ padding: 0 }}>
@@ -91,6 +132,46 @@ export default function PersonalDashboard({ usuario, profile, accounts, transact
             <KpiCard icon="📊" iconBg={T.redL} label="Dívidas" value={fmt(totalDividas)} sub="Saldo devedor" />
             <KpiCard icon="💎" iconBg={T.cyanL} label="Patrimônio líquido" value={fmt(patrimonio)} sub="Contas + investimentos − dívidas" />
           </div>
+
+          {/* Resumo do mês */}
+          <Card style={{ padding: 20, marginBottom: 14 }}>
+            <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 14, color: T.text }}>Resumo do mês — {MESES[hoje.getMonth()]}/{hoje.getFullYear()}</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 14 }}>
+              <div>
+                <div style={{ fontSize: 12, color: T.sub }}>Receitas</div>
+                <div style={{ fontWeight: 700, fontSize: 18, color: T.green }}>{fmt(recMes)}</div>
+                {temPrev && <div style={{ fontSize: 11, color: delta(recMes, recPrev) >= 0 ? T.green : T.red }}>{delta(recMes, recPrev) >= 0 ? '↑' : '↓'} {fmtPct(Math.abs(delta(recMes, recPrev)))} vs mês ant.</div>}
+              </div>
+              <div>
+                <div style={{ fontSize: 12, color: T.sub }}>Despesas</div>
+                <div style={{ fontWeight: 700, fontSize: 18, color: T.red }}>{fmt(despMes)}</div>
+                {temPrev && <div style={{ fontSize: 11, color: delta(despMes, despPrev) <= 0 ? T.green : T.red }}>{delta(despMes, despPrev) >= 0 ? '↑' : '↓'} {fmtPct(Math.abs(delta(despMes, despPrev)))} vs mês ant.</div>}
+              </div>
+              <div>
+                <div style={{ fontSize: 12, color: T.sub }}>Saldo do mês</div>
+                <div style={{ fontWeight: 700, fontSize: 18, color: economia >= 0 ? T.green : T.red }}>{fmt(economia)}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 12, color: T.sub }}>Maior gasto</div>
+                <div style={{ fontWeight: 700, fontSize: 15, color: T.text }}>{maiorCatDesp ? maiorCatDesp.nome : '—'}</div>
+                {maiorCatDesp && <div style={{ fontSize: 12, color: T.muted }}>{fmtS(maiorCatDesp.valor)}</div>}
+              </div>
+              {investMesDelta != null && (
+                <div>
+                  <div style={{ fontSize: 12, color: T.sub }}>Investimentos (mês)</div>
+                  <div style={{ fontWeight: 700, fontSize: 15, color: investMesDelta >= 0 ? T.green : T.red }}>{investMesDelta >= 0 ? '+' : '−'}{fmtS(Math.abs(investMesDelta))}</div>
+                </div>
+              )}
+              {dividaMesReducao != null && dividaMesReducao !== 0 && (
+                <div>
+                  <div style={{ fontSize: 12, color: T.sub }}>Dívidas (mês)</div>
+                  <div style={{ fontWeight: 700, fontSize: 15, color: dividaMesReducao >= 0 ? T.green : T.red }}>{dividaMesReducao >= 0 ? '−' : '+'}{fmtS(Math.abs(dividaMesReducao))}</div>
+                  <div style={{ fontSize: 11, color: T.muted }}>{dividaMesReducao >= 0 ? 'reduziu' : 'aumentou'}</div>
+                </div>
+              )}
+            </div>
+            {!temPrev && <div style={{ marginTop: 12, background: T.bg, borderRadius: 8, padding: '10px 14px', fontSize: 12, color: T.muted }}>Sem dados do mês anterior para comparar — os comparativos aparecem assim que houver histórico.</div>}
+          </Card>
 
           {/* Gráficos */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 14 }}>

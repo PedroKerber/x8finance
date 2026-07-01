@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { T, fmt, fd, uid, errMsgAcao } from '../../theme'
-import { Card, Btn, Modal, Input, Select, Toast, Confirm, EmptyState, Badge } from '../../components/ui'
+import { Card, Btn, Modal, Input, Select, Toast, Confirm, EmptyState, Badge, FilterBar, SearchInput } from '../../components/ui'
 import { CATS_META_PF, STATUS_META_PF, statusMetaInfo } from '../../personalData'
 
 export default function PersonalMetas({ goals, onSaveGoal, onDeleteGoal }) {
@@ -8,7 +8,14 @@ export default function PersonalMetas({ goals, onSaveGoal, onDeleteGoal }) {
   const [confirmId, setConfirmId] = useState(null)
   const [toast, setToast] = useState(null)
   const [form, setForm] = useState(null)
+  const [busca, setBusca] = useState('')
+  const [fStatus, setFStatus] = useState('')
+  const [fCat, setFCat] = useState('')
 
+  const filtered = useMemo(() => goals.filter(g =>
+    (!fStatus || g.status === fStatus) && (!fCat || g.category === fCat) &&
+    (!busca.trim() || (g.name || '').toLowerCase().includes(busca.trim().toLowerCase()))
+  ), [goals, fStatus, fCat, busca])
   const totalAlvo = useMemo(() => goals.reduce((s, g) => s + (g.target || 0), 0), [goals])
   const totalAtual = useMemo(() => goals.reduce((s, g) => s + (g.current || 0), 0), [goals])
   const ativas = goals.filter(g => g.status === 'ativa').length
@@ -58,14 +65,26 @@ export default function PersonalMetas({ goals, onSaveGoal, onDeleteGoal }) {
         <Card style={{ padding: '16px 20px' }}><div style={{ fontSize: 12, color: T.sub }}>Concluídas</div><div style={{ fontWeight: 800, fontSize: 22, color: T.green, marginTop: 4 }}>{concluidas}</div></Card>
       </div>
 
+      {goals.length > 0 && (
+        <FilterBar>
+          <SearchInput value={busca} onChange={setBusca} placeholder="Buscar meta…" />
+          <Select value={fStatus} onChange={e => setFStatus(e.target.value)} placeholder="Todos os status" options={STATUS_META_PF.map(s => ({ value: s.id, label: s.label }))} style={{ marginBottom: 0, minWidth: 150 }} />
+          <Select value={fCat} onChange={e => setFCat(e.target.value)} placeholder="Todas categorias" options={CATS_META_PF} style={{ marginBottom: 0, minWidth: 150 }} />
+        </FilterBar>
+      )}
+
       {goals.length === 0 ? (
         <Card style={{ padding: 0 }}>
           <EmptyState icon="🎯" title="Nenhuma meta criada" sub="Defina um objetivo e acompanhe o progresso."
             action={<Btn onClick={novo} icon="+">Nova meta</Btn>} />
         </Card>
+      ) : filtered.length === 0 ? (
+        <Card style={{ padding: 0 }}>
+          <EmptyState icon="🔍" title="Nenhum resultado para o filtro" sub="Ajuste a busca ou os filtros." />
+        </Card>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
-          {goals.map(g => {
+          {filtered.map(g => {
             const pct = g.target > 0 ? Math.min(100, Math.round((g.current || 0) / g.target * 100)) : 0
             const s = statusMetaInfo(g.status)
             return (
