@@ -25,6 +25,8 @@ function Ico({ name, size = 18 }) {
     inner = <><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></>
   else if (name === 'despesas')
     inner = <><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></>
+  else if (name === 'fluxo')
+    inner = <><polyline points="3 12 7 12 10 5 14 19 17 12 21 12"/></>
   else if (name === 'contas')
     inner = <><path d="M21 12V7H5a2 2 0 010-4h14v4"/><path d="M3 5v14a2 2 0 002 2h16v-5"/><path d="M18 12a2 2 0 000 4h4v-4z"/></>
   else if (name === 'cartoes')
@@ -70,11 +72,12 @@ function Ico({ name, size = 18 }) {
 export const PF_NAV_GROUPS = [
   { label: null, items: [{ id: 'dashboard', label: 'Dashboard', icon: 'dashboard' }] },
   { label: 'Finanças', items: [
-    { id: 'receitas',    label: 'Receitas',    icon: 'receitas'    },
-    { id: 'despesas',    label: 'Despesas',    icon: 'despesas'    },
-    { id: 'contas',      label: 'Contas',      icon: 'contas'      },
-    { id: 'cartoes',     label: 'Cartões',     icon: 'cartoes'     },
-    { id: 'recorrentes', label: 'Recorrentes', icon: 'recorrentes' },
+    { id: 'receitas',    label: 'Receitas',       icon: 'receitas'    },
+    { id: 'despesas',    label: 'Despesas',       icon: 'despesas'    },
+    { id: 'fluxo-caixa', label: 'Fluxo de Caixa', icon: 'fluxo'       },
+    { id: 'contas',      label: 'Contas',         icon: 'contas'      },
+    { id: 'cartoes',     label: 'Cartões',        icon: 'cartoes'     },
+    { id: 'recorrentes', label: 'Recorrentes',    icon: 'recorrentes' },
   ]},
   { label: 'Patrimônio', items: [
     { id: 'patrimonio',    label: 'Patrimônio',    icon: 'patrimonio'    },

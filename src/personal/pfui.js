@@ -126,7 +126,7 @@ const Nsel = ({ value, onChange, options }) => (
   </div>
 )
 
-export const PfPeriodFilter = ({ value, onChange, onClear }) => {
+export const PfPeriodFilter = ({ value, onChange, onClear, forward = false }) => {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
   const now = new Date()
@@ -176,9 +176,16 @@ export const PfPeriodFilter = ({ value, onChange, onClear }) => {
     { label: 'Ontem', p: (() => { const i = _ymd(yest.getFullYear(), yest.getMonth() + 1, yest.getDate()); return { from: i, to: i, label: 'Ontem', kind: 'atalho' } })() },
     { label: 'Este mês', p: _mkMonth(curY, curM) },
     { label: 'Mês passado', p: _mkMonth(prevM.getFullYear(), prevM.getMonth() + 1) },
-    { label: 'Últimos 7 dias', p: { from: daysAgo(7), to: today, label: 'Últimos 7 dias', kind: 'atalho' } },
-    { label: 'Últimos 30 dias', p: { from: daysAgo(30), to: today, label: 'Últimos 30 dias', kind: 'atalho' } },
-    { label: 'Últimos 90 dias', p: { from: daysAgo(90), to: today, label: 'Últimos 90 dias', kind: 'atalho' } },
+    ...(forward
+      ? [
+        { label: 'Próximos 30 dias', p: (() => { const d = new Date(now); d.setDate(curD + 29); return { from: today, to: _ymd(d.getFullYear(), d.getMonth() + 1, d.getDate()), label: 'Próximos 30 dias', kind: 'atalho' } })() },
+        { label: 'Próximos 90 dias', p: (() => { const d = new Date(now); d.setDate(curD + 89); return { from: today, to: _ymd(d.getFullYear(), d.getMonth() + 1, d.getDate()), label: 'Próximos 90 dias', kind: 'atalho' } })() },
+      ]
+      : [
+        { label: 'Últimos 7 dias', p: { from: daysAgo(7), to: today, label: 'Últimos 7 dias', kind: 'atalho' } },
+        { label: 'Últimos 30 dias', p: { from: daysAgo(30), to: today, label: 'Últimos 30 dias', kind: 'atalho' } },
+        { label: 'Últimos 90 dias', p: { from: daysAgo(90), to: today, label: 'Últimos 90 dias', kind: 'atalho' } },
+      ]),
     { label: 'Este ano', p: _mkYear(curY) },
   ]
 

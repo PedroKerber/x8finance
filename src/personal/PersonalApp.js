@@ -23,6 +23,7 @@ import PersonalSidebar from './PersonalSidebar'
 import PersonalDashboard from './pages/PersonalDashboard'
 import PersonalReceitas from './pages/PersonalReceitas'
 import PersonalDespesas from './pages/PersonalDespesas'
+import PersonalFluxoCaixa from './pages/PersonalFluxoCaixa'
 import PersonalContas from './pages/PersonalContas'
 import PersonalCartoes from './pages/PersonalCartoes'
 import PersonalInvestimentos from './pages/PersonalInvestimentos'
@@ -252,6 +253,7 @@ export default function PersonalApp({ usuario, profile, perfilFoto, onLogout }) 
       case 'dashboard':     return <PersonalDashboard {...shared} />
       case 'receitas':      return <PersonalReceitas {...shared} />
       case 'despesas':      return <PersonalDespesas {...shared} />
+      case 'fluxo-caixa':   return <PersonalFluxoCaixa {...shared} />
       case 'contas':        return <PersonalContas {...shared} />
       case 'cartoes':       return <PersonalCartoes {...shared} />
       case 'investimentos': return <PersonalInvestimentos {...shared} />
