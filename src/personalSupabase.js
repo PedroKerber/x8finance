@@ -469,3 +469,36 @@ export const removeSpaceMember = async (id) => {
   const { error } = await supabase.from('personal_space_members').update({ status: 'removed' }).eq('id', id)
   if (error) throw error
 }
+
+// ── Família — Fase 2.1: aceite de convite (RPCs seguras) ────────────────────
+// Convites pendentes para o e-mail do usuário logado (enriquecidos via RPC).
+export const getMyPendingInvites = async () => {
+  const { data, error } = await supabase.rpc('pf_my_space_invites')
+  if (error) throw error
+  return (data || []).map(r => ({
+    memberId: r.member_id, spaceId: r.space_id, spaceName: r.space_name || 'Espaço financeiro',
+    role: r.role || 'viewer', invitedByEmail: r.invited_by_email || '', invitedAt: r.invited_at,
+  }))
+}
+export const acceptSpaceInvite = async (memberId) => {
+  const { error } = await supabase.rpc('pf_accept_space_invite', { mid: memberId })
+  if (error) throw error
+}
+export const declineSpaceInvite = async (memberId) => {
+  const { error } = await supabase.rpc('pf_decline_space_invite', { mid: memberId })
+  if (error) throw error
+}
+// Espaços em que o usuário logado participa como membro aceito (não é o dono).
+export const getMySpaceMemberships = async () => {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+  const { data, error } = await supabase
+    .from('personal_space_members')
+    .select('id, space_id, role, status, personal_spaces(name, owner_user_id)')
+    .eq('user_id', user.id).eq('status', 'accepted')
+  if (error) throw error
+  return (data || []).map(m => ({
+    memberId: m.id, spaceId: m.space_id, role: m.role || 'viewer',
+    spaceName: m.personal_spaces?.name || 'Espaço financeiro', ownerId: m.personal_spaces?.owner_user_id,
+  }))
+}

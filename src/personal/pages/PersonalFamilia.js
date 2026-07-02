@@ -5,6 +5,7 @@ import { PageHeader, PfBtn } from '../pfui'
 import {
   getOrCreatePersonalSpace, updatePersonalSpace,
   getSpaceMembers, inviteSpaceMember, updateSpaceMemberRole, removeSpaceMember,
+  getMyPendingInvites, acceptSpaceInvite, declineSpaceInvite, getMySpaceMemberships,
 } from '../../personalSupabase'
 
 const ROLES = [
@@ -28,6 +29,9 @@ export default function PersonalFamilia({ usuario }) {
   const [modal, setModal] = useState(false)
   const [form, setForm] = useState(null)
   const [confirmId, setConfirmId] = useState(null)
+  const [invites, setInvites] = useState([])       // convites recebidos (pendentes)
+  const [memberships, setMemberships] = useState([]) // espaços onde participo (aceito)
+  const [actingId, setActingId] = useState(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -39,8 +43,11 @@ export default function PersonalFamilia({ usuario }) {
       setMembers(mem)
     } catch (e) {
       // Tabela ausente (migration 0015 não aplicada) ou erro de acesso.
-      setUnavailable(true)
+      setUnavailable(true); return
     } finally { setLoading(false) }
+    // Convites recebidos / participações (RPCs da 0016) — best-effort, não bloqueiam a tela.
+    try { setInvites(await getMyPendingInvites()) } catch (e) { setInvites([]) }
+    try { setMemberships(await getMySpaceMemberships()) } catch (e) { setMemberships([]) }
   }, [])
 
   useEffect(() => { load() }, [load])
@@ -84,6 +91,19 @@ export default function PersonalFamilia({ usuario }) {
     setConfirmId(null)
   }
 
+  const aceitar = async (inv) => {
+    setActingId(inv.memberId)
+    try { await acceptSpaceInvite(inv.memberId); await load(); setToast({ msg: `Você agora participa de "${inv.spaceName}".`, type: 'success' }) }
+    catch (e) { setToast({ msg: errMsgAcao(e), type: 'error' }) }
+    setActingId(null)
+  }
+  const recusar = async (inv) => {
+    setActingId(inv.memberId)
+    try { await declineSpaceInvite(inv.memberId); setInvites(prev => prev.filter(x => x.memberId !== inv.memberId)); setToast({ msg: 'Convite recusado.', type: 'success' }) }
+    catch (e) { setToast({ msg: errMsgAcao(e), type: 'error' }) }
+    setActingId(null)
+  }
+
   if (loading) return <div style={{ textAlign: 'center', padding: '80px 20px', color: T.muted, fontSize: 14 }}>Carregando seu espaço familiar…</div>
 
   if (unavailable) {
@@ -110,6 +130,44 @@ export default function PersonalFamilia({ usuario }) {
         Convide uma pessoa de confiança (cônjuge, família) para acompanhar ou gerenciar sua vida financeira junto com você.
         Cada pessoa entra com o <strong>login próprio</strong> — nada de compartilhar senha.
       </div>
+
+      {/* Convites recebidos (para o usuário convidado) */}
+      {invites.length > 0 && (
+        <Card style={{ padding: 20, marginBottom: 18 }}>
+          <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 12, color: T.text }}>Convites recebidos</div>
+          {invites.map(inv => (
+            <div key={inv.memberId} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '12px 0', borderBottom: `1px solid ${T.borderLight}`, flexWrap: 'wrap' }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontWeight: 700, fontSize: 14, color: T.text }}>Você foi convidado para o espaço “{inv.spaceName}”.</div>
+                <div style={{ fontSize: 12, color: T.muted, marginTop: 2 }}>Convidado por {inv.invitedByEmail || '—'} · Permissão: {roleLabel(inv.role)}</div>
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <Btn sm onClick={() => aceitar(inv)} disabled={actingId === inv.memberId}>Aceitar</Btn>
+                <Btn sm variant="ghost" onClick={() => recusar(inv)} disabled={actingId === inv.memberId}>Recusar</Btn>
+              </div>
+            </div>
+          ))}
+        </Card>
+      )}
+
+      {/* Espaços em que participo (após aceitar) */}
+      {memberships.length > 0 && (
+        <Card style={{ padding: 20, marginBottom: 18 }}>
+          <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 12, color: T.text }}>Espaços que participo</div>
+          {memberships.map(ms => (
+            <div key={ms.memberId} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '10px 0', borderBottom: `1px solid ${T.borderLight}`, flexWrap: 'wrap' }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontWeight: 600, fontSize: 14, color: T.text }}>{ms.spaceName}</div>
+                <div style={{ fontSize: 12, color: T.muted, marginTop: 2 }}>Sua permissão: {roleLabel(ms.role)}</div>
+              </div>
+              <Badge label="Ativo" color={T.green} bg={T.greenL} />
+            </div>
+          ))}
+          <div style={{ fontSize: 12, color: T.muted, marginTop: 10 }}>
+            Você participa deste espaço. O compartilhamento dos lançamentos financeiros virá na próxima etapa.
+          </div>
+        </Card>
+      )}
 
       {/* Nome do espaço */}
       <Card style={{ padding: 18, marginBottom: 18 }}>
