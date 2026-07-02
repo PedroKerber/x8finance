@@ -17,6 +17,7 @@ import {
   getPersonalBudgets, savePersonalBudget, deletePersonalBudget,
   getCardInvoices, payCardInvoice, getMonthlyClosings, savePersonalClosing,
   getDashboardPreferences, saveDashboardPreferences,
+  getOrCreatePersonalSpace, getMySpaceMemberships,
 } from '../personalSupabase'
 import { CATS_RECEITA_PF, CATS_DESPESA_PF } from '../personalData'
 import PersonalSidebar from './PersonalSidebar'
@@ -56,24 +57,57 @@ export default function PersonalApp({ usuario, profile, perfilFoto, onLogout }) 
   const [closings, setClosings] = useState([])
   const [dashboardPrefs, setDashboardPrefs] = useState(null)
   const [loading, setLoading] = useState(true)
+  // Fase 2.2: espaço ativo. undefined = ainda resolvendo; string = espaço; null = modo legado (Família indisponível).
+  const [ownSpaceId, setOwnSpaceId] = useState(null)
+  const [spaces, setSpaces] = useState([])            // [{ id, name, isOwner, role }]
+  const [activeSpaceId, setActiveSpaceId] = useState(undefined)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('norvo_pf_sidebar') === '1')
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const sidebarW = sidebarCollapsed ? 82 : 280
 
   useEffect(() => { localStorage.setItem('norvo_pf_page', page) }, [page])
 
-  // Carrega dados pessoais (RLS já filtra por user_id).
-  // Fetches F5 usam fallback vazio para não quebrar caso a migration 0013 ainda não
-  // esteja aplicada — o núcleo F1–F4 continua carregando normalmente.
+  // Fase 2.2: resolve o espaço próprio + espaços em que participo. Define o espaço ativo.
+  // Se a Família não estiver aplicada, cai em modo legado (activeSpaceId = null → RLS user_id).
   useEffect(() => {
     let alive = true
-    const safe = (p) => p.catch(() => [])
-    const safeObj = (p) => p.catch(() => null)
     ;(async () => {
       try {
-        try { await generateDueRecurrences(usuario.id) } catch (e) { /* recorrência é best-effort */ }
+        const own = await getOrCreatePersonalSpace()
+        let mems = []
+        try { mems = await getMySpaceMemberships() } catch (e) { /* 0016 pode não estar aplicada */ }
+        if (!alive) return
+        const list = []
+        if (own) list.push({ id: own.id, name: own.name, isOwner: true, role: 'admin' })
+        mems.forEach(m => { if (!own || m.spaceId !== own.id) list.push({ id: m.spaceId, name: m.spaceName, isOwner: false, role: m.role }) })
+        setOwnSpaceId(own ? own.id : null)
+        setSpaces(list)
+        setActiveSpaceId(own ? own.id : null)
+      } catch (e) {
+        // Família indisponível (0015/0016 não aplicadas) → modo legado por user_id.
+        if (alive) { setOwnSpaceId(null); setSpaces([]); setActiveSpaceId(null) }
+      }
+    })()
+    return () => { alive = false }
+  }, [usuario])
+
+  // Carrega os dados do ESPAÇO ATIVO. Contas e lançamentos filtram por space_id
+  // (Fase 2.2); as demais tabelas ainda carregam por user_id (próximas fases).
+  // Fetches F5 usam fallback vazio para não quebrar caso a migration 0013 não esteja aplicada.
+  useEffect(() => {
+    if (activeSpaceId === undefined) return   // aguarda resolver o espaço
+    let alive = true
+    const loadSpaceId = activeSpaceId || null
+    const isOwnSpace = !activeSpaceId || activeSpaceId === ownSpaceId
+    const safe = (p) => p.catch(() => [])
+    const safeObj = (p) => p.catch(() => null)
+    setLoading(true)
+    ;(async () => {
+      try {
+        // Geração de recorrências e snapshot são operações do DONO no próprio espaço.
+        if (isOwnSpace) { try { await generateDueRecurrences(usuario.id) } catch (e) { /* best-effort */ } }
         const [accs, txs, crds, invs, dbts, gls, cats, snaps, recs, trs, buds, cinv, clos, prefs] = await Promise.all([
-          getPersonalAccounts(), getPersonalTransactions(), getPersonalCards(),
+          getPersonalAccounts(loadSpaceId), getPersonalTransactions(loadSpaceId), getPersonalCards(),
           getPersonalInvestments(), getPersonalDebts(), getPersonalGoals(),
           getPersonalCategories(), getNetWorthSnapshots(),
           safe(getPersonalRecurrences()), safe(getPersonalTransfers()), safe(getPersonalBudgets()),
@@ -84,24 +118,26 @@ export default function PersonalApp({ usuario, profile, perfilFoto, onLogout }) 
         setDebts(dbts); setGoals(gls); setCategories(cats); setSnapshots(snaps)
         setRecurrences(recs); setTransfers(trs); setBudgets(buds); setCardInvoices(cinv); setClosings(clos)
         setDashboardPrefs(prefs)
-        try {
-          const accountsTotal = accs.reduce((s, a) => s + (a.saldoAtual || 0), 0)
-          const investTotal = invs.reduce((s, i) => s + (i.current || 0), 0)
-          const debtsTotal = dbts.filter(d => d.status !== 'quitada').reduce((s, d) => s + (d.remaining || 0), 0)
-          await upsertNetWorthSnapshot(usuario.id, { accounts: accountsTotal, investments: investTotal, debts: debtsTotal })
-          const fresh = await getNetWorthSnapshots()
-          if (alive) setSnapshots(fresh)
-        } catch (e) { /* snapshot é best-effort */ }
+        if (isOwnSpace) {
+          try {
+            const accountsTotal = accs.reduce((s, a) => s + (a.saldoAtual || 0), 0)
+            const investTotal = invs.reduce((s, i) => s + (i.current || 0), 0)
+            const debtsTotal = dbts.filter(d => d.status !== 'quitada').reduce((s, d) => s + (d.remaining || 0), 0)
+            await upsertNetWorthSnapshot(usuario.id, { accounts: accountsTotal, investments: investTotal, debts: debtsTotal })
+            const fresh = await getNetWorthSnapshots()
+            if (alive) setSnapshots(fresh)
+          } catch (e) { /* snapshot é best-effort */ }
+        }
       } catch (e) { console.error(e) }
       finally { if (alive) setLoading(false) }
     })()
     return () => { alive = false }
-  }, [usuario])
+  }, [usuario, activeSpaceId, ownSpaceId])
 
   const onSaveTx = useCallback(async (item, isEdit) => {
-    await savePersonalTransaction(item, usuario.id)
+    await savePersonalTransaction(item, usuario.id, activeSpaceId)
     setTransactions(prev => isEdit ? prev.map(t => t.id === item.id ? item : t) : [item, ...prev])
-  }, [usuario])
+  }, [usuario, activeSpaceId])
 
   const onDeleteTx = useCallback(async (id) => {
     await deletePersonalTransaction(id)
@@ -109,9 +145,9 @@ export default function PersonalApp({ usuario, profile, perfilFoto, onLogout }) 
   }, [])
 
   const onSaveAccount = useCallback(async (acc, isEdit) => {
-    await savePersonalAccount(acc, usuario.id)
+    await savePersonalAccount(acc, usuario.id, activeSpaceId)
     setAccounts(prev => isEdit ? prev.map(a => a.id === acc.id ? acc : a) : [...prev, acc])
-  }, [usuario])
+  }, [usuario, activeSpaceId])
 
   const onDeleteAccount = useCallback(async (id) => {
     await deletePersonalAccount(id)
@@ -160,18 +196,18 @@ export default function PersonalApp({ usuario, profile, perfilFoto, onLogout }) 
 
   // ── F5: lote (parcelamento), recorrências, transferências, orçamento, fatura, fechamento ──
   const onSaveTxBatch = useCallback(async (items) => {
-    await savePersonalTransactions(items, usuario.id)
+    await savePersonalTransactions(items, usuario.id, activeSpaceId)
     setTransactions(prev => [...items, ...prev])
-  }, [usuario])
+  }, [usuario, activeSpaceId])
 
   const onSaveRecurrence = useCallback(async (r) => {
     const id = await savePersonalRecurrence(r, usuario.id)
     // gera imediatamente os lançamentos vencidos e recarrega
     try { await generateDueRecurrences(usuario.id) } catch (e) { /* best-effort */ }
-    const [recs, txs] = await Promise.all([getPersonalRecurrences(), getPersonalTransactions()])
+    const [recs, txs] = await Promise.all([getPersonalRecurrences(), getPersonalTransactions(activeSpaceId)])
     setRecurrences(recs); setTransactions(txs)
     return id
-  }, [usuario])
+  }, [usuario, activeSpaceId])
   const onDeleteRecurrence = useCallback(async (id) => {
     await deletePersonalRecurrence(id); setRecurrences(prev => prev.filter(x => x.id !== id))
   }, [])
@@ -181,19 +217,19 @@ export default function PersonalApp({ usuario, profile, perfilFoto, onLogout }) 
     // movimentação interna: origem −valor, destino +valor
     const from = accounts.find(a => a.id === t.fromId)
     const to = accounts.find(a => a.id === t.toId)
-    if (from) { const upd = { ...from, saldoAtual: (from.saldoAtual || 0) - (t.valor || 0) }; await savePersonalAccount(upd, usuario.id); setAccounts(prev => prev.map(a => a.id === upd.id ? upd : a)) }
-    if (to) { const upd = { ...to, saldoAtual: (to.saldoAtual || 0) + (t.valor || 0) }; await savePersonalAccount(upd, usuario.id); setAccounts(prev => prev.map(a => a.id === upd.id ? upd : a)) }
+    if (from) { const upd = { ...from, saldoAtual: (from.saldoAtual || 0) - (t.valor || 0) }; await savePersonalAccount(upd, usuario.id, activeSpaceId); setAccounts(prev => prev.map(a => a.id === upd.id ? upd : a)) }
+    if (to) { const upd = { ...to, saldoAtual: (to.saldoAtual || 0) + (t.valor || 0) }; await savePersonalAccount(upd, usuario.id, activeSpaceId); setAccounts(prev => prev.map(a => a.id === upd.id ? upd : a)) }
     setTransfers(prev => [saved, ...prev])
-  }, [usuario, accounts])
+  }, [usuario, accounts, activeSpaceId])
   const onDeleteTransfer = useCallback(async (id) => {
     const t = transfers.find(x => x.id === id)
     if (t) { // reverte a movimentação
       const from = accounts.find(a => a.id === t.fromId); const to = accounts.find(a => a.id === t.toId)
-      if (from) { const upd = { ...from, saldoAtual: (from.saldoAtual || 0) + (t.valor || 0) }; await savePersonalAccount(upd, usuario.id); setAccounts(prev => prev.map(a => a.id === upd.id ? upd : a)) }
-      if (to) { const upd = { ...to, saldoAtual: (to.saldoAtual || 0) - (t.valor || 0) }; await savePersonalAccount(upd, usuario.id); setAccounts(prev => prev.map(a => a.id === upd.id ? upd : a)) }
+      if (from) { const upd = { ...from, saldoAtual: (from.saldoAtual || 0) + (t.valor || 0) }; await savePersonalAccount(upd, usuario.id, activeSpaceId); setAccounts(prev => prev.map(a => a.id === upd.id ? upd : a)) }
+      if (to) { const upd = { ...to, saldoAtual: (to.saldoAtual || 0) - (t.valor || 0) }; await savePersonalAccount(upd, usuario.id, activeSpaceId); setAccounts(prev => prev.map(a => a.id === upd.id ? upd : a)) }
     }
     await deletePersonalTransfer(id); setTransfers(prev => prev.filter(x => x.id !== id))
-  }, [usuario, accounts, transfers])
+  }, [usuario, accounts, transfers, activeSpaceId])
 
   const onSaveBudget = useCallback(async (b) => {
     const saved = await savePersonalBudget(b, usuario.id)
@@ -206,9 +242,9 @@ export default function PersonalApp({ usuario, profile, perfilFoto, onLogout }) 
   const onPayInvoice = useCallback(async ({ cardId, competencia, amount, accountId }) => {
     await payCardInvoice({ userId: usuario.id, cardId, competencia, amount, accountId })
     const acc = accounts.find(a => a.id === accountId)
-    if (acc) { const upd = { ...acc, saldoAtual: (acc.saldoAtual || 0) - (amount || 0) }; await savePersonalAccount(upd, usuario.id); setAccounts(prev => prev.map(a => a.id === upd.id ? upd : a)) }
+    if (acc) { const upd = { ...acc, saldoAtual: (acc.saldoAtual || 0) - (amount || 0) }; await savePersonalAccount(upd, usuario.id, activeSpaceId); setAccounts(prev => prev.map(a => a.id === upd.id ? upd : a)) }
     const cinv = await getCardInvoices(); setCardInvoices(cinv)
-  }, [usuario, accounts])
+  }, [usuario, accounts, activeSpaceId])
 
   const onSaveClosing = useCallback(async (c) => {
     await savePersonalClosing(c, usuario.id)
@@ -284,6 +320,20 @@ export default function PersonalApp({ usuario, profile, perfilFoto, onLogout }) 
       />
       <div style={{ marginLeft: isMobile ? 0 : sidebarW, flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100vh', minWidth: 0, transition: 'margin-left .2s ease' }}>
         <main style={{ flex: 1, padding: isMobile ? '18px 14px calc(80px + env(safe-area-inset-bottom, 0px))' : '28px 28px 40px', overflowX: 'hidden' }}>
+          {spaces.length > 1 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 18 }}>
+              <span style={{ fontSize: 13, color: T.sub, fontWeight: 600 }}>Espaço financeiro:</span>
+              <div className="pf-fselect">
+                <select value={activeSpaceId || ''} onChange={e => setActiveSpaceId(e.target.value)} aria-label="Espaço financeiro ativo">
+                  {spaces.map(s => <option key={s.id} value={s.id}>{s.isOwner ? `${s.name} (meu)` : s.name}</option>)}
+                </select>
+                <span className="pf-fselect-caret" aria-hidden>▾</span>
+              </div>
+              {(() => { const a = spaces.find(s => s.id === activeSpaceId); return a && !a.isOwner
+                ? <span style={{ fontSize: 12, color: T.muted }}>compartilhado · sua permissão: {a.role === 'admin' ? 'Administrador' : a.role === 'editor' ? 'Editor' : 'Leitura'}</span>
+                : null })()}
+            </div>
+          )}
           {renderPage()}
         </main>
       </div>

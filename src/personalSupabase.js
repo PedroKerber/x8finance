@@ -29,22 +29,23 @@ const mapAccount = (r) => ({
   obs: r.obs || '',
 })
 
-export const getPersonalAccounts = async () => {
-  const { data, error } = await supabase
-    .from('personal_accounts')
-    .select('*')
-    .order('created_at', { ascending: true })
+// spaceId (opcional): quando informado, carrega/grava no espaço compartilhado.
+export const getPersonalAccounts = async (spaceId = null) => {
+  let q = supabase.from('personal_accounts').select('*').order('created_at', { ascending: true })
+  if (spaceId) q = q.eq('space_id', spaceId)
+  const { data, error } = await q
   if (error) throw error
   return (data || []).map(mapAccount)
 }
 
-export const savePersonalAccount = async (acc, userId) => {
+export const savePersonalAccount = async (acc, userId, spaceId = null) => {
   const row = {
     id: acc.id, user_id: userId, nome: acc.nome, banco: acc.banco || null,
     tipo: acc.tipo || null, saldo_inicial: acc.saldoInicial || 0,
     saldo_atual: acc.saldoAtual != null ? acc.saldoAtual : (acc.saldoInicial || 0),
     obs: acc.obs || null,
   }
+  if (spaceId) row.space_id = spaceId
   const { error } = await supabase.from('personal_accounts').upsert(row)
   if (error) throw error
 }
@@ -64,32 +65,35 @@ const mapTx = (r) => ({
   recurrenceId: r.recurrence_id || '', installmentId: r.installment_id || '',
 })
 
-const toTxRow = (item, userId) => ({
-  id: item.id, user_id: userId, tipo: item.tipo, valor: item.valor || 0,
-  data: item.data || null, categoria: item.categoria || null, descricao: item.desc || null,
-  account_id: item.accountId || null, forma_pagamento: item.forma || null,
-  recorrencia: item.recorrencia || null, status: item.status || null,
-  credit_card_id: item.cartaoId || null, anexo_url: item.anexoUrl || null,
-  parcela_num: item.parcelaNum || null, parcela_total: item.parcelaTotal || null,
-  recurrence_id: item.recurrenceId || null, installment_id: item.installmentId || null,
-})
+const toTxRow = (item, userId, spaceId = null) => {
+  const row = {
+    id: item.id, user_id: userId, tipo: item.tipo, valor: item.valor || 0,
+    data: item.data || null, categoria: item.categoria || null, descricao: item.desc || null,
+    account_id: item.accountId || null, forma_pagamento: item.forma || null,
+    recorrencia: item.recorrencia || null, status: item.status || null,
+    credit_card_id: item.cartaoId || null, anexo_url: item.anexoUrl || null,
+    parcela_num: item.parcelaNum || null, parcela_total: item.parcelaTotal || null,
+    recurrence_id: item.recurrenceId || null, installment_id: item.installmentId || null,
+  }
+  if (spaceId) row.space_id = spaceId
+  return row
+}
 
-export const getPersonalTransactions = async () => {
-  const { data, error } = await supabase
-    .from('personal_transactions')
-    .select('*')
-    .order('data', { ascending: false })
+export const getPersonalTransactions = async (spaceId = null) => {
+  let q = supabase.from('personal_transactions').select('*').order('data', { ascending: false })
+  if (spaceId) q = q.eq('space_id', spaceId)
+  const { data, error } = await q
   if (error) throw error
   return (data || []).map(mapTx)
 }
 
-export const savePersonalTransaction = async (item, userId) => {
-  const { error } = await supabase.from('personal_transactions').upsert(toTxRow(item, userId))
+export const savePersonalTransaction = async (item, userId, spaceId = null) => {
+  const { error } = await supabase.from('personal_transactions').upsert(toTxRow(item, userId, spaceId))
   if (error) throw error
 }
 
-export const savePersonalTransactions = async (items, userId) => {
-  const rows = items.map(i => toTxRow(i, userId))
+export const savePersonalTransactions = async (items, userId, spaceId = null) => {
+  const rows = items.map(i => toTxRow(i, userId, spaceId))
   const { error } = await supabase.from('personal_transactions').upsert(rows)
   if (error) throw error
 }
